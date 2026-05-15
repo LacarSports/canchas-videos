@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { smoothScrollTo } from "@/lib/smoothScroll";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -395,14 +396,19 @@ function Filters() {
       );
     } catch {}
     if (window.location.search === `?${params.toString()}`) {
-      const el = document.getElementById("resultados");
-      if (el && window.innerWidth < 768) {
-        const y = el.getBoundingClientRect().top + window.scrollY - Math.round(window.innerHeight * 0.4);
-        window.scrollTo({ top: y, behavior: "smooth" });
+      if (window.innerWidth < 768) {
+        const el = document.getElementById("resultados");
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.scrollY - Math.round(window.innerHeight * 0.4);
+          smoothScrollTo(y);
+        }
+      } else {
+        const el = document.getElementById("buscador");
+        if (el) smoothScrollTo(el.getBoundingClientRect().top + window.scrollY - 80);
       }
       return;
     }
-    router.push(`/?${params.toString()}`);
+    router.push(`/?${params.toString()}`, { scroll: false });
   }
 
   function handleLimpiar() {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { smoothScrollTo } from "@/lib/smoothScroll";
 
 export default function ResultsContainer({ children }: { children: React.ReactNode }) {
   const resultadosRef = useRef<HTMLDivElement>(null);
@@ -9,7 +10,7 @@ export default function ResultsContainer({ children }: { children: React.ReactNo
     if (window.innerWidth >= 768) return;
     if (resultadosRef.current) {
       const y = resultadosRef.current.getBoundingClientRect().top + window.scrollY - Math.round(window.innerHeight * 0.4);
-      window.scrollTo({ top: y, behavior: "smooth" });
+      smoothScrollTo(y);
     }
   }, []);
 

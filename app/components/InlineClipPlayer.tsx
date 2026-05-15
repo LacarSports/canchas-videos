@@ -121,21 +121,17 @@ export default function InlineClipPlayer({
     v.paused ? v.play().catch(() => {}) : v.pause();
   }
 
-  async function toggleFullscreen() {
+  function toggleFullscreen() {
     if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
       document.exitFullscreen?.().catch(() => {});
       return;
     }
     const el = containerRef.current;
     if (!el) return;
-    try {
-      if (el.requestFullscreen) {
-        await el.requestFullscreen();
-      } else if ((videoRef.current as any)?.webkitEnterFullscreen) { // iOS Safari
-        (videoRef.current as any).webkitEnterFullscreen();
-      }
-    } catch (e) {
-      console.error("Fullscreen error:", e);
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch(e => console.error("Fullscreen error:", e));
+    } else if ((videoRef.current as any)?.webkitEnterFullscreen) { // iOS Safari
+      (videoRef.current as any).webkitEnterFullscreen();
     }
   }
 
@@ -356,8 +352,9 @@ export default function InlineClipPlayer({
           {/* Fullscreen */}
           <button
             type="button"
-            onClick={toggleFullscreen}
+            onPointerDown={(e) => { e.preventDefault(); toggleFullscreen(); }}
             className={`${btn} min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center text-white/60 hover:text-white transition-colors`}
+            style={{ touchAction: "manipulation" }}
             title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
           >
             {isFullscreen ? (
