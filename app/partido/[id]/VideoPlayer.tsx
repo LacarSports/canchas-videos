@@ -13,6 +13,12 @@ export default function VideoPlayer({ url, title }: VideoPlayerProps) {
   const [buffering, setBuffering] = useState(true);
 
   useEffect(() => {
+    const onOrientationChange = () => { document.documentElement.style.zoom = "1"; };
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => window.removeEventListener("orientationchange", onOrientationChange);
+  }, []);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 

@@ -50,9 +50,19 @@ export default function InlineClipPlayer({
   const pct = duracion > 0 ? Math.min(100, (relTime / duracion) * 100) : 0;
 
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onOrientationChange = () => { document.documentElement.style.zoom = "1"; };
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => window.removeEventListener("orientationchange", onOrientationChange);
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -111,11 +121,21 @@ export default function InlineClipPlayer({
     v.paused ? v.play().catch(() => {}) : v.pause();
   }
 
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen?.().catch(() => {});
-    } else {
+  async function toggleFullscreen() {
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
       document.exitFullscreen?.().catch(() => {});
+      return;
+    }
+    const el = containerRef.current;
+    if (!el) return;
+    try {
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+      } else if ((videoRef.current as any)?.webkitEnterFullscreen) { // iOS Safari
+        (videoRef.current as any).webkitEnterFullscreen();
+      }
+    } catch (e) {
+      console.error("Fullscreen error:", e);
     }
   }
 
@@ -194,12 +214,13 @@ export default function InlineClipPlayer({
     <div
       ref={containerRef}
       tabIndex={0}
-      className={`relative overflow-hidden bg-black outline-none ${className ?? "aspect-video"}`}
+      className={`relative overflow-hidden bg-black outline-none ${isFullscreen ? "flex items-center justify-center" : (className ?? "aspect-video")}`}
       onKeyDown={handleKeyDown}
     >
       <video
         ref={videoRef}
-        className="w-full h-full object-contain"
+        className={`object-contain ${isFullscreen ? "" : "w-full h-full"}`}
+        style={isFullscreen ? { width: "100%", height: "auto" } : undefined}
         playsInline
         preload="metadata"
         onLoadedMetadata={(e) => {
@@ -334,8 +355,9 @@ export default function InlineClipPlayer({
 
           {/* Fullscreen */}
           <button
+            type="button"
             onClick={toggleFullscreen}
-            className={`${btn} flex items-center justify-center text-white/60 hover:text-white transition-colors`}
+            className={`${btn} min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center text-white/60 hover:text-white transition-colors`}
             title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
           >
             {isFullscreen ? (
