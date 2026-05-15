@@ -8,13 +8,13 @@ export default function ResultsContainer({ children }: { children: React.ReactNo
   useEffect(() => {
     if (window.innerWidth >= 768) return;
     if (resultadosRef.current) {
-      const y = resultadosRef.current.getBoundingClientRect().top + window.scrollY - 80;
+      const y = resultadosRef.current.getBoundingClientRect().top + window.scrollY - Math.round(window.innerHeight * 0.4);
       window.scrollTo({ top: y, behavior: "smooth" });
     }
   }, []);
 
   return (
-    <div ref={resultadosRef} className="mt-10 flex flex-col gap-1.5">
+    <div ref={resultadosRef} id="resultados" className="mt-10 flex flex-col gap-1.5">
       {children}
     </div>
   );

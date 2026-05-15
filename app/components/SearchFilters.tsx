@@ -394,6 +394,14 @@ function Filters() {
         JSON.stringify({ complejo: complejoSel, deporte: deporteSel, cancha: canchaSel, fechaRaw, fechaDisplay, hora })
       );
     } catch {}
+    if (window.location.search === `?${params.toString()}`) {
+      const el = document.getElementById("resultados");
+      if (el && window.innerWidth < 768) {
+        const y = el.getBoundingClientRect().top + window.scrollY - Math.round(window.innerHeight * 0.4);
+        window.scrollTo({ top: y, behavior: "smooth" });
+      }
+      return;
+    }
     router.push(`/?${params.toString()}`);
   }
 
