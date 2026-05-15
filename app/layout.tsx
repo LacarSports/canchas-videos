@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: "Lacar Sports",
   description: "Revive tu partido en el Lago Lacar — busca, etiqueta y descarga tus mejores jugadas",
   icons: {
-    icon: "/logo.png",
+    icon: "/favicon.ico",
     apple: "/logo.png",
   },
 };
