@@ -187,9 +187,13 @@ export default function VideoClipSelector({
 
   /* ── fullscreen change ── */
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onChange = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
   }, []);
 
   /* ── global keyboard shortcuts (space + arrows always activos) ── */
@@ -303,10 +307,17 @@ export default function VideoClipSelector({
   }
 
   function toggleFullscreen() {
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+      return;
+    }
     const el = containerRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) el.requestFullscreen?.();
-    else document.exitFullscreen?.();
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch(e => console.error("Fullscreen error:", e));
+    } else if ((videoRef.current as any)?.webkitEnterFullscreen) { // iOS Safari
+      (videoRef.current as any).webkitEnterFullscreen();
+    }
   }
 
   /* ── skip (keyboard + double-tap) ── */
@@ -950,8 +961,10 @@ export default function VideoClipSelector({
 
                 {/* Fullscreen */}
                 <button
-                  onClick={toggleFullscreen}
-                  className="w-7 h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/10"
+                  type="button"
+                  onPointerDown={(e) => { e.preventDefault(); toggleFullscreen(); }}
+                  style={{ touchAction: "manipulation" }}
+                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 md:w-7 md:h-7 flex items-center justify-center text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/10"
                   title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
                 >
                   {isFullscreen ? (
