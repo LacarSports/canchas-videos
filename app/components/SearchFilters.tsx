@@ -126,7 +126,7 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
                 <button
                   key={opt}
                   type="button"
-                  onPointerDown={(e) => { e.preventDefault(); onSelect(opt); onClose(); }}
+                  onPointerDown={(e) => { e.preventDefault(); onSelect(opt); onClose(); if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); } /* Ocultar teclado en móvil */ }}
                   className="w-full text-left px-4 py-3 text-sm text-mist-400 hover:bg-crystal-400/8 hover:text-snow transition-colors"
                   style={{ touchAction: "manipulation" }}
                 >
@@ -394,7 +394,7 @@ function Filters() {
         JSON.stringify({ complejo: complejoSel, deporte: deporteSel, cancha: canchaSel, fechaRaw, fechaDisplay, hora })
       );
     } catch {}
-    router.push(`/?${params.toString()}#buscador`);
+    router.push(`/?${params.toString()}`);
   }
 
   function handleLimpiar() {

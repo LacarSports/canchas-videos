@@ -7,7 +7,10 @@ export default function ResultsContainer({ children }: { children: React.ReactNo
 
   useEffect(() => {
     if (window.innerWidth >= 768) return;
-    resultadosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (resultadosRef.current) {
+      const y = resultadosRef.current.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }
   }, []);
 
   return (
