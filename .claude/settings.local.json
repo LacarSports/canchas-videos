@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"const p = require\\(''./node_modules/@ffmpeg/ffmpeg/package.json''\\); console.log\\(p.version\\)\")",
+      "Bash(find 'C:\\\\Users\\\\Isabella Blamey\\\\canchas-videos' -type d -not -path */node_modules/* -not -path */.next/*)",
+      "Bash(ls *.config.*)",
+      "Bash(ls tailwind.config.*)",
+      "Bash(sed:*)"
+    ]
+  }
+}

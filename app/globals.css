@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+}
+
+@theme {
+  /* ── Lago Lacar palette ── */
+
+  /* Fondos — aguas profundas */
+  --color-lake-950: #041520;
+  --color-lake-900: #071c2e;
+  --color-lake-800: #0a2a3d;
+  --color-lake-700: #0e3450;
+  --color-lake-600: #154565;
+
+  /* Crystal — turquesa del lago */
+  --color-crystal-300: #72edd9;
+  --color-crystal-400: #29c4ad;
+  --color-crystal-500: #1ea898;
+  --color-crystal-600: #15897a;
+
+  /* Mist — aguamarina clara */
+  --color-mist-300: #c8ecec;
+  --color-mist-400: #a2d6d6;
+  --color-mist-500: #7ec8c8;
+  --color-mist-600: #58aeae;
+  --color-mist-700: #3c8f8f;
+
+  /* Glacial — azul glaciar */
+  --color-glacial-300: #82d8ed;
+  --color-glacial-400: #4daec4;
+  --color-glacial-500: #318eaa;
+
+  /* Pine — verde pino patagónico (uso muy esporádico) */
+  --color-pine-400: #24b078;
+  --color-pine-500: #1a7a55;
+
+  /* Texto principal */
+  --color-snow: #e6f6f6;
+  --color-snow-dim: #a8c8c8;
+
+  /* ── Animations ── */
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-float-delayed: float 7s ease-in-out infinite;
+  --animate-water-drift: water-drift 13s ease-in-out infinite;
+  --animate-water-drift-slow: water-drift 19s ease-in-out infinite;
+  --animate-slide-up: slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+}
+
+/* ── Keyframes ── */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+
+@keyframes water-drift {
+  0%, 100% { transform: translate(0, 0) scale(1);         opacity: 0.16; }
+  33%       { transform: translate(50px, -40px) scale(1.1); opacity: 0.22; }
+  66%       { transform: translate(-30px, 28px) scale(0.92); opacity: 0.10; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ── Base ── */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #041520;
+  color: #e6f6f6;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
