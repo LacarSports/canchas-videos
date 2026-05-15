@@ -5,7 +5,6 @@ import Image from "next/image";
 
 const NAV_LINKS = [
   { href: "/#buscador",      label: "Mi Partido"    },
-  { href: "/#jugadas",       label: "Jugadas"       },
   { href: "/auth/complejo",  label: "Mi Complejo"   },
   { href: "/#como-funciona", label: "Cómo Funciona" },
   { href: "/faq",            label: "FAQ"           },

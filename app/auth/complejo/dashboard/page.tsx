@@ -39,6 +39,7 @@ interface Jugada {
     fecha: string;
     hora: string;
     archivo_url?: string;
+    deporte?: string;
   } | null;
 }
 
@@ -97,15 +98,23 @@ function getMonthRange(year: number, month: number) {
 }
 
 const TAG_STYLES: Record<string, string> = {
-  Gol:           "bg-crystal-400/15 text-crystal-300 border-crystal-400/25",
-  Atajada:       "bg-glacial-400/15 text-glacial-300 border-glacial-400/25",
-  Caño:          "bg-pine-400/15 text-pine-400 border-pine-400/25",
-  "Buena jugada":"bg-mist-500/12 text-mist-400 border-mist-500/22",
-  Blooper:       "bg-amber-500/15 text-amber-300 border-amber-500/25",
-  Otro:          "bg-lake-600/30 text-mist-600 border-mist-700/25",
+  Gol:             "bg-crystal-400/15 text-crystal-300 border-crystal-400/25",
+  Atajada:         "bg-glacial-400/15 text-glacial-300 border-glacial-400/25",
+  Caño:            "bg-pine-400/15 text-pine-400 border-pine-400/25",
+  "Buena jugada":  "bg-mist-500/12 text-mist-400 border-mist-500/22",
+  Blooper:         "bg-amber-500/15 text-amber-300 border-amber-500/25",
+  Otro:            "bg-lake-600/30 text-mist-600 border-mist-700/25",
+  Smash:           "bg-crystal-400/15 text-crystal-300 border-crystal-400/25",
+  "Finta (amago)": "bg-pine-400/15 text-pine-400 border-pine-400/25",
+  "Buen Punto":    "bg-mist-500/12 text-mist-400 border-mist-500/22",
 };
 
 const ETIQUETAS = ["Gol", "Caño", "Buena jugada", "Atajada", "Blooper", "Otro"];
+
+const ETIQUETAS_BY_DEPORTE: Record<string, string[]> = {
+  futbol: ["Gol", "Caño", "Buena jugada", "Atajada", "Blooper", "Otro"],
+  padel:  ["Smash", "Finta (amago)", "Buen Punto", "Blooper", "Otro"],
+};
 
 const HORA_SLOTS = Array.from({ length: 17 }, (_, i) =>
   `${(i + 7).toString().padStart(2, "0")}:00`
@@ -1596,8 +1605,11 @@ function TabVideos({ complejo }: { complejo?: string }) {
 
   const [fechaInicio, setFechaInicio] = useState(sevenDaysAgo);
   const [fechaFin, setFechaFin] = useState(today);
+  const [deporte, setDeporte] = useState("");
   const [etiqueta, setEtiqueta] = useState("");
   const [duracionMax, setDuracionMax] = useState("");
+
+  const etiquetasDisponibles = deporte ? (ETIQUETAS_BY_DEPORTE[deporte] ?? ETIQUETAS) : ETIQUETAS;
   const [jugadas, setJugadas] = useState<Jugada[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -1611,12 +1623,12 @@ function TabVideos({ complejo }: { complejo?: string }) {
     return `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ""}/${archivoUrl}`;
   }
 
-  async function runSearch(inicio: string, fin: string, tag: string, durMax: string) {
+  async function runSearch(inicio: string, fin: string, dep: string, tag: string, durMax: string) {
     setLoading(true);
     setSearched(true);
-    let q = supabase.from("jugadas").select("id, partido_id, etiqueta, inicio_seg, fin_seg, duracion, creado_en, partidos(complejo, numero_cancha, fecha, hora, archivo_url)").order("creado_en", { ascending: false }).limit(60);
+    let q = supabase.from("jugadas").select("id, partido_id, etiqueta, inicio_seg, fin_seg, duracion, creado_en, partidos(complejo, numero_cancha, fecha, hora, archivo_url, deporte)").order("creado_en", { ascending: false }).limit(60);
     if (tag) q = q.eq("etiqueta", tag);
-    if (durMax) q = q.lte("duracion", Number(durMax));
+    if (durMax) q = q.lt("duracion", Number(durMax) + 1);
     const { data } = await q;
     let results = (data ?? []) as unknown as Jugada[];
     results = results.filter((j) => {
@@ -1624,6 +1636,11 @@ function TabVideos({ complejo }: { complejo?: string }) {
       if (!p) return false;
       if (complejo && !p.complejo.toLowerCase().includes(complejo.toLowerCase())) return false;
       if (p.fecha < inicio || p.fecha > fin) return false;
+      if (dep) {
+        const d = (p.deporte ?? "").toLowerCase();
+        if (dep === "padel" && !d.includes("padel") && !d.includes("pádel")) return false;
+        if (dep === "futbol" && (d.includes("padel") || d.includes("pádel"))) return false;
+      }
       return true;
     });
     setJugadas(results);
@@ -1631,11 +1648,11 @@ function TabVideos({ complejo }: { complejo?: string }) {
   }
 
   // Carga automática al montar con la semana pasada
-  useEffect(() => { runSearch(sevenDaysAgo, today, "", ""); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { runSearch(sevenDaysAgo, today, "", "", ""); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    runSearch(fechaInicio, fechaFin, etiqueta, duracionMax);
+    runSearch(fechaInicio, fechaFin, deporte, etiqueta, duracionMax);
   }
 
   function getClipUrl(j: Jugada) { return `${window.location.origin}/jugada/${j.id}`; }
@@ -1674,7 +1691,7 @@ function TabVideos({ complejo }: { complejo?: string }) {
       </div>
 
       <form onSubmit={handleSearch} className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-5 backdrop-blur-sm">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-xs text-mist-600 mb-1.5">Fecha inicio</label>
             <input
@@ -1698,10 +1715,22 @@ function TabVideos({ complejo }: { complejo?: string }) {
             />
           </div>
           <div>
-            <label className="block text-xs text-mist-600 mb-1.5">Etiqueta</label>
+            <label className="block text-xs text-mist-600 mb-1.5">Deporte</label>
+            <select
+              value={deporte}
+              onChange={(e) => { setDeporte(e.target.value); setEtiqueta(""); }}
+              className="w-full bg-lake-950/60 border border-lake-700 focus:border-crystal-400/40 text-snow text-sm rounded-xl px-3 py-2 outline-none transition-all"
+            >
+              <option value="">Todos los deportes</option>
+              <option value="futbol">Fútbol 7</option>
+              <option value="padel">Pádel</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-mist-600 mb-1.5">Jugada</label>
             <select value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)} className="w-full bg-lake-950/60 border border-lake-700 focus:border-crystal-400/40 text-snow text-sm rounded-xl px-3 py-2 outline-none transition-all">
               <option value="">Todas</option>
-              {ETIQUETAS.map((e) => <option key={e} value={e}>{e}</option>)}
+              {etiquetasDisponibles.map((e) => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
           <div>

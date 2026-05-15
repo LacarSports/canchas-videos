@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import SearchFilters from "./components/SearchFilters";
 import StatsCounter from "./components/StatsCounter";
 import PartidoCard from "./components/PartidoCard";
+import ResultsContainer from "./components/ResultsContainer";
+import WhatsAppButton from "./components/WhatsAppButton";
 
 interface Partido {
   id: string;
@@ -325,7 +327,7 @@ export default async function HomePage({
           <SearchFilters />
 
           {!hasSearch ? null : partidos && partidos.length > 0 ? (
-            <div className="mt-10 flex flex-col gap-1.5">
+            <ResultsContainer>
               {partidos.map((partido: Partido) => (
                 <PartidoCard
                   key={partido.id}
@@ -335,7 +337,7 @@ export default async function HomePage({
                   }}
                 />
               ))}
-            </div>
+            </ResultsContainer>
           ) : (
             /* Empty state */
             <div className="mt-16 flex flex-col items-center text-center py-12">
@@ -513,6 +515,8 @@ export default async function HomePage({
           </div>
         </div>
       </footer>
+
+      <WhatsAppButton />
     </main>
   );
 }

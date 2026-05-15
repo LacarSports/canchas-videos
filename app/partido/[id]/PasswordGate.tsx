@@ -7,9 +7,10 @@ interface Props {
   partidoId: string;
   videoUrl: string;
   title: string;
+  deporte?: string | null;
 }
 
-export default function PasswordGate({ partidoId, videoUrl, title }: Props) {
+export default function PasswordGate({ partidoId, videoUrl, title, deporte }: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,7 @@ export default function PasswordGate({ partidoId, videoUrl, title }: Props) {
   }
 
   if (unlocked) {
-    return <PartidoView videoUrl={videoUrl} title={title} partidoId={partidoId} />;
+    return <PartidoView videoUrl={videoUrl} title={title} partidoId={partidoId} deporte={deporte} />;
   }
 
   return (

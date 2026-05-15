@@ -34,11 +34,12 @@ interface Props {
   videoUrl: string;
   title: string;
   partidoId: string;
+  deporte?: string | null;
 }
 
 /* â”€â”€ component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-export default function PartidoView({ videoUrl, title, partidoId }: Props) {
+export default function PartidoView({ videoUrl, title, partidoId, deporte }: Props) {
   const [clips, setClips] = useState<ClipLocal[]>([]);
   const [playingClipId, setPlayingClipId] = useState<string | null>(null);
 
@@ -201,6 +202,7 @@ export default function PartidoView({ videoUrl, title, partidoId }: Props) {
           videoUrl={videoUrl}
           title={title}
           partidoId={partidoId}
+          deporte={deporte}
           clips={clips}
           onClipGuardado={handleClipGuardado}
         />

@@ -15,6 +15,7 @@ interface Partido {
   archivo_url: string;
   privado: boolean;
   password_hash: string | null;
+  deporte?: string | null;
 }
 
 function formatFechaLarga(fecha: string) {
@@ -103,9 +104,9 @@ export default async function PartidoPage({
 
         {/* Video + sidebar (client) */}
         {partido.privado ? (
-          <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} />
+          <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} deporte={partido.deporte} />
         ) : (
-          <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} />
+          <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} deporte={partido.deporte} />
         )}
 
       </div>

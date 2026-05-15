@@ -110,7 +110,7 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
           onClick={onOpen}
           autoComplete="off"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="w-full bg-lake-950/60 border border-lake-700 text-snow rounded-xl px-3.5 pr-9 py-2.5 text-sm placeholder-lake-600 focus:outline-none focus:ring-1 focus:ring-crystal-400/60 focus:border-crystal-400/50 hover:border-mist-700/50 transition-all duration-200"
+          className="w-full bg-lake-950/60 border border-lake-700 text-snow rounded-xl px-3.5 pr-9 py-2.5 text-base sm:text-sm placeholder-lake-600 focus:outline-none focus:ring-1 focus:ring-crystal-400/60 focus:border-crystal-400/50 hover:border-mist-700/50 transition-all duration-200"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <svg className={`w-3.5 h-3.5 text-mist-700 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +180,7 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
         onPointerDown={disabled ? undefined : (e) => { e.preventDefault(); if (isOpen) onClose(); else onOpen(); }}
         disabled={disabled}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        className={`relative w-full bg-lake-950/60 border rounded-xl px-3.5 pr-9 py-2.5 text-sm text-left transition-all duration-200 focus:outline-none ${
+        className={`relative w-full bg-lake-950/60 border rounded-xl px-3.5 pr-9 py-2.5 text-base sm:text-sm text-left transition-all duration-200 focus:outline-none ${
           disabled
             ? "border-lake-700/50 text-lake-600 cursor-not-allowed"
             : isOpen

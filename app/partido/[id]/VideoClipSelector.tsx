@@ -18,17 +18,27 @@ export interface ClipLocal {
 
 type Estado = "idle" | "grabando" | "preview" | "descargando";
 
-const ETIQUETAS = ["Gol", "Caño", "Buena jugada", "Atajada", "Blooper", "Otro"] as const;
+const ETIQUETAS_FUTBOL = ["Gol", "Caño", "Buena jugada", "Atajada", "Blooper", "Otro"] as const;
+const ETIQUETAS_PADEL  = ["Smash", "Finta (amago)", "Buen Punto", "Blooper", "Otro"] as const;
+
+function getEtiquetas(deporte?: string | null): readonly string[] {
+  const d = (deporte ?? "").toLowerCase();
+  if (d.includes("padel") || d.includes("pádel")) return ETIQUETAS_PADEL;
+  return ETIQUETAS_FUTBOL;
+}
 
 /* ── marker colors ───────────────────────────────────────── */
 
 const MARKER_COLORS: Record<string, { bg: string; text: string }> = {
-  Gol:            { bg: "bg-crystal-400",  text: "text-crystal-300" },
-  Atajada:        { bg: "bg-glacial-400",  text: "text-glacial-300" },
-  Caño:           { bg: "bg-pine-400",     text: "text-pine-400"    },
-  "Buena jugada": { bg: "bg-mist-400",     text: "text-mist-400"    },
-  Blooper:        { bg: "bg-amber-400",    text: "text-amber-300"   },
-  Otro:           { bg: "bg-mist-600",     text: "text-mist-600"    },
+  Gol:              { bg: "bg-crystal-400",  text: "text-crystal-300" },
+  Atajada:          { bg: "bg-glacial-400",  text: "text-glacial-300" },
+  Caño:             { bg: "bg-pine-400",     text: "text-pine-400"    },
+  "Buena jugada":   { bg: "bg-mist-400",     text: "text-mist-400"    },
+  Blooper:          { bg: "bg-amber-400",    text: "text-amber-300"   },
+  Otro:             { bg: "bg-mist-600",     text: "text-mist-600"    },
+  Smash:            { bg: "bg-crystal-400",  text: "text-crystal-300" },
+  "Finta (amago)":  { bg: "bg-pine-400",     text: "text-pine-400"    },
+  "Buen Punto":     { bg: "bg-mist-400",     text: "text-mist-400"    },
 };
 
 /* ── helpers ─────────────────────────────────────────────── */
@@ -48,6 +58,7 @@ interface Props {
   title: string;
   videoUrl: string;
   partidoId: string;
+  deporte?: string | null;
   clips?: ClipLocal[];
   onClipGuardado?: (clip: ClipLocal) => void;
 }
@@ -59,9 +70,11 @@ export default function VideoClipSelector({
   title,
   videoUrl,
   partidoId,
+  deporte,
   clips,
   onClipGuardado,
 }: Props) {
+  const ETIQUETAS = getEtiquetas(deporte);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const seekBarRef = useRef<HTMLDivElement>(null);
