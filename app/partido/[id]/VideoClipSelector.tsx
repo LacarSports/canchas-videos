@@ -138,6 +138,14 @@ export default function VideoClipSelector({
   const hasDraggedRef = useRef(false);
   const guardadoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* ── mobile UI ── */
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileSheet, setShowMobileSheet] = useState(false);
+  const [sheetOpened, setSheetOpened] = useState(false);
+  const [showMobileOverlay, setShowMobileOverlay] = useState(false);
+  const [mobileOverlayOpaque, setMobileOverlayOpaque] = useState(false);
+  const mobileOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   /* ── sync playback speed ── */
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = playbackSpeed;
@@ -232,6 +240,14 @@ export default function VideoClipSelector({
     if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
   }, []);
 
+  /* ── mobile detection ── */
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   /* ── HLS source initialization (MP4 handled by JSX src prop) ── */
   useEffect(() => {
     if (!src.includes(".m3u8")) return;
@@ -299,6 +315,35 @@ export default function VideoClipSelector({
   }
 
   /* ── custom player handlers ── */
+
+  function openMobileSheet() {
+    setShowMobileSheet(true);
+    requestAnimationFrame(() => setSheetOpened(true));
+  }
+
+  function closeMobileSheet() {
+    setSheetOpened(false);
+    setTimeout(() => setShowMobileSheet(false), 300);
+  }
+
+  function openMobileOverlay() {
+    setShowMobileOverlay(true);
+    requestAnimationFrame(() => setMobileOverlayOpaque(true));
+    const v = videoRef.current;
+    if (v && !v.paused) {
+      if (mobileOverlayTimerRef.current) clearTimeout(mobileOverlayTimerRef.current);
+      mobileOverlayTimerRef.current = setTimeout(closeMobileOverlay, 3000);
+    }
+  }
+
+  function closeMobileOverlay() {
+    setMobileOverlayOpaque(false);
+    if (mobileOverlayTimerRef.current) {
+      clearTimeout(mobileOverlayTimerRef.current);
+      mobileOverlayTimerRef.current = null;
+    }
+    setTimeout(() => setShowMobileOverlay(false), 300);
+  }
 
   function togglePlay() {
     const v = videoRef.current;
@@ -388,15 +433,23 @@ export default function VideoClipSelector({
     const touch = e.changedTouches[0];
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
+    const target = e.target as HTMLElement;
     const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
     const now = Date.now();
     const last = lastTapRef.current;
     if (last && now - last.time < 300 && last.side === side) {
       handleSkip(side);
       lastTapRef.current = null;
+      if (isMobile) closeMobileOverlay();
     } else {
       lastTapRef.current = { time: now, side };
-      resetControlsTimer();
+      if (isMobile) {
+        if (target.closest("button, input") || seekBarRef.current?.contains(target)) return;
+        if (showMobileOverlay) closeMobileOverlay();
+        else openMobileOverlay();
+      } else {
+        resetControlsTimer();
+      }
     }
   }
 
@@ -433,6 +486,7 @@ export default function VideoClipSelector({
   /* ── click to play/pause (solo si no fue un drag y no es un botón) ── */
   function handleContainerClick(e: React.MouseEvent) {
     if (hasDraggedRef.current) return;
+    if (isMobile) return;
     const target = e.target as HTMLElement;
     if (target.closest("button, input, select, a, [role='slider']")) return;
     togglePlay();
@@ -615,8 +669,24 @@ export default function VideoClipSelector({
           onPlaying={() => { setBuffering(false); setIsPlaying(true); resetControlsTimer(); }}
           onSeeked={() => setBuffering(false)}
           onCanPlay={() => setBuffering(false)}
-          onPlay={() => { setIsPlaying(true); resetControlsTimer(); }}
-          onPause={() => { if (!isSeekingDrag.current) { setIsPlaying(false); setShowControls(true); } }}
+          onPlay={() => {
+            setIsPlaying(true);
+            resetControlsTimer();
+            if (isMobile && showMobileOverlay) {
+              if (mobileOverlayTimerRef.current) clearTimeout(mobileOverlayTimerRef.current);
+              mobileOverlayTimerRef.current = setTimeout(closeMobileOverlay, 3000);
+            }
+          }}
+          onPause={() => {
+            if (!isSeekingDrag.current) {
+              setIsPlaying(false);
+              setShowControls(true);
+              if (isMobile && mobileOverlayTimerRef.current) {
+                clearTimeout(mobileOverlayTimerRef.current);
+                mobileOverlayTimerRef.current = null;
+              }
+            }
+          }}
         />
 
         {/* ── Buffering spinner ── */}
@@ -669,7 +739,7 @@ export default function VideoClipSelector({
           {estado === "idle" && (showControls || !isPlaying) && (
             <button
               onClick={handleIniciarGrabacion}
-              className="pointer-events-auto flex items-center gap-2 bg-crystal-400/15 hover:bg-crystal-400/25 backdrop-blur-sm border border-crystal-400/50 text-crystal-400 font-medium px-6 py-3 rounded-full text-sm transition-all"
+              className="pointer-events-auto hidden md:flex items-center gap-2 bg-crystal-400/15 hover:bg-crystal-400/25 backdrop-blur-sm border border-crystal-400/50 text-crystal-400 font-medium px-6 py-3 rounded-full text-sm transition-all"
             >
               <span className="w-2.5 h-2.5 rounded-full bg-crystal-400 animate-pulse" />
               Marcar inicio
@@ -857,7 +927,7 @@ export default function VideoClipSelector({
                 {/* Brightness / Contrast */}
                 <div className="relative">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setShowImageSettings(s => !s); }}
+                    onClick={(e) => { e.stopPropagation(); if (isMobile) { setShowImageSettings(false); openMobileSheet(); } else { setShowImageSettings(s => !s); } }}
                     className={`w-7 h-7 flex items-center justify-center transition-colors rounded-lg hover:bg-white/10 ${showImageSettings ? "text-crystal-400" : "text-white/80 hover:text-white"}`}
                     title="Ajustes de imagen y velocidad (G)"
                   >
@@ -981,7 +1051,127 @@ export default function VideoClipSelector({
             </div>
           </div>
         )}
+
+        {/* ── Mobile tap overlay ── */}
+        {isMobile && showMobileOverlay && !isGrabando && (
+          <div
+            className={`absolute inset-0 transition-opacity duration-300 ${mobileOverlayOpaque ? "opacity-100" : "opacity-0"}`}
+            onClick={(e) => {
+              if (!(e.target as HTMLElement).closest("button")) closeMobileOverlay();
+            }}
+          >
+            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
+            {/* Center row: skip-5 / play-pause / skip+5 */}
+            <div className="absolute inset-0 flex items-center justify-center gap-8 pointer-events-none">
+              <button
+                className="pointer-events-auto flex flex-col items-center justify-center gap-1 text-white"
+                onClick={(e) => { e.stopPropagation(); handleSkip("left"); }}
+              >
+                <svg className="w-9 h-9" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                  <text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text>
+                </svg>
+                <span className="text-xs font-semibold">-5s</span>
+              </button>
+              <button
+                className="pointer-events-auto flex items-center justify-center bg-white/25 rounded-full backdrop-blur-sm"
+                style={{ width: 72, height: 72 }}
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+              >
+                {isPlaying ? (
+                  <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                ) : (
+                  <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
+              <button
+                className="pointer-events-auto flex flex-col items-center justify-center gap-1 text-white"
+                onClick={(e) => { e.stopPropagation(); handleSkip("right"); }}
+              >
+                <svg className="w-9 h-9" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/>
+                  <text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text>
+                </svg>
+                <span className="text-xs font-semibold">+5s</span>
+              </button>
+            </div>
+            {/* Bottom: Marcar inicio */}
+            {estado === "idle" && (
+              <div className="absolute bottom-16 left-0 right-0 flex justify-center pointer-events-none">
+                <button
+                  className="pointer-events-auto flex items-center gap-2 bg-crystal-400/15 backdrop-blur-sm border border-crystal-400/50 text-crystal-400 font-medium px-6 py-3 rounded-full text-sm"
+                  onClick={(e) => { e.stopPropagation(); handleIniciarGrabacion(); closeMobileOverlay(); }}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-crystal-400 animate-pulse" />
+                  Marcar inicio
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* ── Mobile Settings Bottom Sheet ── */}
+      {isMobile && showMobileSheet && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-50" onClick={closeMobileSheet} />
+          <div
+            className={`fixed bottom-0 left-0 right-0 bg-lake-900 border-t border-mist-500/10 rounded-t-2xl z-50 px-5 pt-4 pb-8 space-y-4 transition-transform duration-300 ${sheetOpened ? "translate-y-0" : "translate-y-full"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-mist-500/30 rounded-full mx-auto" />
+            <p className="text-xs font-semibold text-mist-500 uppercase tracking-wider text-center">Ajustes</p>
+            {/* Speed */}
+            <div>
+              <span className="text-xs text-mist-400 block mb-2">Velocidad</span>
+              <div className="flex flex-wrap gap-2">
+                {([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4, 6] as const).map((s) => (
+                  <button key={s} onClick={() => setPlaybackSpeed(s)}
+                    className={`px-3 py-1.5 text-xs font-mono rounded-lg border transition-all ${
+                      playbackSpeed === s
+                        ? "bg-crystal-400/15 border-crystal-400/50 text-crystal-400"
+                        : "border-white/10 text-white/50"
+                    }`}
+                  >
+                    {s === 1 ? "1×" : `${s}×`}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Brightness */}
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-xs text-mist-400">Brillo</span>
+                <span className="text-xs font-mono text-mist-600">{brightness}%</span>
+              </div>
+              <input type="range" min={50} max={200} step={5} value={brightness}
+                onChange={(e) => setBrightness(Number(e.target.value))}
+                className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
+            </div>
+            {/* Contrast */}
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-xs text-mist-400">Contraste</span>
+                <span className="text-xs font-mono text-mist-600">{contrast}%</span>
+              </div>
+              <input type="range" min={50} max={200} step={5} value={contrast}
+                onChange={(e) => setContrast(Number(e.target.value))}
+                className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
+            </div>
+            <button
+              onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }}
+              className="w-full text-xs text-mist-600 text-center py-2.5 border border-mist-500/10 rounded-lg"
+            >
+              Restablecer todo
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ── Control panel ── */}
       <div ref={controlPanelRef} className="bg-lake-800/60 rounded-xl border border-crystal-400/8 p-5 space-y-4">
