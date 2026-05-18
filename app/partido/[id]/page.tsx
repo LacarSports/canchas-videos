@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PartidoView from "./PartidoView";
 import PasswordGate from "./PasswordGate";
+import ShareMatchButton from "./ShareMatchButton";
 
 interface Partido {
   id: string;
@@ -95,6 +96,7 @@ export default async function PartidoPage({
                 </svg>
                 {partido.duracion_minutos} min
               </span>
+              <ShareMatchButton partidoId={partido.id} />
             </div>
           </div>
         </div>
