@@ -108,15 +108,19 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const skipLeftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipRightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTapRef = useRef<{ time: number; side: "left" | "right" } | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const seekingRef = useRef(false);
   const isSeekingDrag = useRef(false);
   const hasDraggedRef = useRef(false);
   const guardadoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isMobile, setIsMobile] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   const [showMobileControls, setShowMobileControls] = useState(false);
   const [mobileControlsOpaque, setMobileControlsOpaque] = useState(false);
   const mobileAutoHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false);
+  const [settingsSheetOpened, setSettingsSheetOpened] = useState(false);
 
   useEffect(() => { if (videoRef.current) videoRef.current.playbackRate = playbackSpeed; }, [playbackSpeed]);
 
@@ -169,7 +173,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   }, []);
 
   useEffect(() => {
-    if (isMobile && showImageSettings) {
+    if (showSettingsSheet) {
       document.body.style.overflow = "hidden";
       document.body.style.touchAction = "none";
       return () => {
@@ -177,7 +181,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         document.body.style.touchAction = "";
       };
     }
-  }, [isMobile, showImageSettings]);
+  }, [showSettingsSheet]);
 
   useEffect(() => {
     if (isCustomFullscreen) {
@@ -204,7 +208,10 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   useEffect(() => () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current); }, []);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -264,6 +271,16 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     setTimeout(() => setShowMobileControls(false), 200);
   }
 
+  function openSettingsSheet() {
+    setShowSettingsSheet(true);
+    requestAnimationFrame(() => setSettingsSheetOpened(true));
+  }
+
+  function closeSettingsSheet() {
+    setSettingsSheetOpened(false);
+    setTimeout(() => setShowSettingsSheet(false), 300);
+  }
+
   function resetMobileAutoHide() {
     if (mobileAutoHideRef.current) clearTimeout(mobileAutoHideRef.current);
     const v = videoRef.current;
@@ -291,8 +308,17 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     if (v.paused) v.play().catch(() => {}); else v.pause();
   }
 
-  function toggleFullscreen() {
-    if (isMobile) { setIsCustomFullscreen((prev) => !prev); return; }
+  async function toggleFullscreen() {
+    if (isMobile) {
+      if (isCustomFullscreen) {
+        setIsCustomFullscreen(false);
+        try { (screen.orientation as any)?.unlock?.(); } catch {}
+      } else {
+        setIsCustomFullscreen(true);
+        try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+      }
+      return;
+    }
     if (document.fullscreenElement || (document as any).webkitFullscreenElement) { document.exitFullscreen?.().catch(() => {}); return; }
     const el = containerRef.current;
     if (!el) return;
@@ -361,6 +387,15 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const touch = e.changedTouches[0];
     const target = e.target as HTMLElement;
     if (target.closest("button, input") || seekBarRef.current?.contains(target)) return;
+
+    // Ignore pan/zoom gestures — only react to pure taps (< 8px movement)
+    if (touchStartPosRef.current) {
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      touchStartPosRef.current = null;
+      if (dx > 8 || dy > 8) return;
+    }
+
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
@@ -374,12 +409,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     lastTapRef.current = { time: now, side };
     if (isMobile) {
       if (isGrabando) return;
-      if (showMobileControls) {
-        if (showImageSettings) { setShowImageSettings(false); return; }
-        closeMobileControls();
-      } else {
-        openMobileControls();
-      }
+      if (showMobileControls) closeMobileControls();
+      else openMobileControls();
     } else {
       resetControlsTimer();
     }
@@ -541,6 +572,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           touchAction: "manipulation",
           ...(isCustomFullscreen ? { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999 } : {}),
         }}
+        onTouchStart={(e) => { const t = e.touches[0]; touchStartPosRef.current = { x: t.clientX, y: t.clientY }; }}
         onMouseDown={handleMouseDown}
         onMouseMove={(e) => { handleMouseMove(e); resetControlsTimer(); }}
         onMouseUp={stopDrag}
@@ -808,13 +840,26 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           >
             <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-transparent to-black/80 pointer-events-none" />
 
+            {/* TOP-LEFT: Marcar inicio */}
+            {estado === "idle" && !isGrabando && (
+              <div className="absolute top-3 left-3 z-10">
+                <button
+                  className="pointer-events-auto flex items-center gap-1.5 bg-crystal-400/20 backdrop-blur-sm border border-crystal-400/45 text-crystal-400 font-medium px-3 py-2 rounded-full text-sm active:scale-95 transition-transform"
+                  onClick={(e) => { e.stopPropagation(); handleIniciarGrabacion(); closeMobileControls(); }}
+                >
+                  <span className="w-2 h-2 rounded-full bg-crystal-400 animate-pulse" />
+                  Marcar inicio
+                </button>
+              </div>
+            )}
+
             {/* TOP-RIGHT: Settings + Volume */}
             {!isGrabando && (
               <div className="absolute top-3 right-3 flex flex-col items-end gap-2 z-10">
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setShowImageSettings(s => !s); resetMobileAutoHide(); }}
-                    className={`w-11 h-11 flex items-center justify-center rounded-full backdrop-blur-sm transition-colors ${showImageSettings ? "text-crystal-400 bg-white/20" : "text-white/85 bg-black/40"}`}
+                    onClick={(e) => { e.stopPropagation(); openSettingsSheet(); resetMobileAutoHide(); }}
+                    className="w-11 h-11 flex items-center justify-center rounded-full backdrop-blur-sm text-white/85 bg-black/40"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
@@ -837,29 +882,6 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                 {showVolumeSlider && (
                   <div className="bg-black/75 rounded-xl px-4 py-2.5 backdrop-blur-sm" onClick={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
                     <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} className="w-32 accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
-                  </div>
-                )}
-                {showImageSettings && (
-                  <div className="bg-lake-900/95 border border-mist-500/15 rounded-xl p-3.5 w-64 backdrop-blur-sm shadow-xl space-y-3.5" onClick={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
-                    <div>
-                      <span className="text-[11px] text-mist-400 block mb-1.5">Velocidad</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4, 6] as const).map((s) => (
-                          <button key={s} onClick={() => setPlaybackSpeed(s)} className={`px-2 py-1 text-[11px] font-mono rounded-lg border transition-all ${playbackSpeed === s ? "bg-crystal-400/15 border-crystal-400/50 text-crystal-400" : "border-white/10 text-white/50"}`}>
-                            {s === 1 ? "1×" : `${s}×`}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-1.5"><span className="text-[11px] text-mist-400">Brillo</span><span className="text-[11px] font-mono text-mist-600">{brightness}%</span></div>
-                      <input type="range" min={50} max={200} step={5} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full accent-crystal-400 h-1 rounded-full cursor-pointer" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-1.5"><span className="text-[11px] text-mist-400">Contraste</span><span className="text-[11px] font-mono text-mist-600">{contrast}%</span></div>
-                      <input type="range" min={50} max={200} step={5} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-crystal-400 h-1 rounded-full cursor-pointer" />
-                    </div>
-                    <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-[11px] text-mist-600 hover:text-snow text-center py-1 hover:bg-white/5 rounded-lg transition-colors">Restablecer todo</button>
                   </div>
                 )}
               </div>
@@ -900,16 +922,6 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               </div>
             )}
 
-            {/* Marcar inicio */}
-            {estado === "idle" && !isGrabando && (
-              <div className="absolute left-0 right-0 flex justify-center" style={{ bottom: 76 }}>
-                <button className="pointer-events-auto flex items-center gap-2 bg-crystal-400/15 backdrop-blur-sm border border-crystal-400/50 text-crystal-400 font-medium px-5 py-2.5 rounded-full text-sm active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleIniciarGrabacion(); closeMobileControls(); }}>
-                  <span className="w-2.5 h-2.5 rounded-full bg-crystal-400 animate-pulse" />
-                  Marcar inicio
-                </button>
-              </div>
-            )}
-
             {/* BOTTOM: time + fullscreen + seekbar */}
             {!isGrabando && (
               <div className="absolute bottom-0 left-0 right-0">
@@ -919,7 +931,9 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                     {isCustomFullscreen ? (
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" /></svg>
                     ) : (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" /></svg>
+                      <svg className="w-6 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 28 20">
+                        <path d="M5 7V4h4M5 13v3h4M23 7V4h-4M23 13v3h-4" />
+                      </svg>
                     )}
                   </button>
                 </div>
@@ -951,6 +965,44 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           </div>
         )}
       </div>
+
+      {/* ── Mobile settings bottom sheet ── */}
+      {showSettingsSheet && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-50" onClick={closeSettingsSheet} onTouchEnd={closeSettingsSheet} />
+          <div
+            className={`fixed bottom-0 left-0 right-0 bg-lake-900 border-t border-mist-500/10 rounded-t-2xl z-50 px-5 pt-4 pb-10 space-y-4 transition-transform duration-300 ${settingsSheetOpened ? "translate-y-0" : "translate-y-full"}`}
+            onClick={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-mist-500/30 rounded-full mx-auto mb-1" />
+            <p className="text-xs font-semibold text-mist-500 uppercase tracking-wider text-center">Ajustes</p>
+            <div>
+              <span className="text-xs text-mist-400 block mb-2">Velocidad</span>
+              <div className="flex flex-wrap gap-2">
+                {([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4, 6] as const).map((s) => (
+                  <button key={s} onClick={() => setPlaybackSpeed(s)}
+                    className={`px-3 py-1.5 text-xs font-mono rounded-lg border transition-all ${playbackSpeed === s ? "bg-crystal-400/15 border-crystal-400/50 text-crystal-400" : "border-white/10 text-white/50"}`}
+                  >
+                    {s === 1 ? "1×" : `${s}×`}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Brillo</span><span className="text-xs font-mono text-mist-600">{brightness}%</span></div>
+              <input type="range" min={50} max={200} step={5} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
+            </div>
+            <div>
+              <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Contraste</span><span className="text-xs font-mono text-mist-600">{contrast}%</span></div>
+              <input type="range" min={50} max={200} step={5} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
+            </div>
+            <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-xs text-mist-600 text-center py-2.5 border border-mist-500/10 rounded-lg">
+              Restablecer todo
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ── Control panel ── */}
       <div ref={controlPanelRef} className="bg-lake-800/60 rounded-xl border border-crystal-400/8 p-5 space-y-4">

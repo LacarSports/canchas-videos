@@ -26,6 +26,7 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
   const seekBarRef = useRef<HTMLDivElement>(null);
   const isSeekingRef = useRef(false);
   const lastTapRef = useRef<{ time: number; side: "left" | "right" } | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const mobileAutoHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -148,8 +149,17 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
     v.paused ? v.play().catch(() => {}) : v.pause();
   }
 
-  function toggleFullscreen() {
-    if (isMobile) { setIsCustomFullscreen((prev) => !prev); return; }
+  async function toggleFullscreen() {
+    if (isMobile) {
+      if (isCustomFullscreen) {
+        setIsCustomFullscreen(false);
+        try { (screen.orientation as any)?.unlock?.(); } catch {}
+      } else {
+        setIsCustomFullscreen(true);
+        try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+      }
+      return;
+    }
     if (document.fullscreenElement || (document as any).webkitFullscreenElement) { document.exitFullscreen?.().catch(() => {}); return; }
     const el = containerRef.current;
     if (!el) return;
@@ -220,6 +230,15 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
     const touch = e.changedTouches[0];
     const target = e.target as HTMLElement;
     if (target.closest("button, input") || seekBarRef.current?.contains(target)) return;
+
+    // Ignore pan/zoom gestures — only react to pure taps (< 8px movement)
+    if (touchStartPosRef.current) {
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      touchStartPosRef.current = null;
+      if (dx > 8 || dy > 8) return;
+    }
+
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
@@ -258,6 +277,7 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
       className={`relative overflow-hidden bg-black outline-none ${isCustomFullscreen ? "" : (isFullscreen ? "flex items-center justify-center" : (className ?? "aspect-video"))}`}
       style={isCustomFullscreen ? { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999 } : undefined}
       onKeyDown={handleKeyDown}
+      onTouchStart={(e) => { const t = e.touches[0]; touchStartPosRef.current = { x: t.clientX, y: t.clientY }; }}
       onTouchEnd={handleTouchEnd}
       onClick={() => { if (!isMobile) togglePlay(); }}
     >
@@ -433,7 +453,9 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
                 {isCustomFullscreen ? (
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" /></svg>
                 ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" /></svg>
+                  <svg className="w-6 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 28 20">
+                    <path d="M5 7V4h4M5 13v3h4M23 7V4h-4M23 13v3h-4" />
+                  </svg>
                 )}
               </button>
             </div>
