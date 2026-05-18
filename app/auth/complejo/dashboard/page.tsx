@@ -1773,9 +1773,8 @@ function TabVideos({ complejo }: { complejo?: string }) {
                         {j.etiqueta}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-mist-400 font-medium truncate">{j.partidos?.complejo ?? "—"}</div>
-                        <div className="text-[10px] text-mist-500 mt-0.5">
-                          Cancha {j.partidos?.numero_cancha}{j.partidos?.deporte ? ` · ${j.partidos.deporte}` : ""}
+                        <div className="text-xs text-mist-400 font-semibold truncate">
+                          {j.partidos?.deporte ?? "—"} · Cancha {j.partidos?.numero_cancha}
                         </div>
                         <div className="text-[10px] text-mist-600 font-mono mt-0.5">
                           {j.partidos?.fecha ? new Date(j.partidos.fecha + "T00:00:00").toLocaleDateString("es-CL") : ""}
