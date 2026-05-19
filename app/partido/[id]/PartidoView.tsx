@@ -49,6 +49,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte }: Pro
 
   // Share copy feedback per clip
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
   /* â”€â”€ load existing jugadas from DB on mount â”€â”€ */
   useEffect(() => {
@@ -140,6 +141,15 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte }: Pro
     }
   }
 
+  /* â”€â”€ sidebar copy link â”€â”€ */
+
+  function handleSidebarCopyLink(clip: ClipLocal) {
+    const url = `${window.location.origin}/jugada/${clip.id}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+    setCopiedLinkId(clip.id);
+    setTimeout(() => setCopiedLinkId(null), 2000);
+  }
+
   /* â”€â”€ sidebar share â”€â”€ */
 
   function getSidebarShareUrl(clip: ClipLocal) {
@@ -223,6 +233,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte }: Pro
               {clips.map((clip, idx) => {
                 const isDownloading = downloadingId === clip.id;
                 const isCopied = copiadoId === clip.id;
+                const isCopiedLink = copiedLinkId === clip.id;
                 const hasBlob = !!clip.blobUrl;
                 const isExpanded = playingClipId === clip.id;
 
@@ -296,26 +307,48 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte }: Pro
                         )}
                       </button>
 
-                      <button
-                        onClick={() => handleSidebarShare(clip)}
-                        className={`w-full flex items-center justify-center gap-1.5 text-xs border transition-all py-1.5 rounded-lg ${
-                          isCopied
-                            ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
-                            : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
-                        }`}
-                      >
-                        {isCopied ? (
-                          <>
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                            Copiado
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                            Compartir
-                          </>
-                        )}
-                      </button>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          onClick={() => handleSidebarShare(clip)}
+                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-1.5 rounded-lg ${
+                            isCopied
+                              ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
+                              : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
+                          }`}
+                        >
+                          {isCopied ? (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              Copiado
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                              Compartir
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSidebarCopyLink(clip)}
+                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-1.5 rounded-lg ${
+                            isCopiedLink
+                              ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
+                              : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
+                          }`}
+                        >
+                          {isCopiedLink ? (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              Copiado
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                              Copiar link
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

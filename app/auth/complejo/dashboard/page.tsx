@@ -1614,6 +1614,7 @@ function TabVideos({ complejo }: { complejo?: string }) {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -1656,7 +1657,7 @@ function TabVideos({ complejo }: { complejo?: string }) {
   }
 
   function getClipUrl(j: Jugada) { return `${window.location.origin}/jugada/${j.id}`; }
-  function handleCopy(j: Jugada) { navigator.clipboard.writeText(getClipUrl(j)).catch(() => {}); setCopied(j.id); setTimeout(() => setCopied(null), 2000); }
+  function handleCopy(j: Jugada) { navigator.clipboard.writeText(getClipUrl(j)).catch(() => {}); setCopiedLink(j.id); setTimeout(() => setCopiedLink(null), 2000); }
 
   async function handleShare(j: Jugada) {
     const url = getClipUrl(j);
@@ -1758,6 +1759,7 @@ function TabVideos({ complejo }: { complejo?: string }) {
               {jugadas.map((j, idx) => {
                 const isDownloading = downloadingId === j.id;
                 const isCopied = copied === j.id;
+                const isCopiedLink = copiedLink === j.id;
                 const isExpanded = playingId === j.id && !!j.partidos?.archivo_url;
 
                 return (
@@ -1816,12 +1818,20 @@ function TabVideos({ complejo }: { complejo?: string }) {
                           <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Descargar</>
                         )}
                       </button>
-                      <button onClick={() => handleShare(j)} className={`w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs border transition-all ${isCopied ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5" : "border-white/8 text-mist-500 hover:text-mist-400 hover:border-white/15"}`}>
-                        {isCopied
-                          ? <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Copiado</>
-                          : <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>Compartir</>
-                        }
-                      </button>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button onClick={() => handleShare(j)} className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs border transition-all ${isCopied ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5" : "border-white/8 text-mist-500 hover:text-mist-400 hover:border-white/15"}`}>
+                          {isCopied
+                            ? <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Copiado</>
+                            : <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>Compartir</>
+                          }
+                        </button>
+                        <button onClick={() => handleCopy(j)} className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs border transition-all ${isCopiedLink ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5" : "border-white/8 text-mist-500 hover:text-mist-400 hover:border-white/15"}`}>
+                          {isCopiedLink
+                            ? <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Copiado</>
+                            : <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>Copiar link</>
+                          }
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

@@ -113,6 +113,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const isSeekingDrag = useRef(false);
   const hasDraggedRef = useRef(false);
   const guardadoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showMobileControlsRef = useRef(false);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isMobile, setIsMobile] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
@@ -189,6 +191,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
       return () => { document.body.style.overflow = ""; };
     }
   }, [isCustomFullscreen]);
+
+  useEffect(() => { showMobileControlsRef.current = showMobileControls; }, [showMobileControls]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -401,16 +405,32 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
     const now = Date.now();
     const last = lastTapRef.current;
+
     if (last && now - last.time < 300 && last.side === side) {
+      // Multi-tap detected: seek ±5s per tap, no controls toggle
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
       handleSkip(side);
-      lastTapRef.current = null;
+      // Keep updating so 3rd, 4th... taps also accumulate
+      lastTapRef.current = { time: now, side };
       return;
     }
+
+    // First tap of a sequence
     lastTapRef.current = { time: now, side };
+
     if (isMobile) {
       if (isGrabando) return;
-      if (showMobileControls) closeMobileControls();
-      else openMobileControls();
+      // Delay toggle so a fast second tap can cancel it and seek instead
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = setTimeout(() => {
+        singleTapTimerRef.current = null;
+        lastTapRef.current = null;
+        if (showMobileControlsRef.current) closeMobileControls();
+        else openMobileControls();
+      }, 350);
     } else {
       resetControlsTimer();
     }
@@ -570,7 +590,12 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         style={{
           cursor: zoom > 1 ? (isDragging ? "grabbing" : "grab") : "pointer",
           touchAction: "manipulation",
-          ...(isCustomFullscreen ? { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999 } : {}),
+          ...(isCustomFullscreen
+            ? isLandscape
+              ? { position: "fixed" as const, top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999 }
+              // Portrait: rotate container 90° so video fills the screen horizontally
+              : { position: "fixed" as const, top: "calc((100vh - 100vw) / 2)", left: "calc((100vw - 100vh) / 2)", width: "100vh", height: "100vw", transform: "rotate(90deg)", transformOrigin: "center center", zIndex: 9999 }
+            : {}),
         }}
         onTouchStart={(e) => { const t = e.touches[0]; touchStartPosRef.current = { x: t.clientX, y: t.clientY }; }}
         onMouseDown={handleMouseDown}

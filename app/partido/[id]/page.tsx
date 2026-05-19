@@ -74,7 +74,7 @@ export default async function PartidoPage({
               <p className="text-[11px] font-bold uppercase tracking-widest text-crystal-400 mb-1">Partido</p>
               <h1 className="text-2xl sm:text-3xl font-bold text-snow">{partido.complejo}</h1>
               <p className="text-mist-500 mt-1 text-sm">
-                Cancha {partido.numero_cancha}{partido.ciudad ? ` · ${partido.ciudad}` : ""}
+                Cancha {partido.numero_cancha}{partido.deporte ? ` · ${partido.deporte}` : ""}{partido.ciudad ? ` · ${partido.ciudad}` : ""}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

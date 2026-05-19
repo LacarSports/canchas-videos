@@ -136,6 +136,29 @@ function JugadaThumbnail({ videoUrl, atSeg }: { videoUrl: string; atSeg: number 
 
 export default function JugadasDestacadas({ jugadas }: { jugadas: JugadaItem[] }) {
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+
+  function handleCopyLink(jugadaId: string) {
+    const url = `${window.location.origin}/jugada/${jugadaId}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+    setCopiedLinkId(jugadaId);
+    setTimeout(() => setCopiedLinkId(null), 2000);
+  }
+
+  async function handleShare(jugada: JugadaItem) {
+    const url = `${window.location.origin}/jugada/${jugada.id}`;
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
+          title: `Jugada: ${jugada.etiqueta}`,
+          text: `Mirá esta jugada (${jugada.etiqueta})`,
+          url,
+        });
+        return;
+      } catch { /* cancelled */ }
+    }
+    handleCopyLink(jugada.id);
+  }
 
   if (jugadas.length === 0) {
     return (
@@ -228,16 +251,42 @@ export default function JugadasDestacadas({ jugadas }: { jugadas: JugadaItem[] }
                     </svg>
                     {(jugada.reproducciones ?? 0).toLocaleString("es-CL")}
                   </span>
-                  <Link
-                    href={`/jugada/${jugada.id}`}
-                    className="flex items-center gap-1 text-mist-600 hover:text-crystal-400 transition-colors py-1 px-1 -mr-1"
-                    title="Ver clip"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    <span className="text-[11px]">Ver</span>
-                  </Link>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleShare(jugada)}
+                      className="flex items-center gap-1 text-mist-600 hover:text-mist-400 transition-colors py-1 px-1"
+                      title="Compartir"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleCopyLink(jugada.id)}
+                      className={`flex items-center gap-1 transition-colors py-1 px-1 ${copiedLinkId === jugada.id ? "text-crystal-400" : "text-mist-600 hover:text-mist-400"}`}
+                      title="Copiar enlace"
+                    >
+                      {copiedLinkId === jugada.id ? (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                      )}
+                    </button>
+                    <Link
+                      href={`/jugada/${jugada.id}`}
+                      className="flex items-center gap-1 text-mist-600 hover:text-crystal-400 transition-colors py-1 px-1 -mr-1"
+                      title="Ver clip"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      <span className="text-[11px]">Ver</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
