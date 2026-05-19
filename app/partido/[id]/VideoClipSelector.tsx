@@ -406,7 +406,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const now = Date.now();
     const last = lastTapRef.current;
 
-    if (last && now - last.time < 300 && last.side === side) {
+    if (last && now - last.time < 250 && last.side === side) {
       // Multi-tap detected: seek ±5s per tap, no controls toggle
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
@@ -430,7 +430,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         lastTapRef.current = null;
         if (showMobileControlsRef.current) closeMobileControls();
         else openMobileControls();
-      }, 350);
+      }, 280);
     } else {
       resetControlsTimer();
     }
@@ -499,7 +499,16 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     }
     resetView(); stopDrag(); setEstado("preview");
     const scrollToPanel = () => setTimeout(() => { controlPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 80);
-    if (document.fullscreenElement) { document.exitFullscreen?.().then(scrollToPanel).catch(scrollToPanel); } else { scrollToPanel(); }
+    if (isCustomFullscreen) {
+      setIsCustomFullscreen(false);
+      closeMobileControls();
+      try { (screen.orientation as any)?.unlock?.(); } catch {}
+      setTimeout(scrollToPanel, 150);
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen?.().then(scrollToPanel).catch(scrollToPanel);
+    } else {
+      scrollToPanel();
+    }
   }
 
   function resetToIdle() {
@@ -860,14 +869,32 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               e.stopPropagation();
               if (isGrabando) return;
               if (showImageSettings) { setShowImageSettings(false); return; }
-              closeMobileControls();
+              const touch = e.changedTouches[0];
+              const rect = containerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
+              const now = Date.now();
+              const last = lastTapRef.current;
+              if (last && now - last.time < 250 && last.side === side) {
+                if (singleTapTimerRef.current) { clearTimeout(singleTapTimerRef.current); singleTapTimerRef.current = null; }
+                handleSkip(side);
+                lastTapRef.current = { time: now, side };
+                return;
+              }
+              lastTapRef.current = { time: now, side };
+              if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+              singleTapTimerRef.current = setTimeout(() => {
+                singleTapTimerRef.current = null;
+                lastTapRef.current = null;
+                closeMobileControls();
+              }, 280);
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-transparent to-black/80 pointer-events-none" />
 
-            {/* TOP-LEFT: Marcar inicio */}
-            {estado === "idle" && !isGrabando && (
-              <div className="absolute top-3 left-3 z-10">
+            {/* TOP-LEFT: Marcar inicio / Marcar fin (misma posición) */}
+            <div className="absolute top-3 left-3 z-10">
+              {estado === "idle" && !isGrabando && (
                 <button
                   className="pointer-events-auto flex items-center gap-1.5 bg-crystal-400/20 backdrop-blur-sm border border-crystal-400/45 text-crystal-400 font-medium px-3 py-2 rounded-full text-sm active:scale-95 transition-transform"
                   onClick={(e) => { e.stopPropagation(); handleIniciarGrabacion(); closeMobileControls(); }}
@@ -875,8 +902,18 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                   <span className="w-2 h-2 rounded-full bg-crystal-400 animate-pulse" />
                   Marcar inicio
                 </button>
-              </div>
-            )}
+              )}
+              {isGrabando && inicioSeg !== null && (
+                <button
+                  className="pointer-events-auto flex items-center gap-1.5 bg-black/55 backdrop-blur-sm border border-white/25 text-white font-medium px-3 py-2 rounded-full text-sm active:scale-95 transition-transform"
+                  onClick={(e) => { e.stopPropagation(); handleDetenerGrabacion(); }}
+                >
+                  <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                  <span>Marcar fin</span>
+                  <span className="text-white/50 text-[11px] font-mono">· {fmt(inicioSeg, true)}</span>
+                </button>
+              )}
+            </div>
 
             {/* TOP-RIGHT: Settings + Volume */}
             {!isGrabando && (
@@ -912,40 +949,24 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               </div>
             )}
 
-            {/* CENTER */}
-            {isGrabando && inicioSeg !== null ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none">
-                <div className="pointer-events-none bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 text-crystal-400 text-sm font-mono flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-crystal-400 animate-pulse" />
-                  Grabando desde {fmt(inicioSeg, true)}
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDetenerGrabacion(); }}
-                  className="pointer-events-auto flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/25 text-white font-medium px-6 py-3 rounded-full text-sm transition-all"
-                >
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
-                  Marcar fin
-                </button>
-              </div>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center gap-10 pointer-events-none">
-                <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("left"); resetMobileAutoHide(); }}>
-                  <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
-                  <span className="text-xs font-semibold">-5s</span>
-                </button>
-                <button className="pointer-events-auto flex items-center justify-center bg-white/25 rounded-full backdrop-blur-sm active:scale-95 transition-transform" style={{ width: 68, height: 68 }} onClick={(e) => { e.stopPropagation(); togglePlay(); resetMobileAutoHide(); }}>
-                  {isPlaying ? (
-                    <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
-                  ) : (
-                    <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                  )}
-                </button>
-                <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("right"); resetMobileAutoHide(); }}>
-                  <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
-                  <span className="text-xs font-semibold">+5s</span>
-                </button>
-              </div>
-            )}
+            {/* CENTER: play/pause + skip (siempre visible, también durante grabación) */}
+            <div className="absolute inset-0 flex items-center justify-center gap-10 pointer-events-none">
+              <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("left"); resetMobileAutoHide(); }}>
+                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
+                <span className="text-xs font-semibold">-5s</span>
+              </button>
+              <button className="pointer-events-auto flex items-center justify-center bg-white/25 rounded-full backdrop-blur-sm active:scale-95 transition-transform" style={{ width: 68, height: 68 }} onClick={(e) => { e.stopPropagation(); togglePlay(); resetMobileAutoHide(); }}>
+                {isPlaying ? (
+                  <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+                ) : (
+                  <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                )}
+              </button>
+              <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("right"); resetMobileAutoHide(); }}>
+                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
+                <span className="text-xs font-semibold">+5s</span>
+              </button>
+            </div>
 
             {/* BOTTOM: time + fullscreen + seekbar */}
             {!isGrabando && (
@@ -1102,18 +1123,6 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                 {estado === "descargando" ? "..." : "Descargar"}
               </button>
             </div>
-            {puedeActuar() && estado !== "descargando" && (
-              <div className="flex items-center gap-2 pt-1 border-t border-crystal-400/8">
-                <span className="text-xs text-mist-700 shrink-0">Compartir:</span>
-                <button onClick={() => copiar(getShareUrl())} title={copiado ? "Copiado!" : "Copiar enlace"} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all ${copiado ? "border-crystal-400/50 text-crystal-400 bg-crystal-400/8" : "border-mist-500/15 text-mist-600 hover:border-mist-500/30 hover:text-mist-400"}`}>
-                  {copiado ? (<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>) : (<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>)}
-                  {copiado ? "Copiado" : "Enlace"}
-                </button>
-                <button onClick={handleShare} title="Compartir jugada" className="w-8 h-8 rounded-lg border border-mist-500/15 hover:border-mist-500/30 text-mist-600 hover:text-mist-400 flex items-center justify-center transition-all">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
