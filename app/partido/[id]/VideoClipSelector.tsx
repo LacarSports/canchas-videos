@@ -53,9 +53,10 @@ interface Props {
   deporte?: string | null;
   clips?: ClipLocal[];
   onClipGuardado?: (clip: ClipLocal) => void;
+  onPlayStart?: () => void;
 }
 
-export default function VideoClipSelector({ src, title, videoUrl, partidoId, deporte, clips, onClipGuardado }: Props) {
+export default function VideoClipSelector({ src, title, videoUrl, partidoId, deporte, clips, onClipGuardado, onPlayStart }: Props) {
   const ETIQUETAS = getEtiquetas(deporte);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -640,6 +641,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           onPlay={() => {
             setIsPlaying(true); resetControlsTimer();
             if (isMobile && showMobileControls) resetMobileAutoHide();
+            onPlayStart?.();
           }}
           onPause={() => {
             if (!isSeekingDrag.current) {

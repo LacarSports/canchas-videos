@@ -7,10 +7,14 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { processClip } from "../../../partido/[id]/processClip";
 import InlineClipPlayer from "../../../components/InlineClipPlayer";
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from "recharts";
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // TYPES
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 type TabId = "inicio" | "ocupacion" | "camaras" | "reportes" | "videos" | "streaming";
 
@@ -48,27 +52,6 @@ interface CameraState {
   estado: "publico" | "privado" | "bloqueado";
 }
 
-interface HorarioRegla {
-  id: string;
-  complejo: string;
-  numero_cancha: number;
-  dia_semana: number | null;
-  fecha_especifica: string | null;
-  hora_inicio: string;
-  hora_fin: string;
-  grabar: boolean;
-}
-
-interface PartidoPriv {
-  id: string;
-  numero_cancha: number;
-  fecha: string;
-  hora: string;
-  duracion_minutos: number;
-  privado: boolean;
-  password_hash: string | null;
-}
-
 interface Heartbeat {
   cancha: string;
   complejo: string | null;
@@ -78,9 +61,9 @@ interface Heartbeat {
   detalle: string | null;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // HELPERS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function fmtSeg(seg: number) {
   const m = Math.floor(seg / 60);
@@ -120,9 +103,9 @@ const HORA_SLOTS = Array.from({ length: 17 }, (_, i) =>
   `${(i + 7).toString().padStart(2, "0")}:00`
 );
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // SIDEBAR
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 const NAV_ITEMS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   {
@@ -280,9 +263,9 @@ function Sidebar({
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // TAB: INICIO
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 interface CameraInfo {
   numero_cancha: number;
@@ -332,14 +315,19 @@ function TabInicio({ user, complejo }: { user: User | null; complejo?: string })
       const deporteMap: Record<number, string> = {};
       for (const row of (canchaData ?? []) as { numero_cancha: number; deporte: string }[]) {
         if (!(row.numero_cancha in deporteMap)) {
-          deporteMap[row.numero_cancha] = row.deporte ?? "â€”";
+          deporteMap[row.numero_cancha] = row.deporte ?? "-";
         }
       }
 
+      // Estado "ahora": bloque de hoy en la hora actual (si no hay regla, queda público)
+      const todayStr = now.toISOString().split("T")[0];
+      const nowHora = `${now.getHours().toString().padStart(2, "0")}:00`;
       const { data: csData } = await supabase
         .from("camera_settings")
-        .select("numero_cancha, estado")
-        .eq("complejo", complejo ?? "");
+        .select("numero_cancha, estado, hora")
+        .eq("complejo", complejo ?? "")
+        .eq("fecha", todayStr)
+        .eq("hora", nowHora);
 
       const estadoMap: Record<number, "publico" | "privado" | "bloqueado"> = {};
       for (const c of (csData ?? []) as { numero_cancha: number; estado: string }[]) {
@@ -478,9 +466,9 @@ function TabInicio({ user, complejo }: { user: User | null; complejo?: string })
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// TAB: OCUPACIÃ“N
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// TAB: OCUPACIÃ"N
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function TabOcupacion({ complejo }: { complejo?: string }) {
   const today = new Date().toISOString().split("T")[0];
@@ -562,7 +550,7 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
                     return (
                       <td
                         key={h}
-                        title={p ? `${p.complejo} Â· ${p.duracion_minutos} min` : undefined}
+                        title={p ? `${p.complejo} · ${p.duracion_minutos} min` : undefined}
                         className={`text-center text-xs py-3 transition-colors ${
                           ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""
                         } ${
@@ -572,10 +560,16 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
                         }`}
                       >
                         {p ? (
-                          <svg className="w-3 h-3 mx-auto" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        ) : "â€”"}
+                          <a
+                            href={`/partido/${p.id}`}
+                            title="Ver partido"
+                            className="flex items-center justify-center mx-auto w-7 h-7 rounded-lg hover:bg-crystal-400/30 transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </a>
+                        ) : "-"}
                       </td>
                     );
                   })}
@@ -587,12 +581,11 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
       )}
 
       {!loading && partidos.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Partidos grabados", value: partidos.length },
             { label: "Canchas activas", value: canchas.length },
-            { label: "Minutos grabados", value: partidos.reduce((s, p) => s + p.duracion_minutos, 0) + " min" },
-            { label: "Horas totales", value: Math.round((partidos.reduce((s, p) => s + p.duracion_minutos, 0) / 60) * 10) / 10 + "h" },
+            { label: "Horas grabadas", value: Math.round(partidos.reduce((s, p) => s + p.duracion_minutos, 0) / 60) + " h" },
           ].map((s) => (
             <div key={s.label} className="bg-lake-800/60 border border-mist-500/8 rounded-xl p-4">
               <div className="text-xl font-bold text-crystal-400">{s.value}</div>
@@ -611,366 +604,162 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// TAB: CÃMARAS â€” sub-componentes
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// TAB: CÃMARAS - sub-componentes
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
-const DIAS_SEMANA = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
-const DIAS_LABELS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-
-function CamarasHorarios({ canchas, complejo }: { canchas: number[]; complejo?: string }) {
-  const today = new Date().toISOString().split("T")[0];
-  const [cancha, setCancha] = useState<number>(canchas[0] ?? 1);
-  const [mode, setMode] = useState<"semana" | "fecha">("semana");
-  const [dia, setDia] = useState(1); // 0=domingo..6=sábado
-  const [fecha, setFecha] = useState(today);
-  const [reglas, setReglas] = useState<HorarioRegla[]>([]);
-  const [loadingReglas, setLoadingReglas] = useState(false);
-  const [horaInicio, setHoraInicio] = useState("09:00");
-  const [horaFin, setHoraFin] = useState("10:00");
-  const [grabar, setGrabar] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [tableError, setTableError] = useState(false);
-
-  useEffect(() => {
-    if (canchas.length > 0 && !canchas.includes(cancha)) setCancha(canchas[0]);
-  }, [canchas]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    async function load() {
-      setLoadingReglas(true);
-      let q = supabase
-        .from("horarios_grabacion")
-        .select("*")
-        .eq("complejo", complejo ?? "")
-        .eq("numero_cancha", cancha)
-        .order("hora_inicio");
-
-      if (mode === "semana") {
-        q = q.eq("dia_semana", dia).is("fecha_especifica", null);
-      } else {
-        q = q.eq("fecha_especifica", fecha).is("dia_semana", null);
-      }
-
-      const { data, error } = await q;
-      if (error) {
-        if (error.code === "42P01") setTableError(true);
-      } else {
-        setTableError(false);
-        setReglas((data ?? []) as HorarioRegla[]);
-      }
-      setLoadingReglas(false);
-    }
-    load();
-  }, [cancha, mode, dia, fecha, complejo]);
-
-  async function addRegla() {
-    if (!horaInicio || !horaFin || horaFin <= horaInicio) return;
-    setSaving(true);
-    const payload: Record<string, unknown> = {
-      complejo: complejo ?? "",
-      numero_cancha: cancha,
-      hora_inicio: horaInicio + ":00",
-      hora_fin: horaFin + ":00",
-      grabar,
-    };
-    if (mode === "semana") {
-      payload.dia_semana = dia;
-    } else {
-      payload.fecha_especifica = fecha;
-    }
-    const { data, error } = await supabase
-      .from("horarios_grabacion")
-      .insert(payload)
-      .select()
-      .single();
-    if (!error && data) {
-      setReglas((r) => [...r, data as HorarioRegla].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio)));
-    }
-    setSaving(false);
-  }
-
-  async function deleteRegla(id: string) {
-    await supabase.from("horarios_grabacion").delete().eq("id", id);
-    setReglas((r) => r.filter((x) => x.id !== id));
-  }
-
-  return (
-    <div className="space-y-4">
-      {tableError && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-          <p className="text-sm font-semibold text-amber-300 mb-1">Tabla horarios_grabacion no encontrada</p>
-          <p className="text-xs text-amber-400/70 mb-2">Ejecuta este SQL en Supabase:</p>
-          <pre className="bg-black/30 rounded-lg p-3 text-xs text-amber-200/80 overflow-x-auto whitespace-pre-wrap">{`CREATE TABLE horarios_grabacion (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+const CAMERA_SETTINGS_SQL = `DROP TABLE IF EXISTS camera_settings;
+CREATE TABLE camera_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   complejo text NOT NULL,
   numero_cancha integer NOT NULL,
-  dia_semana integer NULL,
-  fecha_especifica date NULL,
-  hora_inicio time NOT NULL,
-  hora_fin time NOT NULL,
-  grabar boolean DEFAULT true,
-  created_at timestamptz DEFAULT now()
+  fecha date NOT NULL,
+  hora text NOT NULL,
+  estado text NOT NULL DEFAULT 'publico',
+  graba boolean NOT NULL DEFAULT true,
+  password_hash text NULL,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(complejo, numero_cancha, fecha, hora)
 );
-ALTER TABLE horarios_grabacion ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all" ON horarios_grabacion FOR ALL USING (true);`}</pre>
-        </div>
-      )}
+ALTER TABLE camera_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON camera_settings FOR ALL USING (true);`;
 
-      {/* Cancha selector */}
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-xs text-mist-600">Cancha:</label>
-        <div className="flex gap-1">
-          {canchas.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCancha(c)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                cancha === c
-                  ? "bg-crystal-400/15 text-crystal-300 border-crystal-400/25"
-                  : "border-white/8 text-mist-600 hover:text-snow hover:border-white/15"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
+type SlotEstado = "publico" | "privado" | "bloqueado";
+interface SlotInfo { estado: SlotEstado; hasPass: boolean; }
 
-      {/* Mode toggle */}
-      <div className="flex gap-1 bg-lake-900/60 border border-mist-500/8 rounded-xl p-1 w-fit">
-        {(["semana", "fecha"] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              mode === m
-                ? "bg-crystal-400/12 text-crystal-300 border border-crystal-400/20"
-                : "text-mist-600 hover:text-snow"
-            }`}
-          >
-            {m === "semana" ? "Por día de semana" : "Fecha específica"}
-          </button>
-        ))}
-      </div>
+const SLOT_STYLE: Record<SlotEstado, string> = {
+  publico:   "bg-crystal-400/18 text-crystal-400 hover:bg-crystal-400/30",
+  privado:   "bg-amber-500/18 text-amber-400 hover:bg-amber-500/30",
+  bloqueado: "bg-red-500/15 text-red-400 hover:bg-red-500/25",
+};
 
-      {/* Day selector (semana) or date picker (fecha) */}
-      {mode === "semana" ? (
-        <div className="flex gap-1 flex-wrap">
-          {DIAS_SEMANA.map((d, i) => (
-            <button
-              key={i}
-              onClick={() => setDia(i)}
-              className={`w-10 h-10 rounded-xl text-xs font-semibold border transition-all ${
-                dia === i
-                  ? "bg-crystal-400/15 text-crystal-300 border-crystal-400/25"
-                  : "border-white/8 text-mist-600 hover:text-snow hover:border-white/15"
-              }`}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <input
-          type="date"
-          value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
-          className="bg-lake-800/60 border border-crystal-400/20 focus:border-crystal-400/40 text-snow text-sm rounded-xl px-4 py-2 outline-none transition-all"
-        />
-      )}
-
-      {/* Existing rules */}
-      <div className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-4 space-y-3">
-        <h4 className="text-xs font-semibold text-mist-400 uppercase tracking-wider">
-          Reglas para {mode === "semana" ? DIAS_LABELS[dia] : fecha} â€” Cancha {cancha}
-        </h4>
-        {loadingReglas ? (
-          <div className="flex justify-center py-4">
-            <div className="w-4 h-4 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : reglas.length === 0 ? (
-          <p className="text-xs text-mist-700 py-2">Sin reglas configuradas â€” se graba por defecto</p>
-        ) : (
-          <div className="space-y-1.5">
-            {reglas.map((r) => (
-              <div key={r.id} className="flex items-center gap-3 bg-lake-900/60 rounded-xl px-3 py-2.5">
-                <span className="text-xs font-mono text-mist-400 w-28 shrink-0">
-                  {r.hora_inicio.slice(0, 5)} â€“ {r.hora_fin.slice(0, 5)}
-                </span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                  r.grabar
-                    ? "bg-crystal-400/10 text-crystal-300 border-crystal-400/20"
-                    : "bg-red-500/10 text-red-400 border-red-500/20"
-                }`}>
-                  {r.grabar ? "Graba" : "No graba"}
-                </span>
-                <button
-                  onClick={() => deleteRegla(r.id)}
-                  className="ml-auto text-mist-700 hover:text-red-400 transition-colors"
-                  title="Eliminar"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add rule form */}
-      <div className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-4 space-y-3">
-        <h4 className="text-xs font-semibold text-mist-400 uppercase tracking-wider">Agregar regla</h4>
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="block text-xs text-mist-600 mb-1">Desde</label>
-            <input
-              type="time"
-              value={horaInicio}
-              onChange={(e) => setHoraInicio(e.target.value)}
-              className="bg-lake-950/60 border border-lake-700 focus:border-crystal-400/40 text-snow text-sm rounded-xl px-3 py-2 outline-none transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-mist-600 mb-1">Hasta</label>
-            <input
-              type="time"
-              value={horaFin}
-              onChange={(e) => setHoraFin(e.target.value)}
-              className="bg-lake-950/60 border border-lake-700 focus:border-crystal-400/40 text-snow text-sm rounded-xl px-3 py-2 outline-none transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-2 pb-0.5">
-            <button
-              onClick={() => setGrabar(!grabar)}
-              className={`relative w-10 h-5 rounded-full border transition-all ${
-                grabar
-                  ? "bg-crystal-400/30 border-crystal-400/40"
-                  : "bg-lake-950 border-mist-700"
-              }`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
-                grabar ? "left-5 bg-crystal-400" : "left-0.5 bg-mist-700"
-              }`} />
-            </button>
-            <span className="text-xs text-mist-500">{grabar ? "Graba" : "No graba"}</span>
-          </div>
-          <button
-            onClick={addRegla}
-            disabled={saving || tableError || !horaInicio || !horaFin || horaFin <= horaInicio}
-            className="px-4 py-2 rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 text-lake-950 text-xs font-semibold transition-all active:scale-[0.98] flex items-center gap-1.5"
-          >
-            {saving ? (
-              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            )}
-            Agregar
-          </button>
-        </div>
-        {horaFin && horaInicio && horaFin <= horaInicio && (
-          <p className="text-xs text-red-400">La hora de fin debe ser mayor a la de inicio</p>
-        )}
-      </div>
-    </div>
+function SlotIcon({ estado }: { estado: SlotEstado }) {
+  if (estado === "privado") {
+    return (
+      <svg className="w-3.5 h-3.5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      </svg>
+    );
+  }
+  if (estado === "bloqueado") {
+    return (
+      <svg className="w-3.5 h-3.5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" strokeWidth={2} />
+        <path strokeLinecap="round" strokeWidth={2} d="M5.6 5.6l12.8 12.8" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+    </svg>
   );
 }
 
-function CamarasPrivacidad({ canchas, complejo }: { canchas: number[]; complejo?: string }) {
+function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: string }) {
   const today = new Date().toISOString().split("T")[0];
-  const [cancha, setCancha] = useState<number>(canchas[0] ?? 1);
   const [fecha, setFecha] = useState(today);
-  const [partidos, setPartidos] = useState<PartidoPriv[]>([]);
+  const [slots, setSlots] = useState<Record<string, SlotInfo>>({});
   const [loading, setLoading] = useState(false);
-  const [passwords, setPasswords] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [saved, setSaved] = useState<Record<string, boolean>>({});
-  const [columnError, setColumnError] = useState(false);
+  const [colError, setColError] = useState(false);
+  const [editing, setEditing] = useState<{ cancha: number; hora: string } | null>(null);
+  const [editEstado, setEditEstado] = useState<SlotEstado>("publico");
+  const [editPass, setEditPass] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [rowSaving, setRowSaving] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (canchas.length > 0 && !canchas.includes(cancha)) setCancha(canchas[0]);
-  }, [canchas]); // eslint-disable-line react-hooks/exhaustive-deps
+  const slotKey = (cancha: number, hora: string) => `${cancha}|${hora}`;
+  const getSlot = (cancha: number, hora: string): SlotInfo =>
+    slots[slotKey(cancha, hora)] ?? { estado: "publico", hasPass: false };
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       const { data, error } = await supabase
-        .from("partidos")
-        .select("id, numero_cancha, fecha, hora, duracion_minutos, privado, password_hash")
-        .ilike("complejo", `%${complejo ?? ""}%`)
-        .eq("numero_cancha", cancha)
-        .eq("fecha", fecha)
-        .order("hora");
+        .from("camera_settings")
+        .select("numero_cancha, hora, estado, password_hash")
+        .eq("complejo", complejo ?? "")
+        .eq("fecha", fecha);
       if (error) {
-        if (error.message.includes("column") && error.message.includes("privado")) {
-          setColumnError(true);
+        if (error.code === "42P01" || error.code === "42703" ||
+            (error.message ?? "").toLowerCase().includes("column")) {
+          setColError(true);
         }
+        setSlots({});
       } else {
-        setColumnError(false);
-        setPartidos((data ?? []) as PartidoPriv[]);
+        setColError(false);
+        const map: Record<string, SlotInfo> = {};
+        for (const r of (data ?? []) as { numero_cancha: number; hora: string; estado: string; password_hash: string | null }[]) {
+          map[slotKey(r.numero_cancha, r.hora.slice(0, 5))] = {
+            estado: (r.estado as SlotEstado) ?? "publico",
+            hasPass: !!r.password_hash,
+          };
+        }
+        setSlots(map);
       }
       setLoading(false);
     }
     load();
-  }, [cancha, fecha, complejo]);
+  }, [fecha, complejo]);
 
-  function togglePrivado(id: string, current: boolean) {
-    setPartidos((ps) => ps.map((p) => p.id === id ? { ...p, privado: !current } : p));
-    if (!current) {
-      setPasswords((pw) => ({ ...pw, [id]: pw[id] ?? "" }));
-    }
+  function openCell(cancha: number, hora: string) {
+    const s = getSlot(cancha, hora);
+    setEditing({ cancha, hora });
+    setEditEstado(s.estado);
+    setEditPass("");
   }
 
-  async function savePartido(p: PartidoPriv) {
-    setSaving((s) => ({ ...s, [p.id]: true }));
-    await fetch("/api/video-privacy", {
+  async function apply(cancha: number, horas: string[], estado: SlotEstado, password: string) {
+    const res = await fetch("/api/camera-slot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ partidoId: p.id, privado: p.privado, password: passwords[p.id] ?? "" }),
+      body: JSON.stringify({ complejo: complejo ?? "", numero_cancha: cancha, fecha, horas, estado, password }),
     });
-    setSaving((s) => ({ ...s, [p.id]: false }));
-    setSaved((s) => ({ ...s, [p.id]: true }));
-    setTimeout(() => setSaved((s) => ({ ...s, [p.id]: false })), 2000);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (data?.schema) setColError(true);
+      return false;
+    }
+    setSlots((prev) => {
+      const next = { ...prev };
+      for (const h of horas) {
+        const k = slotKey(cancha, h);
+        const hadPass = prev[k]?.hasPass ?? false;
+        next[k] = { estado, hasPass: estado === "privado" ? (password ? true : hadPass) : false };
+      }
+      return next;
+    });
+    return true;
+  }
+
+  async function saveCell() {
+    if (!editing) return;
+    setSaving(true);
+    const ok = await apply(editing.cancha, [editing.hora], editEstado, editPass);
+    setSaving(false);
+    if (ok) setEditing(null);
+  }
+
+  async function applyRow(cancha: number, estado: SlotEstado) {
+    setRowSaving(cancha);
+    await apply(cancha, HORA_SLOTS, estado, "");
+    setRowSaving(null);
   }
 
   return (
-    <div className="space-y-4">
-      {columnError && (
+    <div className="space-y-5">
+      {colError && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-          <p className="text-sm font-semibold text-amber-300 mb-1">Columnas de privacidad no encontradas</p>
-          <p className="text-xs text-amber-400/70 mb-2">Ejecuta este SQL en Supabase:</p>
-          <pre className="bg-black/30 rounded-lg p-3 text-xs text-amber-200/80 overflow-x-auto">{`ALTER TABLE partidos ADD COLUMN privado boolean DEFAULT false;
-ALTER TABLE partidos ADD COLUMN password_hash text NULL;`}</pre>
+          <p className="text-sm font-semibold text-amber-300 mb-1">Tabla camera_settings desactualizada</p>
+          <p className="text-xs text-amber-400/70 mb-2">Ejecuta este SQL en Supabase (recrea la tabla con fecha, hora, graba y password_hash):</p>
+          <pre className="bg-black/30 rounded-lg p-3 text-xs text-amber-200/80 overflow-x-auto whitespace-pre-wrap">{CAMERA_SETTINGS_SQL}</pre>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-mist-600">Cancha:</label>
-          <div className="flex gap-1">
-            {canchas.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCancha(c)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                  cancha === c
-                    ? "bg-crystal-400/15 text-crystal-300 border-crystal-400/25"
-                    : "border-white/8 text-mist-600 hover:text-snow hover:border-white/15"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-sm text-mist-600 max-w-xl">
+          Cada bloque parte <span className="text-crystal-400 font-medium">habilitado</span> (público). Tócalo para hacerlo privado con clave o bloquear la grabación.
+        </p>
         <input
           type="date"
           value={fecha}
@@ -979,78 +768,141 @@ ALTER TABLE partidos ADD COLUMN password_hash text NULL;`}</pre>
         />
       </div>
 
+      {/* Leyenda */}
+      <div className="flex items-center gap-5 text-xs text-mist-600 flex-wrap">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-crystal-400/25 border border-crystal-400/35 inline-block" />Habilitado (público)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-500/25 border border-amber-500/35 inline-block" />Privado (con clave)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-500/20 border border-red-500/30 inline-block" />Bloqueado (no graba)</span>
+      </div>
+
       {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="w-5 h-5 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : partidos.length === 0 ? (
-        <div className="text-center py-10 text-mist-600 text-sm">
-          No hay partidos grabados en esta fecha
+        <div className="flex justify-center py-16">
+          <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="space-y-2">
-          {partidos.map((p) => (
-            <div key={p.id} className="bg-lake-800/60 border border-mist-500/8 rounded-xl p-4 space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-snow">{p.hora.slice(0, 5)}</span>
-                  <span className="text-xs text-mist-600 ml-2">{p.duracion_minutos} min</span>
-                </div>
-                {/* Toggle privado */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => togglePrivado(p.id, p.privado)}
-                    className={`relative w-10 h-5 rounded-full border transition-all ${
-                      p.privado
-                        ? "bg-amber-500/30 border-amber-500/40"
-                        : "bg-lake-950 border-mist-700"
-                    }`}
-                  >
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
-                      p.privado ? "left-5 bg-amber-400" : "left-0.5 bg-mist-700"
-                    }`} />
-                  </button>
-                  <span className={`text-xs font-medium ${p.privado ? "text-amber-400" : "text-mist-600"}`}>
-                    {p.privado ? "Privado" : "Público"}
-                  </span>
-                </div>
-              </div>
+        <div className="overflow-x-auto rounded-xl border border-mist-500/8">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="bg-lake-900 text-mist-700 text-xs font-medium text-left px-4 py-2.5 sticky left-0 z-10 min-w-[120px] border-b border-mist-500/8">Cancha</th>
+                {HORA_SLOTS.map((h) => (
+                  <th key={h} className="bg-lake-900 text-mist-700 text-xs font-medium text-center px-1 py-2.5 border-b border-mist-500/8 min-w-[52px]">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {canchas.map((c, ri) => (
+                <tr key={c}>
+                  <td className={`bg-lake-800/60 px-4 py-3 sticky left-0 z-10 ${ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""}`}>
+                    <div className="text-mist-400 text-xs font-semibold whitespace-nowrap">Cancha {c}</div>
+                    <div className="flex gap-1 mt-1.5">
+                      <button
+                        onClick={() => applyRow(c, "bloqueado")}
+                        disabled={rowSaving === c}
+                        title="Bloquear todos los horarios de esta cancha"
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/20 text-red-400/80 hover:bg-red-500/10 disabled:opacity-40 transition-colors"
+                      >
+                        Bloquear
+                      </button>
+                      <button
+                        onClick={() => applyRow(c, "publico")}
+                        disabled={rowSaving === c}
+                        title="Habilitar todos los horarios de esta cancha"
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-crystal-400/20 text-crystal-400/80 hover:bg-crystal-400/10 disabled:opacity-40 transition-colors"
+                      >
+                        Habilitar
+                      </button>
+                    </div>
+                  </td>
+                  {HORA_SLOTS.map((h) => {
+                    const s = getSlot(c, h);
+                    return (
+                      <td key={h} className={`p-1 ${ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""}`}>
+                        <button
+                          onClick={() => openCell(c, h)}
+                          title={`Cancha ${c} · ${h} · ${s.estado}`}
+                          className={`w-full h-8 rounded-lg flex items-center justify-center transition-colors ${SLOT_STYLE[s.estado]}`}
+                        >
+                          <SlotIcon estado={s.estado} />
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-              {/* Password field if private */}
-              {p.privado && (
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    placeholder={p.password_hash ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña de acceso"}
-                    value={passwords[p.id] ?? ""}
-                    onChange={(e) => setPasswords((pw) => ({ ...pw, [p.id]: e.target.value }))}
-                    className="flex-1 bg-lake-950/60 border border-lake-700 focus:border-amber-500/40 text-snow placeholder-mist-700 rounded-xl px-3 py-2 text-xs outline-none transition-all"
-                  />
-                </div>
-              )}
+      {/* Modal de edición de bloque */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => !saving && setEditing(null)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full max-w-sm bg-lake-800 border border-mist-500/12 rounded-2xl p-6 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h3 className="text-sm font-semibold text-snow">Cancha {editing.cancha} · {editing.hora}</h3>
+              <p className="text-xs text-mist-600 mt-0.5">{new Date(fecha + "T00:00:00").toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })}</p>
+            </div>
 
+            <div className="space-y-1.5">
+              {([
+                { value: "publico" as const,   label: "Habilitado (público)",   desc: "Cualquiera puede ver los videos de este horario.", color: "text-crystal-400 bg-crystal-400/10 border-crystal-400/30" },
+                { value: "privado" as const,   label: "Privado (con clave)",     desc: "Pide una clave para ver el partido de este horario.", color: "text-amber-400 bg-amber-500/10 border-amber-500/30" },
+                { value: "bloqueado" as const, label: "Bloqueado (no graba)",    desc: "La cámara no graba ni sube videos de este horario.", color: "text-red-400 bg-red-500/10 border-red-500/30" },
+              ]).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setEditEstado(opt.value)}
+                  className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm border transition-all text-left ${editEstado === opt.value ? opt.color : "border-white/8 text-mist-500 hover:border-white/15 hover:text-mist-400"}`}
+                >
+                  <div className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 mt-0.5 ${editEstado === opt.value ? "border-current bg-current" : "border-mist-700"}`} />
+                  <div>
+                    <div className="font-medium leading-tight">{opt.label}</div>
+                    <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {editEstado === "privado" && (
+              <input
+                type="text"
+                value={editPass}
+                onChange={(e) => setEditPass(e.target.value)}
+                placeholder={getSlot(editing.cancha, editing.hora).hasPass ? "Nueva clave (vacío = mantener actual)" : "Elige una clave de acceso"}
+                className="w-full bg-lake-950/60 border border-lake-700 focus:border-amber-500/40 text-snow placeholder-mist-700 rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
+              />
+            )}
+
+            <div className="flex gap-2 pt-1">
               <button
-                onClick={() => savePartido(p)}
-                disabled={saving[p.id]}
-                className="w-full py-1.5 text-xs font-semibold rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 text-lake-950 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                onClick={() => setEditing(null)}
+                disabled={saving}
+                className="flex-1 py-2 text-xs font-semibold rounded-xl border border-white/10 text-mist-500 hover:text-snow hover:border-white/20 transition-all disabled:opacity-40"
               >
-                {saving[p.id] ? (
-                  <><svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Guardando...</>
-                ) : saved[p.id] ? (
-                  <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Guardado</>
+                Cancelar
+              </button>
+              <button
+                onClick={saveCell}
+                disabled={saving || (editEstado === "privado" && !getSlot(editing.cancha, editing.hora).hasPass && !editPass)}
+                className="flex-1 py-2 text-xs font-semibold rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 text-lake-950 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                {saving ? (
+                  <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Guardando...</>
                 ) : "Guardar"}
               </button>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // MONITOREO DE CANCHAS (sub-tab de Cámaras)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function CamarasMonitoreo({ canchas, complejo }: { canchas: number[]; complejo?: string }) {
   const [beats, setBeats] = useState<Heartbeat[]>([]);
@@ -1093,7 +945,7 @@ function CamarasMonitoreo({ canchas, complejo }: { canchas: number[]; complejo?:
   }
 
   function fmtDateTime(iso: string | null) {
-    if (!iso) return "â€”";
+    if (!iso) return "-";
     const d = new Date(iso);
     return (
       d.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) +
@@ -1153,7 +1005,7 @@ function CamarasMonitoreo({ canchas, complejo }: { canchas: number[]; complejo?:
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-mist-600">
-          Actualizado: {lastRefresh.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} Â· refresco cada 5 min
+          Actualizado: {lastRefresh.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} · refresco cada 5 min
         </p>
         <button
           onClick={() => { setLoading(true); load(); }}
@@ -1200,11 +1052,11 @@ function CamarasMonitoreo({ canchas, complejo }: { canchas: number[]; complejo?:
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-mist-600 shrink-0">Estado</span>
-                    <span className="text-mist-400">{beat?.estado ?? "â€”"}</span>
+                    <span className="text-mist-400">{beat?.estado ?? "-"}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-mist-600 shrink-0">IP local</span>
-                    <span className="text-mist-400 font-mono">{beat?.ip_local ?? "â€”"}</span>
+                    <span className="text-mist-400 font-mono">{beat?.ip_local ?? "-"}</span>
                   </div>
                   {beat?.detalle && (
                     <div className="flex items-start justify-between gap-2">
@@ -1222,9 +1074,9 @@ function CamarasMonitoreo({ canchas, complejo }: { canchas: number[]; complejo?:
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // TAB: CÃMARAS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 const CAMERA_OPTIONS: { value: CameraState["estado"]; label: string; desc: string; color: string }[] = [
   { value: "publico",   label: "Público",   desc: "Cualquier usuario puede ver los videos",       color: "text-crystal-400 bg-crystal-400/10 border-crystal-400/30" },
@@ -1233,13 +1085,9 @@ const CAMERA_OPTIONS: { value: CameraState["estado"]; label: string; desc: strin
 ];
 
 function TabCamaras({ complejo }: { complejo?: string }) {
-  const [subTab, setSubTab] = useState<"config" | "horarios" | "privacidad" | "monitoreo">("config");
+  const [subTab, setSubTab] = useState<"config" | "monitoreo">("config");
   const [canchas, setCanchas] = useState<number[]>([]);
-  const [settings, setSettings] = useState<Record<number, CameraState>>({});
-  const [saving, setSaving] = useState<Record<number, boolean>>({});
-  const [saved, setSaved] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
-  const [tableError, setTableError] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -1247,48 +1095,14 @@ function TabCamaras({ complejo }: { complejo?: string }) {
       if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
       const { data: pData } = await qP;
       const nums = Array.from(new Set((pData ?? []).map((p: { numero_cancha: number }) => p.numero_cancha))).sort((a, b) => (a as number) - (b as number)) as number[];
-      const list = nums.length > 0 ? nums : [1, 2, 3];
-      setCanchas(list);
-
-      const { data: csData, error: csError } = await supabase.from("camera_settings").select("*").eq("complejo", complejo ?? "");
-
-      if (csError) {
-        setTableError(true);
-        const def: Record<number, CameraState> = {};
-        list.forEach((n) => { def[n] = { estado: "publico" }; });
-        setSettings(def);
-      } else {
-        const map: Record<number, CameraState> = {};
-        for (const n of list) {
-          const existing = (csData ?? []).find((c: { numero_cancha: number; estado: string; id: string }) => c.numero_cancha === n);
-          map[n] = existing ? { id: existing.id, estado: existing.estado } : { estado: "publico" };
-        }
-        setSettings(map);
-      }
+      setCanchas(nums.length > 0 ? nums : [1, 2, 3]);
       setLoading(false);
     }
     load();
   }, [complejo]);
 
-  async function saveCamera(cancha: number) {
-    const setting = settings[cancha];
-    if (!setting || tableError) return;
-    setSaving((s) => ({ ...s, [cancha]: true }));
-    if (setting.id) {
-      await supabase.from("camera_settings").update({ estado: setting.estado }).eq("id", setting.id);
-    } else {
-      const { data } = await supabase.from("camera_settings").upsert({ complejo: complejo ?? "", numero_cancha: cancha, estado: setting.estado }).select("id").single();
-      if (data?.id) setSettings((s) => ({ ...s, [cancha]: { ...s[cancha], id: data.id } }));
-    }
-    setSaving((s) => ({ ...s, [cancha]: false }));
-    setSaved((s) => ({ ...s, [cancha]: true }));
-    setTimeout(() => setSaved((s) => ({ ...s, [cancha]: false })), 2000);
-  }
-
   const SUB_TABS = [
     { id: "config" as const, label: "Configuración" },
-    { id: "horarios" as const, label: "Horarios" },
-    { id: "privacidad" as const, label: "Privacidad" },
     { id: "monitoreo" as const, label: "Monitoreo" },
   ];
 
@@ -1296,7 +1110,7 @@ function TabCamaras({ complejo }: { complejo?: string }) {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-snow tracking-tight">Control de Cámaras</h2>
-        <p className="text-sm text-mist-600 mt-0.5">Configura grabación, horarios y acceso por cancha</p>
+        <p className="text-sm text-mist-600 mt-0.5">Configura grabación y acceso por horario, y monitorea el estado de las cámaras</p>
       </div>
 
       {/* Sub-tab nav */}
@@ -1316,154 +1130,50 @@ function TabCamaras({ complejo }: { complejo?: string }) {
         ))}
       </div>
 
-      {/* Config sub-tab */}
-      {subTab === "config" && (
-        <>
-          {tableError && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-              <p className="text-sm font-semibold text-amber-300 mb-1">Tabla camera_settings no encontrada</p>
-              <p className="text-xs text-amber-400/70 mb-2">Ejecuta este SQL en Supabase para habilitarla:</p>
-              <pre className="bg-black/30 rounded-lg p-3 text-xs text-amber-200/80 overflow-x-auto">{`CREATE TABLE camera_settings (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  complejo TEXT NOT NULL,
-  numero_cancha INTEGER NOT NULL,
-  estado TEXT NOT NULL DEFAULT 'publico',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(complejo, numero_cancha)
-);
-ALTER TABLE camera_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all" ON camera_settings FOR ALL USING (true);`}</pre>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {canchas.map((c) => {
-                const setting = settings[c];
-                const currentOpt = CAMERA_OPTIONS.find((o) => o.value === setting?.estado) ?? CAMERA_OPTIONS[0];
-                return (
-                  <div key={c} className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-5 space-y-4 backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-snow text-sm">Cancha {c}</h3>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border mt-1 inline-block ${currentOpt.color}`}>
-                          {currentOpt.label}
-                        </span>
-                      </div>
-                      <div className="w-10 h-10 rounded-xl bg-crystal-400/10 border border-crystal-400/20 flex items-center justify-center text-crystal-400">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.847v6.306a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {CAMERA_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setSettings((s) => ({ ...s, [c]: { ...s[c], estado: opt.value } }))}
-                          className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm border transition-all text-left ${
-                            setting?.estado === opt.value ? opt.color : "border-white/8 text-mist-500 hover:border-white/15 hover:text-mist-400"
-                          }`}
-                        >
-                          <div className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 mt-0.5 ${setting?.estado === opt.value ? "border-current bg-current" : "border-mist-700"}`} />
-                          <div>
-                            <div className="font-medium leading-tight">{opt.label}</div>
-                            <div className="text-xs opacity-60 mt-0.5">{opt.desc}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => saveCamera(c)}
-                      disabled={saving[c] || tableError}
-                      className="w-full py-2 text-xs font-semibold rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 text-lake-950 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
-                    >
-                      {saving[c] ? (
-                        <>
-                          <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                          Guardando...
-                        </>
-                      ) : saved[c] ? (
-                        <>
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Guardado
-                        </>
-                      ) : "Guardar cambios"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Horarios sub-tab */}
-      {subTab === "horarios" && (
-        loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <CamarasHorarios canchas={canchas} complejo={complejo} />
-        )
-      )}
-
-      {/* Privacidad sub-tab */}
-      {subTab === "privacidad" && (
-        loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <CamarasPrivacidad canchas={canchas} complejo={complejo} />
-        )
-      )}
-
-      {/* Monitoreo sub-tab */}
-      {subTab === "monitoreo" && (
-        loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <CamarasMonitoreo canchas={canchas} complejo={complejo} />
-        )
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : subTab === "config" ? (
+        <CamarasConfig canchas={canchas} complejo={complejo} />
+      ) : (
+        <CamarasMonitoreo canchas={canchas} complejo={complejo} />
       )}
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // TAB: REPORTES
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-function BarChart({ data, colorClass }: { data: { label: string; value: number }[]; colorClass: string }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
+const MESES_CORTOS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+const AXIS_TICK = { fill: "#58aeae", fontSize: 11 };
+const TOOLTIP_CONTENT: React.CSSProperties = { background: "#0a2a3d", border: "1px solid rgba(41,196,173,0.25)", borderRadius: 12, color: "#e6f6f6", fontSize: 12 };
+const TOOLTIP_LABEL: React.CSSProperties = { color: "#a2d6d6", marginBottom: 4 };
+
+interface ReporteData {
+  videos: number;
+  jugadas: number;
+  minutos: number;
+  visitas: number;
+  usuariosNuevos: number;
+  usuariosAcumulados: number;
+  evolucion: { mes: string; acumulados: number; nuevos: number }[];
+  porEtiqueta: { etiqueta: string; cantidad: number }[];
+  promedioHorasCancha: number;
+  horasPorCancha: { cancha: string; horas: number }[];
+  porHora: { hora: string; partidos: number }[];
+}
+
+function ChartCard({ title, full, children }: { title: string; full?: boolean; children: React.ReactNode }) {
   return (
-    <div className="space-y-2.5">
-      {data.map((d) => (
-        <div key={d.label} className="flex items-center gap-3">
-          <span className="text-xs text-mist-500 w-28 shrink-0 truncate">{d.label}</span>
-          <div className="flex-1 bg-lake-950 rounded-full h-2 overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-500 ${colorClass}`} style={{ width: `${(d.value / max) * 100}%` }} />
-          </div>
-          <span className="text-xs text-mist-500 w-8 text-right shrink-0">{d.value}</span>
-        </div>
-      ))}
+    <div className={`bg-lake-800/60 border border-mist-500/8 rounded-2xl p-5 backdrop-blur-sm ${full ? "lg:col-span-2" : ""}`}>
+      <h3 className="text-sm font-semibold text-snow mb-4">{title}</h3>
+      {children}
     </div>
   );
 }
@@ -1472,45 +1182,107 @@ function TabReportes({ complejo }: { complejo?: string }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [report, setReport] = useState<{
-    totalPartidos: number;
-    totalMinutos: number;
-    totalJugadas: number;
-    jugadasPorEtiqueta: Record<string, number>;
-    horasPorCancha: Record<number, number>;
-    jugadasPorCancha: Record<number, number>;
-  } | null>(null);
+  const [report, setReport] = useState<ReporteData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    const { start, end } = getMonthRange(year, month);
     async function load() {
-      let qP = supabase.from("partidos").select("id, numero_cancha, duracion_minutos").gte("fecha", start).lte("fecha", end);
+      const { start, end } = getMonthRange(year, month);
+
+      // Partidos del mes (públicos + privados)
+      let qP = supabase.from("partidos").select("id, numero_cancha, duracion_minutos, hora").gte("fecha", start).lte("fecha", end);
       if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
-      const { data: ps } = await qP;
-      const partidoIds = (ps ?? []).map((p: { id: string }) => p.id);
-      let jugadas: Jugada[] = [];
+      const { data: psData } = await qP;
+      const partidos = (psData ?? []) as { id: string; numero_cancha: number; duracion_minutos: number; hora: string }[];
+
+      // Jugadas del mes
+      const partidoIds = partidos.map((p) => p.id);
+      let jugadas: { etiqueta: string }[] = [];
       if (partidoIds.length > 0) {
-        const { data: jd } = await supabase.from("jugadas").select("id, etiqueta, partido_id, partidos(numero_cancha)").in("partido_id", partidoIds);
-        jugadas = (jd ?? []) as unknown as Jugada[];
+        const { data: jd } = await supabase.from("jugadas").select("etiqueta, partido_id").in("partido_id", partidoIds);
+        jugadas = (jd ?? []) as { etiqueta: string }[];
       }
-      const totalPartidos = (ps ?? []).length;
-      const totalMinutos = (ps ?? []).reduce((s: number, p: { duracion_minutos: number }) => s + (p.duracion_minutos ?? 0), 0);
-      const totalJugadas = jugadas.length;
-      const jugadasPorEtiqueta: Record<string, number> = {};
-      const jugadasPorCancha: Record<number, number> = {};
-      for (const j of jugadas) {
-        jugadasPorEtiqueta[j.etiqueta] = (jugadasPorEtiqueta[j.etiqueta] ?? 0) + 1;
-        const nc = (j.partidos as { numero_cancha?: number } | null)?.numero_cancha;
-        if (nc) jugadasPorCancha[nc] = (jugadasPorCancha[nc] ?? 0) + 1;
+
+      // Visitas del mes
+      let qV = supabase.from("visitas_partidos").select("id", { count: "exact", head: true })
+        .gte("visited_at", `${start}T00:00:00`).lte("visited_at", `${end}T23:59:59`);
+      if (complejo) qV = qV.ilike("complejo", `%${complejo}%`);
+      const { count: visitas } = await qV;
+
+      // Usuarios anónimos del complejo (todos, para nuevos / acumulados / evolución)
+      let qU = supabase.from("usuarios_complejo").select("primera_visita");
+      if (complejo) qU = qU.ilike("complejo", `%${complejo}%`);
+      const { data: usuariosData } = await qU;
+      const primeras = (usuariosData ?? [])
+        .map((u) => String((u as { primera_visita: string }).primera_visita ?? "").slice(0, 10))
+        .filter(Boolean);
+
+      // Canchas del complejo (heartbeat)
+      let qH = supabase.from("heartbeat").select("cancha");
+      if (complejo) qH = qH.ilike("complejo", `%${complejo}%`);
+      const { data: hbData } = await qH;
+      const canchasComplejo = new Set(
+        (hbData ?? []).map((h) => String((h as { cancha: string | number }).cancha).trim()).filter(Boolean)
+      );
+
+      // KPIs de usuarios
+      const minutos = partidos.reduce((s, p) => s + (p.duracion_minutos ?? 0), 0);
+      const usuariosNuevos = primeras.filter((d) => d >= start && d <= end).length;
+      const usuariosAcumulados = primeras.filter((d) => d <= end).length;
+
+      // Evolución: últimos 6 meses terminando en el mes seleccionado
+      const evolucion: ReporteData["evolucion"] = [];
+      for (let i = 5; i >= 0; i--) {
+        const dt = new Date(year, month - 1 - i, 1);
+        const y = dt.getFullYear();
+        const m = dt.getMonth() + 1;
+        const mr = getMonthRange(y, m);
+        const nuevos = primeras.filter((d) => d >= mr.start && d <= mr.end).length;
+        const acumulados = primeras.filter((d) => d <= mr.end).length;
+        evolucion.push({ mes: y === year ? MESES_CORTOS[m - 1] : `${MESES_CORTOS[m - 1]} ${String(y).slice(2)}`, acumulados, nuevos });
       }
-      const horasPorCancha: Record<number, number> = {};
-      for (const p of ps ?? []) {
-        const { numero_cancha: nc, duracion_minutos: dm } = p as { numero_cancha: number; duracion_minutos: number };
-        horasPorCancha[nc] = (horasPorCancha[nc] ?? 0) + (dm ?? 0);
+
+      // Jugadas por etiqueta
+      const etqMap: Record<string, number> = {};
+      for (const j of jugadas) etqMap[j.etiqueta] = (etqMap[j.etiqueta] ?? 0) + 1;
+      const porEtiqueta = Object.entries(etqMap)
+        .map(([etiqueta, cantidad]) => ({ etiqueta, cantidad }))
+        .sort((a, b) => b.cantidad - a.cantidad);
+
+      // Horas por cancha + promedio
+      const minPorCancha: Record<number, number> = {};
+      for (const p of partidos) minPorCancha[p.numero_cancha] = (minPorCancha[p.numero_cancha] ?? 0) + (p.duracion_minutos ?? 0);
+      const horasPorCancha = Object.entries(minPorCancha)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([nc, min]) => ({ cancha: `Cancha ${nc}`, horas: Math.round((min / 60) * 10) / 10 }));
+      const numCanchas = canchasComplejo.size > 0 ? canchasComplejo.size : Object.keys(minPorCancha).length;
+      const promedioHorasCancha = numCanchas > 0 ? Math.round((minutos / 60 / numCanchas) * 10) / 10 : 0;
+
+      // Horario peak: partidos por hora de inicio
+      const horaMap: Record<string, number> = {};
+      for (const p of partidos) {
+        const h = String(p.hora ?? "").slice(0, 2);
+        if (!h) continue;
+        horaMap[`${h}:00`] = (horaMap[`${h}:00`] ?? 0) + 1;
       }
-      setReport({ totalPartidos, totalMinutos, totalJugadas, jugadasPorEtiqueta, horasPorCancha, jugadasPorCancha });
+      const porHora = Object.entries(horaMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([hora, count]) => ({ hora, partidos: count }));
+
+      setReport({
+        videos: partidos.length,
+        jugadas: jugadas.length,
+        minutos,
+        visitas: visitas ?? 0,
+        usuariosNuevos,
+        usuariosAcumulados,
+        evolucion,
+        porEtiqueta,
+        promedioHorasCancha,
+        horasPorCancha,
+        porHora,
+      });
       setLoading(false);
     }
     load();
@@ -1518,12 +1290,23 @@ function TabReportes({ complejo }: { complejo?: string }) {
 
   const years = Array.from({ length: 3 }, (_, i) => now.getFullYear() - 1 + i);
 
+  const kpis = report ? [
+    { label: "Videos grabados",     value: report.videos,             color: "text-crystal-400" },
+    { label: "Jugadas creadas",     value: report.jugadas,            color: "text-glacial-400" },
+    { label: "Minutos grabados",    value: report.minutos,            color: "text-pine-400"    },
+    { label: "Visitas del mes",     value: report.visitas,            color: "text-crystal-300" },
+    { label: "Usuarios nuevos",     value: report.usuariosNuevos,     color: "text-amber-400"   },
+    { label: "Usuarios acumulados", value: report.usuariosAcumulados, color: "text-mist-300"    },
+  ] : [];
+
+  const hayEvolucion = report?.evolucion.some((e) => e.acumulados > 0 || e.nuevos > 0);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-snow tracking-tight">Reporte Mensual</h2>
-          <p className="text-sm text-mist-600 mt-0.5">Estadísticas de actividad del complejo</p>
+          <p className="text-sm text-mist-600 mt-0.5">Actividad y audiencia del complejo</p>
         </div>
         <div className="flex items-center gap-2">
           <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-lake-800/60 border border-crystal-400/20 text-snow text-sm rounded-xl px-3 py-2 outline-none">
@@ -1535,65 +1318,114 @@ function TabReportes({ complejo }: { complejo?: string }) {
         </div>
       </div>
 
-      {loading ? (
+      {loading || !report ? (
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        report && (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { label: "Partidos grabados", value: report.totalPartidos,                                          color: "text-crystal-400" },
-                { label: "Jugadas guardadas", value: report.totalJugadas,                                           color: "text-mist-400" },
-                { label: "Minutos grabados",  value: report.totalMinutos + " min",                                  color: "text-glacial-400" },
-                { label: "Horas grabadas",    value: Math.round((report.totalMinutos / 60) * 10) / 10 + " h",       color: "text-amber-400" },
-              ].map((s) => (
-                <div key={s.label} className="bg-lake-800/60 border border-mist-500/8 rounded-xl p-4 backdrop-blur-sm">
-                  <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                  <div className="text-xs text-mist-600 mt-1">{s.label}</div>
+        <>
+          {/* SECCIÓN 1 — KPIs del mes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {kpis.map((s) => (
+              <div key={s.label} className="bg-lake-800/60 border border-crystal-400/30 rounded-2xl p-5 backdrop-blur-sm">
+                <div className={`text-3xl font-bold ${s.color}`}>{s.value.toLocaleString("es-CL")}</div>
+                <div className="text-xs text-mist-500 mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* SECCIÓN 2 — Evolución de usuarios */}
+          <ChartCard title="Evolución de usuarios (últimos 6 meses)" full>
+            {!hayEvolucion ? (
+              <p className="text-mist-600 text-sm text-center py-10">Sin datos</p>
+            ) : (
+              <div style={{ width: "100%", height: 300 }}>
+                <ResponsiveContainer>
+                  <LineChart data={report.evolucion} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis dataKey="mes" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: "#ffffff14" }} />
+                    <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={TOOLTIP_CONTENT} labelStyle={TOOLTIP_LABEL} cursor={{ stroke: "#ffffff22" }} />
+                    <Legend wrapperStyle={{ fontSize: 12, color: "#a2d6d6" }} />
+                    <Line type="monotone" dataKey="acumulados" name="Acumulados" stroke="#29c4ad" strokeWidth={2} dot={{ r: 3, fill: "#29c4ad" }} activeDot={{ r: 5 }} />
+                    <Line type="monotone" dataKey="nuevos" name="Nuevos" stroke="#4daec4" strokeWidth={2} dot={{ r: 3, fill: "#4daec4" }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </ChartCard>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* SECCIÓN 3 — Jugadas por etiqueta */}
+            <ChartCard title="Jugadas por etiqueta">
+              {report.porEtiqueta.length === 0 ? (
+                <p className="text-mist-600 text-sm text-center py-10">Sin datos</p>
+              ) : (
+                <div style={{ width: "100%", height: Math.max(180, report.porEtiqueta.length * 46) }}>
+                  <ResponsiveContainer>
+                    <BarChart layout="vertical" data={report.porEtiqueta} margin={{ top: 4, right: 20, left: 8, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
+                      <XAxis type="number" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: "#ffffff14" }} allowDecimals={false} />
+                      <YAxis type="category" dataKey="etiqueta" tick={AXIS_TICK} tickLine={false} axisLine={false} width={88} />
+                      <Tooltip contentStyle={TOOLTIP_CONTENT} labelStyle={TOOLTIP_LABEL} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                      <Bar dataKey="cantidad" name="Jugadas" fill="#29c4ad" radius={[0, 4, 4, 0]} barSize={18} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+              )}
+            </ChartCard>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <div className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-5 backdrop-blur-sm">
-                <h3 className="text-sm font-semibold text-snow mb-4">Jugadas por etiqueta</h3>
-                {Object.keys(report.jugadasPorEtiqueta).length === 0 ? (
-                  <p className="text-mist-600 text-sm text-center py-4">Sin datos</p>
-                ) : (
-                  <BarChart colorClass="bg-crystal-400/50" data={ETIQUETAS.filter((e) => report.jugadasPorEtiqueta[e] > 0).map((e) => ({ label: e, value: report.jugadasPorEtiqueta[e] ?? 0 }))} />
-                )}
+            {/* SECCIÓN 4 — Horas ocupadas por cancha */}
+            <ChartCard title="Horas ocupadas por cancha">
+              <div className="flex items-baseline gap-2 mb-4">
+                <span className="text-2xl font-bold text-crystal-400">{report.promedioHorasCancha}</span>
+                <span className="text-xs text-mist-500">h promedio por cancha</span>
               </div>
+              {report.horasPorCancha.length === 0 ? (
+                <p className="text-mist-600 text-sm text-center py-10">Sin datos</p>
+              ) : (
+                <div style={{ width: "100%", height: 240 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={report.horasPorCancha} margin={{ top: 4, right: 12, left: -8, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                      <XAxis dataKey="cancha" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: "#ffffff14" }} />
+                      <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={TOOLTIP_CONTENT} labelStyle={TOOLTIP_LABEL} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                      <Bar dataKey="horas" name="Horas" fill="#4daec4" radius={[4, 4, 0, 0]} barSize={36} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </ChartCard>
+          </div>
 
-              <div className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-5 backdrop-blur-sm">
-                <h3 className="text-sm font-semibold text-snow mb-4">Horas grabadas por cancha</h3>
-                {Object.keys(report.horasPorCancha).length === 0 ? (
-                  <p className="text-mist-600 text-sm text-center py-4">Sin datos</p>
-                ) : (
-                  <BarChart colorClass="bg-glacial-400/50" data={Object.entries(report.horasPorCancha).sort(([a], [b]) => Number(a) - Number(b)).map(([nc, min]) => ({ label: `Cancha ${nc}`, value: Math.round((min / 60) * 10) / 10 }))} />
-                )}
+          {/* SECCIÓN 5 — Horario peak */}
+          <ChartCard title="Horario peak (partidos por hora de inicio)" full>
+            {report.porHora.length === 0 ? (
+              <p className="text-mist-600 text-sm text-center py-10">Sin datos</p>
+            ) : (
+              <div style={{ width: "100%", height: 260 }}>
+                <ResponsiveContainer>
+                  <BarChart data={report.porHora} margin={{ top: 4, right: 12, left: -8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis dataKey="hora" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: "#ffffff14" }} />
+                    <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={TOOLTIP_CONTENT} labelStyle={TOOLTIP_LABEL} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                    <Bar dataKey="partidos" name="Partidos" fill="#29c4ad" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-
-              <div className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-5 lg:col-span-2 backdrop-blur-sm">
-                <h3 className="text-sm font-semibold text-snow mb-4">Jugadas compartidas por cancha</h3>
-                {Object.keys(report.jugadasPorCancha).length === 0 ? (
-                  <p className="text-mist-600 text-sm text-center py-4">Sin datos</p>
-                ) : (
-                  <BarChart colorClass="bg-mist-500/50" data={Object.entries(report.jugadasPorCancha).sort(([a], [b]) => Number(a) - Number(b)).map(([nc, count]) => ({ label: `Cancha ${nc}`, value: count }))} />
-                )}
-              </div>
-            </div>
-          </>
-        )
+            )}
+          </ChartCard>
+        </>
       )}
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // TAB: VIDEOS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function TabVideos({ complejo }: { complejo?: string }) {
   const today = new Date().toISOString().split("T")[0];
@@ -1844,9 +1676,9 @@ function TabVideos({ complejo }: { complejo?: string }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // TAB: STREAMING
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 function TabStreaming() {
   const [streamKey, setStreamKey] = useState(() => {
@@ -1902,7 +1734,7 @@ function TabStreaming() {
         <div className="flex gap-3">
           <input type="password" value={streamKey} onChange={(e) => setStreamKey(e.target.value)} placeholder="Pega tu clave de YouTube aquí" className="flex-1 bg-lake-950/60 border border-lake-700 focus:border-crystal-400/40 text-snow placeholder-mist-700 rounded-xl px-4 py-2.5 text-sm outline-none transition-all" />
           <button onClick={saveKey} className="px-4 py-2.5 rounded-xl bg-crystal-400 hover:bg-crystal-300 text-lake-950 text-sm font-semibold transition-all active:scale-[0.97] shrink-0">
-            {saved ? "Guardado âœ“" : "Guardar"}
+            {saved ? "Guardado \u2713" : "Guardar"}
           </button>
         </div>
       </div>
@@ -1920,9 +1752,9 @@ function TabStreaming() {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // MAIN DASHBOARD
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -1976,7 +1808,7 @@ export default function DashboardPage() {
             <span className="text-xs text-mist-700 hidden sm:block">Panel</span>
             <span className="text-xs text-mist-700 hidden sm:block">/</span>
             <span className="text-sm font-semibold text-mist-400 truncate">
-              {TAB_TITLES[activeTab]}{complejo ? ` â€” ${complejo}` : ""}
+              {TAB_TITLES[activeTab]}{complejo ? ` - ${complejo}` : ""}
             </span>
           </div>
 

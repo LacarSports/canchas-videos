@@ -106,9 +106,9 @@ export default async function PartidoPage({
 
         {/* Video + sidebar (client) */}
         {partido.privado ? (
-          <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} deporte={partido.deporte} />
+          <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} deporte={partido.deporte} complejo={partido.complejo} />
         ) : (
-          <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} deporte={partido.deporte} />
+          <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} deporte={partido.deporte} complejo={partido.complejo} />
         )}
 
       </div>

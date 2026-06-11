@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import VideoClipSelector, { type ClipLocal } from "./VideoClipSelector";
 import { processClip } from "./processClip";
 import { supabase } from "@/lib/supabase";
+import { getSessionId } from "@/lib/session";
 import InlineClipPlayer from "@/app/components/InlineClipPlayer";
 
 /* â”€â”€ tag styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -35,13 +36,36 @@ interface Props {
   title: string;
   partidoId: string;
   deporte?: string | null;
+  complejo?: string;
 }
 
 /* â”€â”€ component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-export default function PartidoView({ videoUrl, title, partidoId, deporte }: Props) {
+export default function PartidoView({ videoUrl, title, partidoId, deporte, complejo }: Props) {
   const [clips, setClips] = useState<ClipLocal[]>([]);
   const [playingClipId, setPlayingClipId] = useState<string | null>(null);
+
+  // Registro de visita: una sola vez por sesión de visualización (no en pausa/replay)
+  const visitaRegistrada = useRef(false);
+
+  async function handlePlayStart() {
+    if (visitaRegistrada.current) return;
+    visitaRegistrada.current = true;
+    try {
+      // No contar visitas del dueño mientras está logueado en el panel
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) return;
+      const sessionId = getSessionId();
+      if (!sessionId) return;
+      await fetch("/api/visita", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partidoId, complejo, sessionId }),
+      });
+    } catch {
+      // un fallo de registro no debe afectar la reproducción
+    }
+  }
 
   // Sidebar download state (one at a time)
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -189,6 +213,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte }: Pro
           deporte={deporte}
           clips={clips}
           onClipGuardado={handleClipGuardado}
+          onPlayStart={handlePlayStart}
         />
 
         {/* Sidebar */}
