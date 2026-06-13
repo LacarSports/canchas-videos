@@ -16,7 +16,7 @@ import {
 // TYPES
 // â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
-type TabId = "inicio" | "ocupacion" | "camaras" | "reportes" | "videos" | "streaming";
+type TabId = "inicio" | "ocupacion" | "camaras" | "reportes" | "videos" | "streaming" | "soporte";
 
 interface Partido {
   id: string;
@@ -248,6 +248,19 @@ function Sidebar({
               <p className="text-xs text-mist-400 font-medium truncate">{complejo}</p>
             </div>
           )}
+          <button
+            onClick={() => { onTabChange("soporte"); onClose(); }}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+              activeTab === "soporte"
+                ? "text-crystal-300"
+                : "text-mist-700 hover:text-mist-400 hover:bg-white/5"
+            }`}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Reportar un problema
+          </button>
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-mist-700 hover:text-red-400 hover:bg-red-500/5 transition-all"
@@ -1751,9 +1764,9 @@ function TabStreaming() {
         <h3 className="text-sm font-semibold text-snow">Cómo configurar el streaming</h3>
         <div className="space-y-3">
           {[
-            { num: "01", title: "Habilita YouTube Live", desc: 'Ve a YouTube Studio â†’ "Ir en vivo" â†’ Configura un evento de transmisión' },
+            { num: "01", title: "Habilita YouTube Live", desc: 'Ve a YouTube Studio → "Ir en vivo" → Configura un evento de transmisión' },
             { num: "02", title: "Copia tu clave de transmisión", desc: "En YouTube Studio encontrarás la Clave de Stream. Pégala abajo." },
-            { num: "03", title: "Configura OBS Studio", desc: "En OBS: Configuración â†’ Emisión â†’ Servicio: YouTube. Ingresa la URL RTMP y tu clave." },
+            { num: "03", title: "Configura OBS Studio", desc: "En OBS: Configuración → Emisión → Servicio: YouTube. Ingresa la URL RTMP y tu clave." },
             { num: "04", title: "Inicia la transmisión", desc: 'Haz clic en "Iniciar transmisión" en OBS para ir en vivo.' },
           ].map((step) => (
             <div key={step.num} className="flex gap-4">
@@ -1802,6 +1815,86 @@ function TabStreaming() {
 }
 
 // â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// TAB: SOPORTE
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+
+function TabSoporte({ complejo, email }: { complejo?: string; email?: string }) {
+  const [comentario, setComentario] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [enviado, setEnviado] = useState(false);
+
+  async function enviar() {
+    if (!comentario.trim() || sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/reportes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origen: "complejo",
+          comentario: comentario.trim(),
+          complejo: complejo ?? null,
+          email_reportante: email ?? null,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al enviar");
+      setComentario("");
+      setEnviado(true);
+      setTimeout(() => setEnviado(false), 4000);
+    } catch {
+      setError("No se pudo enviar el reporte. Intenta de nuevo.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5 max-w-2xl">
+      <div>
+        <h2 className="text-xl font-bold text-snow tracking-tight">Reportar un problema</h2>
+        <p className="text-sm text-mist-600 mt-0.5">¿Encontraste un problema o tienes una sugerencia sobre la plataforma? Cuéntanos y te responderemos a la brevedad.</p>
+      </div>
+
+      <div className="bg-lake-800/60 border border-mist-500/8 rounded-2xl p-5 space-y-4 backdrop-blur-sm">
+        <div>
+          <label className="text-xs font-medium text-mist-400 block mb-1.5">Describe tu problema o sugerencia</label>
+          <textarea
+            value={comentario}
+            onChange={(e) => setComentario(e.target.value)}
+            placeholder="Escribe aquí lo que quieras reportar..."
+            rows={5}
+            className="w-full bg-lake-950/60 border border-lake-700 focus:border-crystal-400/40 text-snow placeholder-mist-700 rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"
+          />
+        </div>
+
+        {error && <p className="text-xs text-red-400">{error}</p>}
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={enviar}
+            disabled={!comentario.trim() || sending}
+            className="px-5 py-2.5 rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 disabled:cursor-not-allowed text-lake-950 text-sm font-semibold transition-all active:scale-[0.97] flex items-center justify-center gap-2"
+          >
+            {sending && (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            )}
+            Enviar reporte
+          </button>
+          {enviado && (
+            <span className="text-xs text-crystal-400 flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              Reporte enviado, gracias
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // MAIN DASHBOARD
 // â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
@@ -1818,25 +1911,41 @@ export default function DashboardPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace("/auth/complejo"); return; }
       setUser(session.user);
-      // El complejo del dueño se resuelve desde la tabla `complejos` cruzando
-      // owner_email con el email del usuario logueado (NO desde user_metadata,
-      // que puede venir vacío). name_complex es lo que usa TODO el panel.
-      const { data: comps } = await supabase
-        .from("complejos")
-        .select("name_complex")
-        .eq("owner_email", session.user.email ?? "")
-        .limit(1);
-      setComplejo((comps?.[0]?.name_complex as string | undefined) ?? undefined);
+      // El complejo del dueño se resuelve por su email desde la tabla `complejos`.
+      // Se hace en el servidor (/api/my-complejo, con service_role) porque el RLS
+      // de `complejos` no la deja leer desde el cliente. name_complex es lo que
+      // usa TODO el panel (Ocupación, Cámaras, Reportes, Inicio).
+      try {
+        const res = await fetch("/api/my-complejo", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.status === 401) {
+          // Token inválido/vencido (p.ej. refresh token perdido): no es "sin complejo",
+          // es sesión muerta → limpiar y mandar a re-loguear.
+          await supabase.auth.signOut({ scope: "local" });
+          router.replace("/auth/complejo");
+          return;
+        }
+        const json = await res.json();
+        setComplejo((json?.complejo as string | undefined) ?? undefined);
+      } catch {
+        setComplejo(undefined);
+      }
       setLoading(false);
     }
     init();
   }, [router]);
 
-  async function handleLogout() { await supabase.auth.signOut(); router.replace("/auth/complejo"); }
+  async function handleLogout() {
+    try { await supabase.auth.signOut({ scope: "local" }); } catch { /* sesión rota: igual redirige */ }
+    router.replace("/auth/complejo");
+  }
 
   const TAB_TITLES: Record<TabId, string> = {
     inicio: "Inicio", ocupacion: "Ocupación", camaras: "Cámaras",
     reportes: "Reportes", videos: "Videos", streaming: "Streaming",
+    soporte: "Reportar un problema",
   };
 
   if (loading) {
@@ -1914,6 +2023,7 @@ export default function DashboardPage() {
           {activeTab === "reportes"  && <TabReportes  complejo={complejo} />}
           {activeTab === "videos"    && <TabVideos    complejo={complejo} />}
           {activeTab === "streaming" && <TabStreaming />}
+          {activeTab === "soporte"   && <TabSoporte   complejo={complejo} email={user?.email} />}
         </div>
       </div>
     </div>

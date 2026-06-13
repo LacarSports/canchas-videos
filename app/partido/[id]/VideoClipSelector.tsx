@@ -51,12 +51,33 @@ interface Props {
   videoUrl: string;
   partidoId: string;
   deporte?: string | null;
+  complejo?: string;
+  numeroCancha?: number;
   clips?: ClipLocal[];
   onClipGuardado?: (clip: ClipLocal) => void;
   onPlayStart?: () => void;
 }
 
-export default function VideoClipSelector({ src, title, videoUrl, partidoId, deporte, clips, onClipGuardado, onPlayStart }: Props) {
+// Detecta el dispositivo a partir del user-agent: iPhone, Android o Desktop.
+function detectDispositivo(): string {
+  if (typeof navigator === "undefined") return "Desktop";
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iPhone";
+  if (/Android/i.test(ua)) return "Android";
+  return "Desktop";
+}
+
+// Detecta el navegador: Chrome, Safari o Firefox (orden importa: Chrome incluye "Safari").
+function detectNavegador(): string {
+  if (typeof navigator === "undefined") return "Desconocido";
+  const ua = navigator.userAgent;
+  if (/Firefox\/|FxiOS/i.test(ua)) return "Firefox";
+  if (/Chrome\/|CriOS|Edg\//i.test(ua)) return "Chrome";
+  if (/Safari\//i.test(ua)) return "Safari";
+  return "Otro";
+}
+
+export default function VideoClipSelector({ src, title, videoUrl, partidoId, deporte, complejo, numeroCancha, clips, onClipGuardado, onPlayStart }: Props) {
   const ETIQUETAS = getEtiquetas(deporte);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -124,6 +145,51 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const mobileAutoHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [settingsSheetOpened, setSettingsSheetOpened] = useState(false);
+
+  // Reportar problema (jugador)
+  const [showReportSheet, setShowReportSheet] = useState(false);
+  const [reportText, setReportText] = useState("");
+  const [reportSending, setReportSending] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportToast, setReportToast] = useState(false);
+
+  function openReportSheet() {
+    setReportError(null);
+    setShowImageSettings(false);
+    closeSettingsSheet();
+    setShowReportSheet(true);
+  }
+
+  async function handleEnviarReporte() {
+    if (!reportText.trim() || reportSending) return;
+    setReportSending(true);
+    setReportError(null);
+    try {
+      const res = await fetch("/api/reportes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origen: "jugador",
+          comentario: reportText.trim(),
+          complejo: complejo ?? null,
+          numero_cancha: numeroCancha ?? null,
+          partido_id: partidoId,
+          dispositivo: detectDispositivo(),
+          navegador: detectNavegador(),
+          url_pagina: typeof window !== "undefined" ? window.location.href : null,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al enviar");
+      setReportText("");
+      setShowReportSheet(false);
+      setReportToast(true);
+      setTimeout(() => setReportToast(false), 2800);
+    } catch {
+      setReportError("No se pudo enviar el reporte. Intenta de nuevo.");
+    } finally {
+      setReportSending(false);
+    }
+  }
 
   useEffect(() => { if (videoRef.current) videoRef.current.playbackRate = playbackSpeed; }, [playbackSpeed]);
 
@@ -388,6 +454,18 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     else if (e.key === " ") { e.preventDefault(); togglePlay(); }
   }
 
+  // Decide si un tap cae en el lado izquierdo o derecho del VIDEO para avanzar/retroceder.
+  // En fullscreen vertical el contenedor se rota 90° (horario) por CSS, así que el eje
+  // izquierda↔derecha del video corre verticalmente en la pantalla: el lado derecho queda
+  // en la mitad inferior y el izquierdo en la superior. En el resto de los casos (no
+  // fullscreen, o fullscreen ya en landscape sin rotación) se divide por el eje horizontal.
+  function tapSide(clientX: number, clientY: number, rect: DOMRect): "left" | "right" {
+    if (isCustomFullscreen && !isLandscape) {
+      return clientY - rect.top < rect.height / 2 ? "left" : "right";
+    }
+    return clientX - rect.left < rect.width / 2 ? "left" : "right";
+  }
+
   function handleTouchEnd(e: React.TouchEvent) {
     const touch = e.changedTouches[0];
     const target = e.target as HTMLElement;
@@ -403,7 +481,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
 
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
+    const side: "left" | "right" = tapSide(touch.clientX, touch.clientY, rect);
     const now = Date.now();
     const last = lastTapRef.current;
 
@@ -832,6 +910,12 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                         <input type="range" min={50} max={200} step={5} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-crystal-400 h-1 rounded-full cursor-pointer" />
                       </div>
                       <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-[11px] text-mist-600 hover:text-snow text-center py-1 hover:bg-white/5 rounded-lg transition-colors">Restablecer todo</button>
+                      <div className="border-t border-mist-500/10 pt-2">
+                        <button onClick={(e) => { e.stopPropagation(); openReportSheet(); }} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-mist-500 hover:text-amber-300 text-center py-1.5 hover:bg-white/5 rounded-lg transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" /></svg>
+                          Reportar problema
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -874,7 +958,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               const touch = e.changedTouches[0];
               const rect = containerRef.current?.getBoundingClientRect();
               if (!rect) return;
-              const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
+              const side: "left" | "right" = tapSide(touch.clientX, touch.clientY, rect);
               const now = Date.now();
               const last = lastTapRef.current;
               if (last && now - last.time < 250 && last.side === side) {
@@ -1048,8 +1132,62 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
             <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-xs text-mist-600 text-center py-2.5 border border-mist-500/10 rounded-lg">
               Restablecer todo
             </button>
+            <button onClick={openReportSheet} className="w-full flex items-center justify-center gap-2 text-xs text-mist-400 hover:text-amber-300 py-2.5 border border-mist-500/10 rounded-lg transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" /></svg>
+              Reportar problema
+            </button>
           </div>
         </>
+      )}
+
+      {/* ── Reportar problema (modal / bottom-sheet) ── */}
+      {showReportSheet && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-[60]" onClick={() => setShowReportSheet(false)} onTouchEnd={() => setShowReportSheet(false)} />
+          <div
+            className="fixed z-[60] inset-x-0 bottom-0 sm:inset-0 sm:m-auto sm:h-fit sm:max-w-md bg-lake-900 border-t sm:border border-mist-500/12 rounded-t-2xl sm:rounded-2xl px-5 pt-4 pb-8 sm:p-6 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-mist-500/30 rounded-full mx-auto mb-1 sm:hidden" />
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-snow flex items-center gap-2">
+                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" /></svg>
+                Reportar problema
+              </h3>
+              <button onClick={() => setShowReportSheet(false)} className="w-7 h-7 flex items-center justify-center text-mist-600 hover:text-snow rounded-lg hover:bg-white/5 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <textarea
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+              placeholder="Describe tu problema"
+              rows={4}
+              autoFocus
+              className="w-full bg-lake-950/60 border border-lake-700 focus:border-crystal-400/40 text-snow placeholder-mist-700 rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"
+            />
+            {reportError && <p className="text-xs text-red-400">{reportError}</p>}
+            <button
+              onClick={handleEnviarReporte}
+              disabled={!reportText.trim() || reportSending}
+              className="w-full py-2.5 rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 disabled:cursor-not-allowed text-lake-950 text-sm font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              {reportSending && (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              )}
+              Enviar reporte
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── Toast de reporte enviado ── */}
+      {reportToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 bg-lake-800 border border-crystal-400/30 text-snow text-sm px-4 py-2.5 rounded-xl shadow-2xl">
+          <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          Reporte enviado, gracias
+        </div>
       )}
 
       {/* ── Control panel ── */}
