@@ -256,8 +256,10 @@ function Sidebar({
                 : "text-mist-700 hover:text-mist-400 hover:bg-white/5"
             }`}
           >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="9.25" strokeWidth="1.5" />
+              <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M9 9.5C9 7.8 10.4 6.6 12 6.6C13.6 6.6 15 7.7 15 9.4C15 11 13.8 11.5 12.9 12.2C12.2 12.7 12 13.3 12 14.2" />
+              <circle cx="12" cy="16.6" r="1.05" fill="currentColor" stroke="none" />
             </svg>
             Reportar un problema
           </button>
