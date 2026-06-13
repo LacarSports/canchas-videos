@@ -119,6 +119,10 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
 
   const [buffering, setBuffering] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Flash central de play/pausa (estilo YouTube), solo escritorio
+  const [playFlash, setPlayFlash] = useState<{ type: "play" | "pause"; id: number } | null>(null);
+  const playFlashIdRef = useRef(0);
+  const playFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -373,10 +377,20 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     }
   }
 
+  function flashPlayPause(type: "play" | "pause") {
+    if (isMobile) return; // en móvil el feedback ya lo dan los controles
+    const id = playFlashIdRef.current + 1;
+    playFlashIdRef.current = id;
+    setPlayFlash({ type, id });
+    if (playFlashTimerRef.current) clearTimeout(playFlashTimerRef.current);
+    playFlashTimerRef.current = setTimeout(() => setPlayFlash(null), 550);
+  }
+
   function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) v.play().catch(() => {}); else v.pause();
+    if (v.paused) { v.play().catch(() => {}); flashPlayPause("play"); }
+    else { v.pause(); flashPlayPause("pause"); }
   }
 
   async function toggleFullscreen() {
@@ -737,6 +751,19 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           </div>
         )}
 
+        {/* Flash central de play/pausa (estilo YouTube) — solo escritorio */}
+        {playFlash && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+            <div key={playFlash.id} className="play-flash-indicator w-16 h-16 rounded-full bg-black/55 flex items-center justify-center backdrop-blur-sm">
+              {playFlash.type === "play" ? (
+                <svg className="w-8 h-8 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+              ) : (
+                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+              )}
+            </div>
+          </div>
+        )}
+
         {playbackSpeed !== 1 && (
           <div className="absolute top-3 right-3 pointer-events-none z-10">
             <div className="bg-crystal-400/80 backdrop-blur-sm rounded-full px-2.5 py-1 text-white text-xs font-mono">{playbackSpeed}×</div>
@@ -1045,7 +1072,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                 {isPlaying ? (
                   <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
                 ) : (
-                  <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                 )}
               </button>
               <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("right"); resetMobileAutoHide(); }}>

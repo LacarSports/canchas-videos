@@ -72,6 +72,17 @@
   100% { background-position:  200% 0; }
 }
 
+/* Flash central de play/pausa en los reproductores (estilo YouTube) */
+@keyframes play-flash {
+  0%   { opacity: 0;    transform: scale(0.6); }
+  20%  { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0;    transform: scale(1.5); }
+}
+
+.play-flash-indicator {
+  animation: play-flash 0.55s ease-out forwards;
+}
+
 /* ── Base ── */
 
 html {

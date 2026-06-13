@@ -27,6 +27,10 @@ export default function ClipPlayer({ videoUrl, inicioSeg, finSeg, duracion, blob
   const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  // Flash central de play/pausa (estilo YouTube)
+  const [playFlash, setPlayFlash] = useState<{ type: "play" | "pause"; id: number } | null>(null);
+  const playFlashIdRef = useRef(0);
+  const playFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [relTime, setRelTime] = useState(0);
   const [buffering, setBuffering] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -166,10 +170,19 @@ export default function ClipPlayer({ videoUrl, inicioSeg, finSeg, duracion, blob
     }
   }
 
+  function flashPlayPause(type: "play" | "pause") {
+    const id = playFlashIdRef.current + 1;
+    playFlashIdRef.current = id;
+    setPlayFlash({ type, id });
+    if (playFlashTimerRef.current) clearTimeout(playFlashTimerRef.current);
+    playFlashTimerRef.current = setTimeout(() => setPlayFlash(null), 550);
+  }
+
   function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
-    v.paused ? v.play().catch(() => {}) : v.pause();
+    if (v.paused) { v.play().catch(() => {}); flashPlayPause("play"); }
+    else { v.pause(); flashPlayPause("pause"); }
   }
 
   function toggleFullscreen() {
@@ -330,6 +343,19 @@ export default function ClipPlayer({ videoUrl, inicioSeg, finSeg, duracion, blob
       {buffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-8 h-8 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Flash central de play/pausa (estilo YouTube) */}
+      {playFlash && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+          <div key={playFlash.id} className="play-flash-indicator w-16 h-16 rounded-full bg-black/55 flex items-center justify-center backdrop-blur-sm">
+            {playFlash.type === "play" ? (
+              <svg className="w-8 h-8 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            ) : (
+              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+            )}
+          </div>
         </div>
       )}
 

@@ -30,6 +30,10 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
   const mobileAutoHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  // Flash central de play/pausa (estilo YouTube), solo escritorio
+  const [playFlash, setPlayFlash] = useState<{ type: "play" | "pause"; id: number } | null>(null);
+  const playFlashIdRef = useRef(0);
+  const playFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [relTime, setRelTime] = useState(0);
   const [buffering, setBuffering] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -143,10 +147,20 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
     }
   }
 
+  function flashPlayPause(type: "play" | "pause") {
+    if (isMobile) return; // en móvil el feedback ya lo dan los controles
+    const id = playFlashIdRef.current + 1;
+    playFlashIdRef.current = id;
+    setPlayFlash({ type, id });
+    if (playFlashTimerRef.current) clearTimeout(playFlashTimerRef.current);
+    playFlashTimerRef.current = setTimeout(() => setPlayFlash(null), 550);
+  }
+
   function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
-    v.paused ? v.play().catch(() => {}) : v.pause();
+    if (v.paused) { v.play().catch(() => {}); flashPlayPause("play"); }
+    else { v.pause(); flashPlayPause("pause"); }
   }
 
   async function toggleFullscreen() {
@@ -316,6 +330,19 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
         </div>
       )}
 
+      {/* Flash central de play/pausa (estilo YouTube) — solo escritorio */}
+      {playFlash && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+          <div key={playFlash.id} className={`play-flash-indicator rounded-full bg-black/55 flex items-center justify-center backdrop-blur-sm ${compact ? "w-12 h-12" : "w-16 h-16"}`}>
+            {playFlash.type === "play" ? (
+              <svg className={`text-white ml-0.5 ${compact ? "w-6 h-6" : "w-8 h-8"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            ) : (
+              <svg className={`text-white ${compact ? "w-6 h-6" : "w-8 h-8"}`} fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Desktop controls overlay ── */}
       {!isMobile && (
         <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent ${compact ? "px-2 pb-2 pt-6" : "px-3 pb-2.5 pt-8"}`}>
@@ -436,7 +463,7 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
               {isPlaying ? (
                 <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
               ) : (
-                <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
               )}
             </button>
             <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("right"); resetMobileAutoHide(); }}>
