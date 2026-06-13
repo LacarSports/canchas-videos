@@ -1657,7 +1657,7 @@ function TabVideos({ complejo }: { complejo?: string }) {
                 const isExpanded = playingId === j.id && !!j.partidos?.archivo_url;
 
                 return (
-                  <div key={j.id} className="bg-lake-800/70 border border-mist-500/8 rounded-xl overflow-hidden hover:border-crystal-400/20 transition-colors backdrop-blur-sm">
+                  <div key={j.id} className="bg-lake-800/70 border border-mist-500/8 rounded-xl overflow-hidden hover:border-crystal-400/20 transition-colors">
                     {/* Header — click to toggle player */}
                     <button
                       onClick={() => j.partidos?.archivo_url && setPlayingId(playingId === j.id ? null : j.id)}
@@ -1690,16 +1690,19 @@ function TabVideos({ complejo }: { complejo?: string }) {
                       )}
                     </button>
 
-                    {/* Expandable player */}
-                    <div className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? "max-h-[260px]" : "max-h-0"}`}>
+                    {/* Expandable player — ancho acotado para que la barra de controles
+                        (progreso, audio, pantalla completa) no se recorte en tarjetas anchas */}
+                    <div className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? "max-h-[320px]" : "max-h-0"}`}>
                       {isExpanded && (
-                        <InlineClipPlayer
-                          videoUrl={buildVideoUrl(j.partidos!.archivo_url!)}
-                          inicioSeg={j.inicio_seg}
-                          finSeg={j.fin_seg}
-                          duracion={j.duracion}
-                          compact
-                        />
+                        <div className="max-w-[480px] mx-auto">
+                          <InlineClipPlayer
+                            videoUrl={buildVideoUrl(j.partidos!.archivo_url!)}
+                            inicioSeg={j.inicio_seg}
+                            finSeg={j.fin_seg}
+                            duracion={j.duracion}
+                            compact
+                          />
+                        </div>
                       )}
                     </div>
 
