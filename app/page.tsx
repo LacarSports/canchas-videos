@@ -471,7 +471,7 @@ export default async function HomePage({
           {/* Logo + copy */}
           <a href="/" className="flex items-center gap-2.5">
             <Image
-              src="/logo.png"
+              src="/logo-small.png"
               alt="Lacar Sports"
               width={28}
               height={28}

@@ -65,7 +65,7 @@ export default function ComplejoLoginPage() {
         {/* Logo */}
         <a href="/" className="flex items-center gap-2.5 justify-center mb-8">
           <Image
-            src="/logo.png"
+            src="/logo-small.png"
             alt="Lacar Sports"
             width={38}
             height={38}

@@ -200,7 +200,7 @@ function Sidebar({
         <div className="relative px-5 py-5 border-b border-mist-500/8">
           <a href="/" className="flex items-center gap-2">
             <Image
-              src="/logo.png"
+              src="/logo-small.png"
               alt="Lacar Sports"
               width={28}
               height={28}
@@ -474,32 +474,51 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
   const today = new Date().toISOString().split("T")[0];
   const [fecha, setFecha] = useState(today);
   const [partidos, setPartidos] = useState<Partido[]>([]);
+  const [ocupaciones, setOcupaciones] = useState<{ numero_cancha: number; hora: string; ocupada: boolean }[]>([]);
   const [canchas, setCanchas] = useState<number[]>([1, 2, 3]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    let q = supabase.from("partidos").select("*").eq("fecha", fecha).order("hora");
-    if (complejo) q = q.ilike("complejo", `%${complejo}%`);
-    q.then(({ data }) => {
-      const ps = (data ?? []) as Partido[];
+    async function load() {
+      // Ocupación real (por movimiento)
+      let qO = supabase.from("ocupacion_canchas").select("numero_cancha, hora, ocupada").eq("fecha", fecha);
+      if (complejo) qO = qO.ilike("complejo", `%${complejo}%`);
+      // Videos disponibles (por grabación)
+      let qP = supabase.from("partidos").select("*").eq("fecha", fecha).order("hora");
+      if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
+
+      const [{ data: ocData }, { data: pData }] = await Promise.all([qO, qP]);
+      const ocs = (ocData ?? []) as { numero_cancha: number; hora: string; ocupada: boolean }[];
+      const ps = (pData ?? []) as Partido[];
+      setOcupaciones(ocs);
       setPartidos(ps);
-      const nums = Array.from(new Set(ps.map((p) => p.numero_cancha))).sort((a, b) => a - b) as number[];
+
+      const nums = Array.from(
+        new Set([...ocs.map((o) => o.numero_cancha), ...ps.map((p) => p.numero_cancha)])
+      ).sort((a, b) => a - b);
       setCanchas(nums.length > 0 ? nums : [1, 2, 3]);
       setLoading(false);
-    });
+    }
+    load();
   }, [fecha, complejo]);
 
   function getPartido(cancha: number, hora: string) {
     return partidos.find((p) => p.numero_cancha === cancha && p.hora.substring(0, 5) === hora);
   }
+  function isOcupada(cancha: number, hora: string) {
+    const o = ocupaciones.find((x) => x.numero_cancha === cancha && x.hora.substring(0, 5) === hora);
+    return o?.ocupada === true;
+  }
+
+  const sinDatos = ocupaciones.length === 0 && partidos.length === 0;
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-snow tracking-tight">Ocupación de Canchas</h2>
-          <p className="text-sm text-mist-600 mt-0.5">Horarios grabados por cancha y día</p>
+          <p className="text-sm text-mist-600 mt-0.5">Ocupación real y videos disponibles por cancha y día</p>
         </div>
         <input
           type="date"
@@ -509,10 +528,14 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
         />
       </div>
 
-      <div className="flex items-center gap-5 text-xs text-mist-600">
+      <div className="flex items-center gap-5 text-xs text-mist-600 flex-wrap">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-crystal-400/25 border border-crystal-400/35 inline-block" />
-          Grabado
+          Ocupada
+        </span>
+        <span className="flex items-center gap-1.5">
+          <svg className="w-3.5 h-3.5 text-crystal-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          Video disponible
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-white/5 border border-white/10 inline-block" />
@@ -524,81 +547,87 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-mist-500/8">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="bg-lake-900 text-mist-700 text-xs font-medium text-left px-4 py-2.5 sticky left-0 z-10 min-w-[100px] border-b border-mist-500/8">
-                  Cancha
-                </th>
-                {HORA_SLOTS.map((h) => (
-                  <th key={h} className="bg-lake-900 text-mist-700 text-xs font-medium text-center px-1 py-2.5 border-b border-mist-500/8 min-w-[52px]">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {canchas.map((c, ri) => (
-                <tr key={c}>
-                  <td className={`bg-lake-800/60 text-mist-400 text-xs font-semibold px-4 py-3 sticky left-0 z-10 ${ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""}`}>
-                    Cancha {c}
-                  </td>
-                  {HORA_SLOTS.map((h) => {
-                    const p = getPartido(c, h);
-                    return (
-                      <td
-                        key={h}
-                        title={p ? `${p.complejo} · ${p.duracion_minutos} min` : undefined}
-                        className={`text-center text-xs py-3 transition-colors ${
-                          ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""
-                        } ${
-                          p
-                            ? "bg-crystal-400/18 text-crystal-400"
-                            : "bg-lake-950 text-mist-700"
-                        }`}
-                      >
-                        {p ? (
-                          <a
-                            href={`/partido/${p.id}`}
-                            title="Ver partido"
-                            className="flex items-center justify-center mx-auto w-7 h-7 rounded-lg hover:bg-crystal-400/30 transition-colors"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </a>
-                        ) : "-"}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {!loading && partidos.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Partidos grabados", value: partidos.length },
-            { label: "Canchas activas", value: canchas.length },
-            { label: "Horas grabadas", value: Math.round(partidos.reduce((s, p) => s + p.duracion_minutos, 0) / 60) + " h" },
-          ].map((s) => (
-            <div key={s.label} className="bg-lake-800/60 border border-mist-500/8 rounded-xl p-4">
-              <div className="text-xl font-bold text-crystal-400">{s.value}</div>
-              <div className="text-xs text-mist-600 mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!loading && partidos.length === 0 && (
+      ) : sinDatos ? (
         <div className="text-center py-12 text-mist-600 text-sm">
-          No hay partidos grabados en esta fecha
+          No hay datos de ocupación ni videos en esta fecha
         </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-xl border border-mist-500/8">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="bg-lake-900 text-mist-700 text-xs font-medium text-left px-4 py-2.5 sticky left-0 z-10 min-w-[100px] border-b border-mist-500/8">
+                    Cancha
+                  </th>
+                  {HORA_SLOTS.map((h) => (
+                    <th key={h} className="bg-lake-900 text-mist-700 text-xs font-medium text-center px-1 py-2.5 border-b border-mist-500/8 min-w-[52px]">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {canchas.map((c, ri) => (
+                  <tr key={c}>
+                    <td className={`bg-lake-800/60 text-mist-400 text-xs font-semibold px-4 py-3 sticky left-0 z-10 ${ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""}`}>
+                      Cancha {c}
+                    </td>
+                    {HORA_SLOTS.map((h) => {
+                      const p = getPartido(c, h);
+                      const ocupada = isOcupada(c, h);
+                      const titleParts = [ocupada ? "Ocupada" : null, p ? `Video · ${p.duracion_minutos} min` : null].filter(Boolean);
+                      return (
+                        <td
+                          key={h}
+                          title={titleParts.length ? titleParts.join(" · ") : undefined}
+                          className={`text-center text-xs py-3 transition-colors ${
+                            ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""
+                          } ${
+                            ocupada
+                              ? "bg-crystal-400/18 text-crystal-400"
+                              : "bg-lake-950 text-mist-700"
+                          }`}
+                        >
+                          {p ? (
+                            <a
+                              href={`/partido/${p.id}`}
+                              title="Ver partido"
+                              className="flex items-center justify-center mx-auto w-7 h-7 rounded-lg text-crystal-400 hover:bg-crystal-400/30 transition-colors"
+                            >
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </a>
+                          ) : ocupada ? (
+                            <svg className="w-3.5 h-3.5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : "-"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {partidos.length > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Partidos grabados", value: partidos.length },
+                { label: "Canchas activas", value: canchas.length },
+                { label: "Horas grabadas", value: Math.round(partidos.reduce((s, p) => s + p.duracion_minutos, 0) / 60) + " h" },
+              ].map((s) => (
+                <div key={s.label} className="bg-lake-800/60 border border-mist-500/8 rounded-xl p-4">
+                  <div className="text-xl font-bold text-crystal-400">{s.value}</div>
+                  <div className="text-xs text-mist-600 mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1163,7 +1192,7 @@ interface ReporteData {
   usuariosNuevos: number;
   usuariosAcumulados: number;
   evolucion: { mes: string; acumulados: number; nuevos: number }[];
-  porEtiqueta: { etiqueta: string; cantidad: number }[];
+  porEtiqueta: { deporte: string; items: { etiqueta: string; cantidad: number }[] }[];
   promedioHorasCancha: number;
   horasPorCancha: { cancha: string; horas: number }[];
   porHora: { hora: string; partidos: number }[];
@@ -1191,17 +1220,17 @@ function TabReportes({ complejo }: { complejo?: string }) {
       const { start, end } = getMonthRange(year, month);
 
       // Partidos del mes (públicos + privados)
-      let qP = supabase.from("partidos").select("id, numero_cancha, duracion_minutos, hora").gte("fecha", start).lte("fecha", end);
+      let qP = supabase.from("partidos").select("id, numero_cancha, duracion_minutos, hora, deporte").gte("fecha", start).lte("fecha", end);
       if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
       const { data: psData } = await qP;
-      const partidos = (psData ?? []) as { id: string; numero_cancha: number; duracion_minutos: number; hora: string }[];
+      const partidos = (psData ?? []) as { id: string; numero_cancha: number; duracion_minutos: number; hora: string; deporte: string | null }[];
 
       // Jugadas del mes
       const partidoIds = partidos.map((p) => p.id);
-      let jugadas: { etiqueta: string }[] = [];
+      let jugadas: { etiqueta: string; partido_id: string }[] = [];
       if (partidoIds.length > 0) {
         const { data: jd } = await supabase.from("jugadas").select("etiqueta, partido_id").in("partido_id", partidoIds);
-        jugadas = (jd ?? []) as { etiqueta: string }[];
+        jugadas = (jd ?? []) as { etiqueta: string; partido_id: string }[];
       }
 
       // Visitas del mes
@@ -1243,12 +1272,26 @@ function TabReportes({ complejo }: { complejo?: string }) {
         evolucion.push({ mes: y === year ? MESES_CORTOS[m - 1] : `${MESES_CORTOS[m - 1]} ${String(y).slice(2)}`, acumulados, nuevos });
       }
 
-      // Jugadas por etiqueta
-      const etqMap: Record<string, number> = {};
-      for (const j of jugadas) etqMap[j.etiqueta] = (etqMap[j.etiqueta] ?? 0) + 1;
-      const porEtiqueta = Object.entries(etqMap)
-        .map(([etiqueta, cantidad]) => ({ etiqueta, cantidad }))
-        .sort((a, b) => b.cantidad - a.cantidad);
+      // Jugadas por etiqueta, separadas por deporte
+      const deporteByPartido: Record<string, "futbol" | "padel"> = {};
+      for (const p of partidos) {
+        const d = String(p.deporte ?? "").toLowerCase();
+        deporteByPartido[p.id] = d.includes("padel") || d.includes("pádel") ? "padel" : "futbol";
+      }
+      const etqByDep: Record<"futbol" | "padel", Record<string, number>> = { futbol: {}, padel: {} };
+      for (const j of jugadas) {
+        const dep = deporteByPartido[j.partido_id] ?? "futbol";
+        etqByDep[dep][j.etiqueta] = (etqByDep[dep][j.etiqueta] ?? 0) + 1;
+      }
+      const DEP_LABEL: Record<"futbol" | "padel", string> = { futbol: "Fútbol", padel: "Pádel" };
+      const porEtiqueta = (["futbol", "padel"] as const)
+        .map((dep) => ({
+          deporte: DEP_LABEL[dep],
+          items: Object.entries(etqByDep[dep])
+            .map(([etiqueta, cantidad]) => ({ etiqueta, cantidad }))
+            .sort((a, b) => b.cantidad - a.cantidad),
+        }))
+        .filter((g) => g.items.length > 0);
 
       // Horas por cancha + promedio
       const minPorCancha: Record<number, number> = {};
@@ -1266,9 +1309,8 @@ function TabReportes({ complejo }: { complejo?: string }) {
         if (!h) continue;
         horaMap[`${h}:00`] = (horaMap[`${h}:00`] ?? 0) + 1;
       }
-      const porHora = Object.entries(horaMap)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([hora, count]) => ({ hora, partidos: count }));
+      // Rango completo de horas (07:00–23:00), con 0 donde no hubo partidos
+      const porHora = HORA_SLOTS.map((hora) => ({ hora, partidos: horaMap[hora] ?? 0 }));
 
       setReport({
         videos: partidos.length,
@@ -1355,22 +1397,29 @@ function TabReportes({ complejo }: { complejo?: string }) {
             )}
           </ChartCard>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* SECCIÓN 3 — Jugadas por etiqueta */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+            {/* SECCIÓN 3 — Jugadas por etiqueta (separadas por deporte) */}
             <ChartCard title="Jugadas por etiqueta">
               {report.porEtiqueta.length === 0 ? (
                 <p className="text-mist-600 text-sm text-center py-10">Sin datos</p>
               ) : (
-                <div style={{ width: "100%", height: Math.max(180, report.porEtiqueta.length * 46) }}>
-                  <ResponsiveContainer>
-                    <BarChart layout="vertical" data={report.porEtiqueta} margin={{ top: 4, right: 20, left: 8, bottom: 4 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
-                      <XAxis type="number" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: "#ffffff14" }} allowDecimals={false} />
-                      <YAxis type="category" dataKey="etiqueta" tick={AXIS_TICK} tickLine={false} axisLine={false} width={88} />
-                      <Tooltip contentStyle={TOOLTIP_CONTENT} labelStyle={TOOLTIP_LABEL} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                      <Bar dataKey="cantidad" name="Jugadas" fill="#29c4ad" radius={[0, 4, 4, 0]} barSize={18} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="space-y-5">
+                  {report.porEtiqueta.map((g) => (
+                    <div key={g.deporte}>
+                      <h4 className="text-xs font-semibold text-mist-400 uppercase tracking-wider mb-2">{g.deporte}</h4>
+                      <div style={{ width: "100%", height: Math.max(120, g.items.length * 42) }}>
+                        <ResponsiveContainer>
+                          <BarChart layout="vertical" data={g.items} margin={{ top: 4, right: 20, left: 8, bottom: 4 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
+                            <XAxis type="number" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: "#ffffff14" }} allowDecimals={false} />
+                            <YAxis type="category" dataKey="etiqueta" tick={AXIS_TICK} tickLine={false} axisLine={false} width={92} />
+                            <Tooltip contentStyle={TOOLTIP_CONTENT} labelStyle={TOOLTIP_LABEL} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                            <Bar dataKey="cantidad" name="Jugadas" fill={g.deporte === "Pádel" ? "#4daec4" : "#29c4ad"} radius={[0, 4, 4, 0]} barSize={18} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </ChartCard>
@@ -1401,7 +1450,7 @@ function TabReportes({ complejo }: { complejo?: string }) {
 
           {/* SECCIÓN 5 — Horario peak */}
           <ChartCard title="Horario peak (partidos por hora de inicio)" full>
-            {report.porHora.length === 0 ? (
+            {report.porHora.every((h) => h.partidos === 0) ? (
               <p className="text-mist-600 text-sm text-center py-10">Sin datos</p>
             ) : (
               <div style={{ width: "100%", height: 260 }}>

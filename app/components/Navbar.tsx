@@ -22,7 +22,7 @@ export default function Navbar() {
           {/* Logo */}
           <a href="/" className="flex items-center gap-2.5 shrink-0">
             <Image
-              src="/logo.png"
+              src="/logo-small.png"
               alt="Lacar Sports"
               width={32}
               height={32}
