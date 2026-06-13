@@ -1,18 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 
+// Usa la service_role key (solo servidor) para poder escribir en `partidos`,
+// cuyo RLS no permite UPDATE con la anon key. Si no está, cae a la anon
+// (y entonces requiere una policy de UPDATE en `partidos`).
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { persistSession: false } },
 );
 
 type Estado = "publico" | "privado" | "bloqueado";
-
-// "19:00" -> "20:00:00" (Postgres time acepta "24:00:00" para el slot de las 23:00)
-function nextHour(hora: string) {
-  const h = parseInt(hora.slice(0, 2), 10) + 1;
-  return `${h.toString().padStart(2, "0")}:00:00`;
-}
 
 // Detecta tabla/columna faltante para que la UI muestre el SQL de migración
 function isSchemaError(error: { code?: string; message?: string } | null) {
@@ -68,27 +66,43 @@ export async function POST(req: Request) {
     return Response.json({ error: csError.message }, { status: 500 });
   }
 
-  // 2) Sincronizar partidos ya grabados de esos bloques (retroactivo)
-  //    bloqueado: no se tocan los partidos existentes (el bloqueo es hacia adelante)
+  // 2) Sincronizar partidos ya grabados de esos bloques (retroactivo).
+  //    OJO: partidos.hora puede venir como "HH:MM", "HH:MM:SS" o un rango "HH:MM - HH:MM",
+  //    por eso NO comparamos como time: traemos los partidos de la fecha/cancha y
+  //    filtramos por el prefijo HH:MM (los primeros 5 chars).
+  //    bloqueado: no se tocan los partidos existentes (el bloqueo es hacia adelante).
+  let partidosActualizados = 0;
   if (est !== "bloqueado") {
-    for (const hora of horasList) {
-      let q = supabase
+    let sel = supabase
+      .from("partidos")
+      .select("id, hora")
+      .eq("numero_cancha", numero_cancha)
+      .eq("fecha", fecha);
+    if (complejo) sel = sel.ilike("complejo", `%${complejo}%`);
+    const { data: candidatos, error: selError } = await sel;
+    if (selError) return Response.json({ error: selError.message }, { status: 500 });
+
+    const update =
+      est === "privado"
+        ? passwordHash
+          ? { privado: true, password_hash: passwordHash }
+          : { privado: true }
+        : { privado: false, password_hash: null };
+
+    const ids = (candidatos ?? [])
+      .filter((p) => horasList.includes(String((p as { hora: string }).hora ?? "").slice(0, 5)))
+      .map((p) => (p as { id: string }).id);
+
+    if (ids.length > 0) {
+      const { data: updated, error: updError } = await supabase
         .from("partidos")
-        .update(
-          est === "privado"
-            ? passwordHash
-              ? { privado: true, password_hash: passwordHash }
-              : { privado: true }
-            : { privado: false, password_hash: null },
-        )
-        .eq("numero_cancha", numero_cancha)
-        .eq("fecha", fecha)
-        .gte("hora", `${hora}:00`)
-        .lt("hora", nextHour(hora));
-      if (complejo) q = q.ilike("complejo", `%${complejo}%`);
-      await q;
+        .update(update)
+        .in("id", ids)
+        .select("id");
+      if (updError) return Response.json({ error: updError.message }, { status: 500 });
+      partidosActualizados = updated?.length ?? 0;
     }
   }
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, partidosActualizados });
 }

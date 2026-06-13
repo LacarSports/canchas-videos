@@ -1809,19 +1809,30 @@ export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [complejo, setComplejo] = useState<string | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<TabId>("inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.replace("/auth/complejo");
-      else { setUser(session.user); setLoading(false); }
-    });
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace("/auth/complejo"); return; }
+      setUser(session.user);
+      // El complejo del dueño se resuelve desde la tabla `complejos` cruzando
+      // owner_email con el email del usuario logueado (NO desde user_metadata,
+      // que puede venir vacío). name_complex es lo que usa TODO el panel.
+      const { data: comps } = await supabase
+        .from("complejos")
+        .select("name_complex")
+        .eq("owner_email", session.user.email ?? "")
+        .limit(1);
+      setComplejo((comps?.[0]?.name_complex as string | undefined) ?? undefined);
+      setLoading(false);
+    }
+    init();
   }, [router]);
 
   async function handleLogout() { await supabase.auth.signOut(); router.replace("/auth/complejo"); }
-
-  const complejo = user?.user_metadata?.complejo as string | undefined;
 
   const TAB_TITLES: Record<TabId, string> = {
     inicio: "Inicio", ocupacion: "Ocupación", camaras: "Cámaras",
@@ -1834,6 +1845,32 @@ export default function DashboardPage() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-7 h-7 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
           <span className="text-mist-600 text-sm">Cargando panel...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // El email del usuario no tiene ningún complejo asociado en la tabla `complejos`
+  if (!complejo) {
+    return (
+      <div className="min-h-[100dvh] bg-lake-950 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-lake-800/60 border border-amber-500/20 rounded-2xl p-8 text-center space-y-4 backdrop-blur-sm">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 mx-auto flex items-center justify-center">
+            <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-snow">Sin complejo asociado</h2>
+            <p className="text-sm text-mist-500 mt-1">Tu cuenta no tiene un complejo asociado. Contacta a soporte.</p>
+          </div>
+          {user?.email && <p className="text-xs text-mist-700 font-mono break-all">{user.email}</p>}
+          <button
+            onClick={handleLogout}
+            className="w-full py-2.5 rounded-xl border border-white/10 text-mist-400 hover:text-snow hover:border-white/20 text-sm font-medium transition-all"
+          >
+            Cerrar sesión
+          </button>
         </div>
       </div>
     );
