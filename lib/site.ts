@@ -5,10 +5,10 @@
 // ──────────────────────────────────────────────────────────────
 
 /**
- * Número de WhatsApp de contacto (formato internacional, sin "+").
- * TODO: reemplazar el placeholder por el número real de Lacar Sports.
+ * Número de WhatsApp de contacto (formato internacional, sin "+" ni espacios).
+ * +569 6502 0945 → "56965020945"
  */
-export const WHATSAPP_NUMBER = "56XXXXXXXXX";
+export const WHATSAPP_NUMBER = "56965020945";
 
 /** Mensaje pre-llenado para los CTA de dueños de complejos. */
 export const WHATSAPP_DUENOS_MESSAGE =
