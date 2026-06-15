@@ -1909,7 +1909,20 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [complejo, setComplejo] = useState<string | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<TabId>("inicio");
+  // Tabs que ya se abrieron: se mantienen montados (ocultos) para conservar
+  // su estado —fechas, filtros, etc.— al cambiar de sección sin recargar.
+  const [visited, setVisited] = useState<Set<TabId>>(() => new Set<TabId>(["inicio"]));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  function changeTab(tab: TabId) {
+    setActiveTab(tab);
+    setVisited((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  }
 
   useEffect(() => {
     async function init() {
@@ -1992,7 +2005,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-[100dvh] bg-lake-950 flex">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} complejo={complejo} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar activeTab={activeTab} onTabChange={changeTab} onLogout={handleLogout} complejo={complejo} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content */}
       <div className="flex-1 lg:pl-60 min-w-0">
@@ -2020,15 +2033,18 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Tab content */}
+        {/* Tab content — keep-alive: cada tab visitado se mantiene montado y
+            solo se oculta, para conservar su estado al cambiar de sección.
+            Streaming se exceptúa (se monta solo cuando está activo) para no
+            dejar una transmisión en vivo corriendo en segundo plano. */}
         <div className="p-4 sm:p-8">
-          {activeTab === "inicio"    && <TabInicio    user={user} complejo={complejo} />}
-          {activeTab === "ocupacion" && <TabOcupacion complejo={complejo} />}
-          {activeTab === "camaras"   && <TabCamaras   complejo={complejo} />}
-          {activeTab === "reportes"  && <TabReportes  complejo={complejo} />}
-          {activeTab === "videos"    && <TabVideos    complejo={complejo} />}
+          {visited.has("inicio")    && <div hidden={activeTab !== "inicio"}><TabInicio    user={user} complejo={complejo} /></div>}
+          {visited.has("ocupacion") && <div hidden={activeTab !== "ocupacion"}><TabOcupacion complejo={complejo} /></div>}
+          {visited.has("camaras")   && <div hidden={activeTab !== "camaras"}><TabCamaras   complejo={complejo} /></div>}
+          {visited.has("reportes")  && <div hidden={activeTab !== "reportes"}><TabReportes  complejo={complejo} /></div>}
+          {visited.has("videos")    && <div hidden={activeTab !== "videos"}><TabVideos    complejo={complejo} /></div>}
           {activeTab === "streaming" && <TabStreaming />}
-          {activeTab === "soporte"   && <TabSoporte   complejo={complejo} email={user?.email} />}
+          {visited.has("soporte")   && <div hidden={activeTab !== "soporte"}><TabSoporte   complejo={complejo} email={user?.email} /></div>}
         </div>
       </div>
     </div>

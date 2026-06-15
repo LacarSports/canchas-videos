@@ -6,8 +6,9 @@ import { WHATSAPP_URL } from "@/lib/site";
 interface WhatsAppButtonProps {
   /** Id de la sección donde empieza a mostrarse el botón. */
   startId?: string;
-  /** Id de la sección donde deja de mostrarse (su borde inferior). Por
-   *  defecto coincide con startId (visible solo en esa sección). */
+  /** Id de la sección que, al entrar al viewport, hace DESAPARECER el botón
+   *  (su borde superior). Sin endId, el botón se muestra solo mientras la
+   *  sección startId está a la vista. */
   endId?: string;
 }
 
@@ -27,12 +28,18 @@ export default function WhatsAppButton({
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const startTop = start.getBoundingClientRect().top + window.scrollY;
-        const endEl = end ?? start;
-        const endBottom = endEl.getBoundingClientRect().bottom + window.scrollY;
-        const viewTop = window.scrollY;
         const viewBottom = window.scrollY + window.innerHeight;
-        // Visible cuando la banda [startTop, endBottom] se cruza con el viewport.
-        setVisible(viewBottom > startTop && viewTop < endBottom);
+        const pastStart = viewBottom > startTop; // startId ya apareció
+
+        if (end) {
+          // Visible desde startId hasta que endId asoma por abajo del viewport.
+          const endTop = end.getBoundingClientRect().top + window.scrollY;
+          setVisible(pastStart && viewBottom < endTop);
+        } else {
+          // Sin endId: visible mientras la sección startId esté a la vista.
+          const startBottom = start.getBoundingClientRect().bottom + window.scrollY;
+          setVisible(pastStart && window.scrollY < startBottom);
+        }
       });
     };
 

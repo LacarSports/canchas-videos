@@ -83,7 +83,7 @@ export default function Navbar() {
   const isOwners = pathname.startsWith("/complejos");
   const links = isOwners ? OWNER_LINKS : PLAYER_LINKS;
   const cta: NavLink = isOwners
-    ? { href: "/auth/complejo", label: "Iniciar sesión" }
+    ? { href: "/auth/complejo", label: "Mi panel" }
     : { href: "/#buscador", label: "Buscar partido" };
 
   return (

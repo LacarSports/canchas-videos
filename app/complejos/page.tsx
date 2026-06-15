@@ -166,8 +166,8 @@ export default function ComplejosPage() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tighter leading-[0.98] mb-6 animate-slide-up" style={{ animationDelay: "0.1s" }}>
-              <span className="text-snow">Lleva tu complejo al</span>{" "}
-              <span className="text-crystal-400" style={{ textShadow: "0 0 45px rgba(41,196,173,0.5)" }}>siguiente nivel.</span>
+              <span className="text-snow">Tu complejo al siguiente nivel,</span>{" "}
+              <span className="text-crystal-400" style={{ textShadow: "0 0 45px rgba(41,196,173,0.5)" }}>súmate al cambio.</span>
             </h1>
 
             <p className="text-base sm:text-lg text-mist-400 mb-9 leading-relaxed max-w-[52ch] animate-slide-up" style={{ animationDelay: "0.18s" }}>
@@ -344,7 +344,7 @@ export default function ComplejosPage() {
       {/* ══════════════════════════════════════════════ */}
       {/* CTA FINAL                                      */}
       {/* ══════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 overflow-hidden" style={{ background: "linear-gradient(160deg, #041520 0%, #0a2238 55%, #041520 100%)" }}>
+      <section id="cta-final" className="relative py-24 px-6 overflow-hidden" style={{ background: "linear-gradient(160deg, #041520 0%, #0a2238 55%, #041520 100%)" }}>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full animate-aurora" style={{ background: "radial-gradient(circle, rgba(41,196,173,0.16), transparent 70%)", filter: "blur(90px)" }} />
         </div>
@@ -372,7 +372,7 @@ export default function ComplejosPage() {
 
       <Footer />
 
-      <WhatsAppButton startId="como-funciona" endId="faq" />
+      <WhatsAppButton startId="como-funciona" endId="cta-final" />
     </main>
   );
 }
