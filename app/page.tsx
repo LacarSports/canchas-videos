@@ -1,10 +1,13 @@
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import SearchFilters from "./components/SearchFilters";
-import StatsCounter from "./components/StatsCounter";
 import PartidoCard from "./components/PartidoCard";
 import ResultsContainer from "./components/ResultsContainer";
 import WhatsAppButton from "./components/WhatsAppButton";
+import Reveal from "./components/Reveal";
+import HeroParallax from "./components/HeroParallax";
+import Footer from "./components/Footer";
+import { HOME_TESTIMONIALS } from "@/lib/site";
 
 interface Partido {
   id: string;
@@ -24,7 +27,6 @@ interface SearchParams {
   fecha?: string;
   hora?: string;
 }
-
 
 function buildVideoUrl(archivoUrl: string) {
   if (archivoUrl.startsWith("http")) return archivoUrl;
@@ -82,8 +84,9 @@ export default async function HomePage({
         <div className="absolute inset-0 bg-gradient-to-r from-lake-950/95 via-lake-950/60 to-lake-950/20 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-lake-950/80 via-transparent to-lake-950/30 pointer-events-none" />
 
-        {/* Blobs de color — clipeados en su propio contenedor para no afectar iOS touch */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Blobs de color — con parallax sutil al mouse (desktop). Clipeados
+            en su propio contenedor para no afectar el touch en iOS. */}
+        <HeroParallax strength={8} className="absolute inset-0 overflow-hidden pointer-events-none">
           <div
             className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full animate-water-drift"
             style={{ background: "radial-gradient(circle, rgba(41,196,173,0.22), transparent 70%)", filter: "blur(80px)" }}
@@ -96,7 +99,7 @@ export default async function HomePage({
             className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full"
             style={{ background: "radial-gradient(circle, rgba(41,196,173,0.08), transparent 70%)", filter: "blur(60px)" }}
           />
-        </div>
+        </HeroParallax>
 
         {/* Content grid */}
         <div className="relative z-10 max-w-7xl mx-auto px-6 w-full py-28 grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-16 items-center">
@@ -152,101 +155,103 @@ export default async function HomePage({
             </div>
           </div>
 
-          {/* ── Right — floating card mockup ── */}
+          {/* ── Right — floating card mockup (con parallax al mouse) ── */}
           <div className="hidden lg:flex justify-center items-center">
-            <div className="relative animate-float">
-              {/* Glow halo */}
-              <div
-                className="absolute -inset-8 rounded-3xl pointer-events-none"
-                style={{ background: "radial-gradient(circle, rgba(41,196,173,0.22), transparent 70%)", filter: "blur(28px)" }}
-              />
+            <HeroParallax strength={18}>
+              <div className="relative animate-float">
+                {/* Glow halo */}
+                <div
+                  className="absolute -inset-8 rounded-3xl pointer-events-none"
+                  style={{ background: "radial-gradient(circle, rgba(41,196,173,0.22), transparent 70%)", filter: "blur(28px)" }}
+                />
 
-              {/* Card */}
-              <div className="relative bg-lake-900/80 border border-crystal-400/20 rounded-2xl overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl w-[340px]">
+                {/* Card */}
+                <div className="relative bg-lake-900/80 border border-crystal-400/20 rounded-2xl overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl w-[340px]">
 
-                {/* Video area */}
-                <div className="aspect-video relative overflow-hidden flex items-center justify-center">
+                  {/* Video area */}
+                  <div className="aspect-video relative overflow-hidden flex items-center justify-center">
 
-                  {/* Thumbnail real del partido */}
-                  <Image
-                    src="/thumbnail.png"
-                    alt="Partido de fútbol"
-                    fill
-                    className="object-cover object-center"
-                    sizes="340px"
-                    priority
-                  />
+                    {/* Thumbnail real del partido */}
+                    <Image
+                      src="/thumbnail.png"
+                      alt="Partido de fútbol"
+                      fill
+                      className="object-cover object-center"
+                      sizes="340px"
+                      priority
+                    />
 
-                  {/* Overlay: oscurece levemente para que los badges sean legibles */}
-                  <div className="absolute inset-0 bg-lake-950/40" />
-                  {/* Viñeta inferior para el fade hacia la card info */}
-                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-lake-900/90 to-transparent" />
+                    {/* Overlay: oscurece levemente para que los badges sean legibles */}
+                    <div className="absolute inset-0 bg-lake-950/40" />
+                    {/* Viñeta inferior para el fade hacia la card info */}
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-lake-900/90 to-transparent" />
 
-                  {/* Play */}
-                  <div className="relative z-10 w-14 h-14 rounded-full bg-black/40 border border-white/30 flex items-center justify-center backdrop-blur-sm shadow-[0_0_24px_rgba(0,0,0,0.5)]">
-                    <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </div>
-
-                  {/* Grabando badge */}
-                  <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-lake-950/70 border border-crystal-400/30 text-crystal-300 text-[11px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-crystal-400 animate-pulse" />
-                    Grabando
-                  </div>
-
-                  {/* Duración */}
-                  <span className="absolute bottom-2.5 right-2.5 z-10 text-[11px] font-mono text-white/80 bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                    60:01
-                  </span>
-                </div>
-
-                {/* Card info */}
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="min-w-0">
-                      <p className="text-snow font-semibold text-sm truncate">Complejo Lacar Norte</p>
-                      <p className="text-mist-700 text-xs mt-0.5">Santiago</p>
+                    {/* Play */}
+                    <div className="relative z-10 w-14 h-14 rounded-full bg-black/40 border border-white/30 flex items-center justify-center backdrop-blur-sm shadow-[0_0_24px_rgba(0,0,0,0.5)]">
+                      <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
                     </div>
-                    <span className="shrink-0 bg-crystal-400/10 text-crystal-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-crystal-400/20">
-                      Cancha 3
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-mist-700">
-                    <span className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-mist-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      Hoy · 20:00
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-mist-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      60 min
-                    </span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Mini card flotante decorativa */}
-              <div
-                className="absolute -bottom-6 -right-8 bg-lake-800/80 border border-mist-500/10 rounded-xl px-4 py-3 backdrop-blur-sm shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-float"
-                style={{ animationDelay: "-3.5s" }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-crystal-400/15 border border-crystal-400/25 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
-                    </svg>
+                    {/* Grabando badge */}
+                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-lake-950/70 border border-crystal-400/30 text-crystal-300 text-[11px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-crystal-400 animate-pulse" />
+                      Grabando
+                    </div>
+
+                    {/* Duración */}
+                    <span className="absolute bottom-2.5 right-2.5 z-10 text-[11px] font-mono text-white/80 bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm">
+                      60:01
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-snow text-xs font-semibold">Gol guardado</p>
-                    <p className="text-mist-600 text-[10px]">Clip de 12 seg</p>
+
+                  {/* Card info */}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0">
+                        <p className="text-snow font-semibold text-sm truncate">Complejo Lacar Norte</p>
+                        <p className="text-mist-700 text-xs mt-0.5">Santiago</p>
+                      </div>
+                      <span className="shrink-0 bg-crystal-400/10 text-crystal-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-crystal-400/20">
+                        Cancha 3
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-mist-700">
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 text-mist-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Hoy · 20:00
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 text-mist-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        60 min
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mini card flotante decorativa */}
+                <div
+                  className="absolute -bottom-6 -right-8 bg-lake-800/80 border border-mist-500/10 rounded-xl px-4 py-3 backdrop-blur-sm shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-float"
+                  style={{ animationDelay: "-3.5s" }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-crystal-400/15 border border-crystal-400/25 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-snow text-xs font-semibold">Gol guardado</p>
+                      <p className="text-mist-600 text-[10px]">Clip de 12 seg</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </HeroParallax>
           </div>
         </div>
 
@@ -257,36 +262,6 @@ export default async function HomePage({
           </svg>
         </div>
       </section>
-
-      {/* ══════════════════════════════════════════════ */}
-      {/* STATS — deshabilitado temporalmente           */}
-      {/* Descomentar cuando tengamos datos reales      */}
-      {/* ══════════════════════════════════════════════ */}
-      {/*
-      <section className="relative py-14 px-6 overflow-hidden" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0d1f35 50%, #091520 100%)" }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 100%, rgba(41,196,173,0.07), transparent)" }} />
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { value: 1240, label: "Partidos grabados",   suffix: "+", glow: "rgba(41,196,173,0.18)",  border: "border-crystal-400/20", numColor: "text-crystal-400",  icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.847v6.306a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /> },
-              { value: 8500, label: "Jugadas compartidas", suffix: "+", glow: "rgba(77,174,196,0.18)",  border: "border-glacial-400/20", numColor: "text-glacial-400", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /> },
-              { value: 12,   label: "Complejos activos",   suffix: "",  glow: "rgba(251,191,36,0.14)", border: "border-amber-400/20",   numColor: "text-amber-400",   icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" /> },
-            ].map((stat) => (
-              <div key={stat.label} className={`relative bg-lake-900/70 backdrop-blur-sm border ${stat.border} rounded-2xl p-7 flex items-center gap-5 overflow-hidden`}>
-                <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse 80% 80% at 10% 50%, ${stat.glow}, transparent)` }} />
-                <div className={`shrink-0 w-11 h-11 rounded-xl bg-lake-800/80 border ${stat.border} flex items-center justify-center`}>
-                  <svg className={`w-5 h-5 ${stat.numColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">{stat.icon}</svg>
-                </div>
-                <div>
-                  <StatsCounter value={stat.value} label="" suffix={stat.suffix} numClassName={`text-3xl font-bold tracking-tight ${stat.numColor}`} />
-                  <p className="text-mist-500 text-xs mt-0.5">{stat.label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      */}
 
       {/* ══════════════════════════════════════════════ */}
       {/* BUSCADOR                                       */}
@@ -306,7 +281,7 @@ export default async function HomePage({
         <div className="max-w-7xl mx-auto relative">
 
           {/* Section header */}
-          <div className="mb-10">
+          <Reveal className="mb-10">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-8 h-8 rounded-lg bg-crystal-400/15 border border-crystal-400/25 flex items-center justify-center">
                 <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,7 +297,7 @@ export default async function HomePage({
             <p className="text-mist-500 text-sm">
               Filtra por complejo, número de cancha y fecha.
             </p>
-          </div>
+          </Reveal>
 
           <SearchFilters />
 
@@ -371,7 +346,7 @@ export default async function HomePage({
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] pointer-events-none" style={{ background: "radial-gradient(circle, rgba(77,174,196,0.06), transparent 70%)" }} />
         <div className="max-w-5xl mx-auto relative">
 
-          <div className="mb-14">
+          <Reveal className="mb-14">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/25 flex items-center justify-center">
                 <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -387,7 +362,7 @@ export default async function HomePage({
             <p className="text-mist-500 text-sm max-w-md">
               En tres pasos revives y guardas los mejores momentos de tu partido.
             </p>
-          </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
@@ -427,94 +402,95 @@ export default async function HomePage({
                 numColor: "rgba(251,191,36,0.10)",
                 label: "text-amber-400",
               },
-            ].map((paso) => (
-              <div
-                key={paso.num}
-                className="relative rounded-2xl p-7 overflow-hidden"
-                style={{
-                  background: `linear-gradient(160deg, ${paso.glow} 0%, rgba(9,21,32,0.8) 100%)`,
-                  border: `1px solid ${paso.borderColor}`,
-                }}
-              >
-                {/* Radial glow corner */}
-                <div className="absolute -top-4 -right-4 w-32 h-32 pointer-events-none rounded-full" style={{ background: `radial-gradient(circle, ${paso.glow.replace('0.12','0.25').replace('0.10','0.20')}, transparent 70%)`, filter: "blur(16px)" }} />
-                {/* Big number background */}
+            ].map((paso, i) => (
+              <Reveal key={paso.num} delay={i * 120} className="h-full">
                 <div
-                  className="absolute -top-2 -right-2 text-[90px] font-black leading-none select-none pointer-events-none"
-                  style={{ color: paso.numColor, fontVariantNumeric: "tabular-nums" }}
+                  className="relative h-full rounded-2xl p-7 overflow-hidden transition-transform duration-300 hover:-translate-y-1"
+                  style={{
+                    background: `linear-gradient(160deg, ${paso.glow} 0%, rgba(9,21,32,0.8) 100%)`,
+                    border: `1px solid ${paso.borderColor}`,
+                  }}
                 >
-                  {paso.num}
+                  {/* Radial glow corner */}
+                  <div className="absolute -top-4 -right-4 w-32 h-32 pointer-events-none rounded-full" style={{ background: `radial-gradient(circle, ${paso.glow.replace('0.12','0.25').replace('0.10','0.20')}, transparent 70%)`, filter: "blur(16px)" }} />
+                  {/* Big number background */}
+                  <div
+                    className="absolute -top-2 -right-2 text-[90px] font-black leading-none select-none pointer-events-none"
+                    style={{ color: paso.numColor, fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {paso.num}
+                  </div>
+                  {/* Icon */}
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: paso.iconBg, border: `1px solid ${paso.borderColor}` }}>
+                    <svg className={`w-5 h-5 ${paso.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {paso.icon}
+                    </svg>
+                  </div>
+                  <h3 className="text-snow font-bold text-base mb-2">{paso.titulo}</h3>
+                  <p className="text-mist-500 text-sm leading-relaxed">{paso.descripcion}</p>
                 </div>
-                {/* Icon */}
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: paso.iconBg, border: `1px solid ${paso.borderColor}` }}>
-                  <svg className={`w-5 h-5 ${paso.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {paso.icon}
-                  </svg>
-                </div>
-                <h3 className="text-snow font-bold text-base mb-2">{paso.titulo}</h3>
-                <p className="text-mist-500 text-sm leading-relaxed">{paso.descripcion}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════ */}
-      {/* FOOTER                                         */}
+      {/* SOCIAL PROOF — stats + testimonios             */}
       {/* ══════════════════════════════════════════════ */}
-      <footer className="relative bg-lake-950 px-6 pt-10 pb-8 overflow-hidden">
-        {/* Top gradient bar */}
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(41,196,173,0.4), rgba(77,174,196,0.3), transparent)" }} />
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 40% at 50% 100%, rgba(41,196,173,0.04), transparent)" }} />
-        <div className="max-w-7xl mx-auto relative flex flex-col sm:flex-row items-center justify-between gap-6">
+      <section className="relative py-20 px-6 overflow-hidden" style={{ background: "linear-gradient(160deg, #091520 0%, #0c1e33 55%, #091520 100%)" }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(41,196,173,0.06), transparent)" }} />
+        <div className="max-w-5xl mx-auto relative">
 
-          {/* Logo + copy */}
-          <a href="/" className="flex items-center gap-2.5">
-            <Image
-              src="/logo-small.png"
-              alt="Lacar Sports"
-              width={28}
-              height={28}
-              className="drop-shadow-[0_0_8px_rgba(41,196,173,0.5)]"
-            />
-            <span className="text-sm text-mist-600">
-              © 2026 <span className="text-mist-400 font-medium">Lacar Sports</span>. Todos los derechos reservados.
-            </span>
-          </a>
-
-          {/* Social links */}
-          <div className="flex items-center gap-2">
-            {[
-              {
-                name: "Instagram",
-                color: "hover:text-pink-400 hover:border-pink-400/30",
-                icon: <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />,
-              },
-              {
-                name: "YouTube",
-                color: "hover:text-red-400 hover:border-red-400/30",
-                icon: <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />,
-              },
-              {
-                name: "TikTok",
-                color: "hover:text-crystal-400 hover:border-crystal-400/30",
-                icon: <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z" />,
-              },
-            ].map(({ name, icon, color }) => (
-              <a
-                key={name}
-                href="#"
-                aria-label={name}
-                className={`w-9 h-9 rounded-xl bg-white/3 border border-white/8 flex items-center justify-center text-mist-700 transition-all duration-200 ${color}`}
-              >
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  {icon}
+          <Reveal className="mb-12">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-crystal-400/15 border border-crystal-400/25 flex items-center justify-center">
+                <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 10-2.5-1.34M5 11a3 3 0 102.5-1.34" />
                 </svg>
-              </a>
+              </div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-crystal-400">Comunidad</p>
+            </div>
+            <h2 className="text-3xl font-bold text-snow tracking-tight mb-1">
+              Jugadores reviviendo sus partidos
+            </h2>
+            <div className="w-12 h-0.5 mt-3 mb-4 rounded-full" style={{ background: "linear-gradient(90deg, #29c4ad, transparent)" }} />
+            <p className="text-mist-500 text-sm max-w-md">
+              Lo que dicen quienes ya guardaron sus mejores jugadas.
+            </p>
+          </Reveal>
+
+          {/* Testimonios */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {HOME_TESTIMONIALS.map((t, i) => (
+              <Reveal key={t.name} delay={i * 120} className="h-full">
+                <figure
+                  className="relative h-full rounded-2xl border border-mist-500/12 p-6 flex flex-col transition-transform duration-300 hover:-translate-y-1"
+                  style={{ background: "linear-gradient(160deg, rgba(10,42,61,0.55) 0%, rgba(9,21,32,0.8) 100%)" }}
+                >
+                  <svg className="w-7 h-7 text-crystal-400/30 mb-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9.983 3v7.391c0 5.704-3.731 9.57-8.983 10.609l-.995-2.151c2.432-.917 3.995-3.638 3.995-5.849h-4v-10h9.983zm14.017 0v7.391c0 5.704-3.748 9.571-9 10.609l-.996-2.151c2.433-.917 3.996-3.638 3.996-5.849h-3.983v-10h9.983z" />
+                  </svg>
+                  <blockquote className="text-snow/90 text-sm leading-relaxed flex-1">
+                    {t.quote}
+                  </blockquote>
+                  <figcaption className="mt-5 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-crystal-400/12 border border-crystal-400/25 flex items-center justify-center text-crystal-300 text-sm font-bold">
+                      {t.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-snow text-sm font-semibold leading-tight">{t.name}</p>
+                      <p className="text-mist-700 text-xs mt-0.5">{t.role}</p>
+                    </div>
+                  </figcaption>
+                </figure>
+              </Reveal>
             ))}
           </div>
         </div>
-      </footer>
+      </section>
+
+      <Footer />
 
       <WhatsAppButton />
     </main>

@@ -1,28 +1,54 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { WHATSAPP_URL } from "@/lib/site";
 
-export default function WhatsAppButton() {
+interface WhatsAppButtonProps {
+  /** Id de la sección donde empieza a mostrarse el botón. */
+  startId?: string;
+  /** Id de la sección donde deja de mostrarse (su borde inferior). Por
+   *  defecto coincide con startId (visible solo en esa sección). */
+  endId?: string;
+}
+
+export default function WhatsAppButton({
+  startId = "como-funciona",
+  endId,
+}: WhatsAppButtonProps = {}) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const section = document.getElementById("como-funciona");
-    if (!section) return;
+    const start = document.getElementById(startId);
+    if (!start) return;
+    const end = endId ? document.getElementById(endId) : null;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setVisible(entry.isIntersecting);
-      },
-      { threshold: 0.05 }
-    );
+    let raf = 0;
+    const update = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const startTop = start.getBoundingClientRect().top + window.scrollY;
+        const endEl = end ?? start;
+        const endBottom = endEl.getBoundingClientRect().bottom + window.scrollY;
+        const viewTop = window.scrollY;
+        const viewBottom = window.scrollY + window.innerHeight;
+        // Visible cuando la banda [startTop, endBottom] se cruza con el viewport.
+        setVisible(viewBottom > startTop && viewTop < endBottom);
+      });
+    };
 
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      cancelAnimationFrame(raf);
+    };
+  }, [startId, endId]);
 
   return (
     <a
-      href="https://wa.me/56XXXXXXXXX"
+      href={WHATSAPP_URL}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Escríbenos por WhatsApp"

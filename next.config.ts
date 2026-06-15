@@ -14,6 +14,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        // El FAQ ahora vive como sección de la página de dueños.
+        source: "/faq",
+        destination: "/complejos#faq",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
