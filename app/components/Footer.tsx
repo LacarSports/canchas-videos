@@ -59,6 +59,16 @@ export default function Footer() {
           </span>
         </a>
 
+        {/* Legal links */}
+        <nav className="flex items-center gap-5 text-xs">
+          <a href="/terminos" className="text-mist-600 hover:text-snow transition-colors duration-200">
+            Términos y Condiciones
+          </a>
+          <a href="/privacidad" className="text-mist-600 hover:text-snow transition-colors duration-200">
+            Política de Privacidad
+          </a>
+        </nav>
+
         {/* Social links */}
         <div className="flex items-center gap-2">
           {SOCIALS.map(({ name, icon, color }) => (

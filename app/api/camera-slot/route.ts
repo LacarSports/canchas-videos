@@ -21,8 +21,9 @@ function isSchemaError(error: { code?: string; message?: string } | null) {
 }
 
 export async function POST(req: Request) {
-  const { complejo, numero_cancha, fecha, horas, estado, password } = await req.json();
+  const { complejo, numero_cancha, deporte, fecha, horas, estado, password } = await req.json();
 
+  const dep: string = typeof deporte === "string" ? deporte : "";
   const horasList: string[] = Array.isArray(horas) ? horas : horas ? [horas] : [];
 
   if (
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
   const rows = horasList.map((hora) => ({
     complejo: complejo ?? "",
     numero_cancha,
+    deporte: dep,
     fecha,
     hora,
     estado: est,
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
 
   const { error: csError } = await supabase
     .from("camera_settings")
-    .upsert(rows, { onConflict: "complejo,numero_cancha,fecha,hora" });
+    .upsert(rows, { onConflict: "complejo,numero_cancha,deporte,fecha,hora" });
 
   if (csError) {
     if (isSchemaError(csError)) {
@@ -79,6 +81,8 @@ export async function POST(req: Request) {
       .eq("numero_cancha", numero_cancha)
       .eq("fecha", fecha);
     if (complejo) sel = sel.ilike("complejo", `%${complejo}%`);
+    // Solo los partidos del mismo deporte (cancha 1 fútbol ≠ cancha 1 pádel)
+    if (dep && dep !== "—") sel = sel.eq("deporte", dep);
     const { data: candidatos, error: selError } = await sel;
     if (selError) return Response.json({ error: selError.message }, { status: 500 });
 

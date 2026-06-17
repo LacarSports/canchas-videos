@@ -27,6 +27,7 @@ interface Partido {
   hora: string;
   duracion_minutos: number;
   archivo_url: string;
+  deporte?: string | null;
 }
 
 interface Jugada {
@@ -61,6 +62,13 @@ interface Heartbeat {
   detalle: string | null;
 }
 
+// Una cámara instalada = una cancha + un deporte (cancha 1 fútbol y cancha 1
+// pádel son cámaras distintas). Fuente de verdad: tabla `camaras`.
+interface Camara {
+  numero_cancha: number;
+  deporte: string;
+}
+
 // â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // HELPERS
 // â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -78,6 +86,40 @@ function getMonthRange(year: number, month: number) {
     start: `${year}-${pad(month)}-01`,
     end: `${year}-${pad(month)}-${lastDay}`,
   };
+}
+
+// Lista las cámaras instaladas del complejo (cancha + deporte).
+// Fuente de verdad: tabla `camaras`. Mientras esté vacía o no exista, hace
+// fallback derivando las combinaciones cancha+deporte ya vistas en `partidos`.
+async function fetchCamaras(complejo?: string): Promise<Camara[]> {
+  const comp = complejo ?? "";
+  const { data: cam } = await supabase
+    .from("camaras")
+    .select("numero_cancha, deporte")
+    .eq("complejo", comp)
+    .order("numero_cancha");
+  if (cam && cam.length > 0) {
+    return (cam as { numero_cancha: number; deporte: string | null }[]).map((c) => ({
+      numero_cancha: c.numero_cancha,
+      deporte: c.deporte ?? "—",
+    }));
+  }
+  // Fallback (transición): combinaciones cancha+deporte de partidos ya grabados.
+  let qP = supabase.from("partidos").select("numero_cancha, deporte");
+  if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
+  const { data: ps } = await qP;
+  const seen = new Set<string>();
+  const out: Camara[] = [];
+  for (const p of (ps ?? []) as { numero_cancha: number; deporte: string | null }[]) {
+    const dep = p.deporte ?? "—";
+    const k = `${p.numero_cancha}|${dep}`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push({ numero_cancha: p.numero_cancha, deporte: dep });
+    }
+  }
+  out.sort((a, b) => a.numero_cancha - b.numero_cancha || a.deporte.localeCompare(b.deporte));
+  return out;
 }
 
 const TAG_STYLES: Record<string, string> = {
@@ -488,52 +530,70 @@ function TabInicio({ user, complejo }: { user: User | null; complejo?: string })
 function TabOcupacion({ complejo }: { complejo?: string }) {
   const today = new Date().toISOString().split("T")[0];
   const [fecha, setFecha] = useState(today);
+  const [courts, setCourts] = useState<Camara[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
-  const [ocupaciones, setOcupaciones] = useState<{ numero_cancha: number; hora: string; ocupada: boolean }[]>([]);
-  const [canchas, setCanchas] = useState<number[]>([1, 2, 3]);
+  const [ocupaciones, setOcupaciones] = useState<{ numero_cancha: number; deporte: string | null; hora: string; ocupada: boolean }[]>([]);
+  const [bloqueados, setBloqueados] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  // Celda "ocupada sin video" seleccionada → explica por qué no hay video.
+  const [info, setInfo] = useState<{ cancha: number; deporte: string; hora: string; blocked: boolean } | null>(null);
 
   useEffect(() => {
     setLoading(true);
     async function load() {
-      // Ocupación real (por movimiento)
-      let qO = supabase.from("ocupacion_canchas").select("numero_cancha, hora, ocupada").eq("fecha", fecha);
+      // Ocupación real (por movimiento detectado por la cámara)
+      let qO = supabase.from("ocupacion_canchas").select("numero_cancha, deporte, hora, ocupada").eq("fecha", fecha);
       if (complejo) qO = qO.ilike("complejo", `%${complejo}%`);
       // Videos disponibles (por grabación)
       let qP = supabase.from("partidos").select("*").eq("fecha", fecha).order("hora");
       if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
+      // Bloques bloqueados para grabar (explican por qué hay ocupación sin video)
+      const qB = supabase
+        .from("camera_settings")
+        .select("numero_cancha, deporte, hora, estado")
+        .eq("complejo", complejo ?? "")
+        .eq("fecha", fecha);
 
-      const [{ data: ocData }, { data: pData }] = await Promise.all([qO, qP]);
-      const ocs = (ocData ?? []) as { numero_cancha: number; hora: string; ocupada: boolean }[];
+      const [cams, { data: ocData }, { data: pData }, { data: csData }] = await Promise.all([
+        fetchCamaras(complejo), qO, qP, qB,
+      ]);
+      const ocs = (ocData ?? []) as { numero_cancha: number; deporte: string | null; hora: string; ocupada: boolean }[];
       const ps = (pData ?? []) as Partido[];
+      setCourts(cams);
       setOcupaciones(ocs);
       setPartidos(ps);
 
-      const nums = Array.from(
-        new Set([...ocs.map((o) => o.numero_cancha), ...ps.map((p) => p.numero_cancha)])
-      ).sort((a, b) => a - b);
-      setCanchas(nums.length > 0 ? nums : [1, 2, 3]);
+      const bloq = new Set<string>();
+      for (const r of (csData ?? []) as { numero_cancha: number; deporte: string | null; hora: string; estado: string }[]) {
+        if (r.estado === "bloqueado") bloq.add(`${r.numero_cancha}|${r.deporte ?? "—"}|${r.hora.slice(0, 5)}`);
+      }
+      setBloqueados(bloq);
       setLoading(false);
     }
     load();
   }, [fecha, complejo]);
 
-  function getPartido(cancha: number, hora: string) {
-    return partidos.find((p) => p.numero_cancha === cancha && p.hora.substring(0, 5) === hora);
+  function getPartido(cancha: number, deporte: string, hora: string) {
+    return partidos.find(
+      (p) => p.numero_cancha === cancha && (p.deporte ?? "—") === deporte && p.hora.substring(0, 5) === hora
+    );
   }
-  function isOcupada(cancha: number, hora: string) {
-    const o = ocupaciones.find((x) => x.numero_cancha === cancha && x.hora.substring(0, 5) === hora);
+  function isOcupada(cancha: number, deporte: string, hora: string) {
+    const o = ocupaciones.find(
+      (x) => x.numero_cancha === cancha && (x.deporte ?? "—") === deporte && x.hora.substring(0, 5) === hora
+    );
     return o?.ocupada === true;
   }
-
-  const sinDatos = ocupaciones.length === 0 && partidos.length === 0;
+  function isBloqueada(cancha: number, deporte: string, hora: string) {
+    return bloqueados.has(`${cancha}|${deporte}|${hora}`);
+  }
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-snow tracking-tight">Ocupación de Canchas</h2>
-          <p className="text-sm text-mist-600 mt-0.5">Ocupación real y videos disponibles por cancha y día</p>
+          <p className="text-sm text-mist-600 mt-0.5">Actividad detectada por las cámaras y videos disponibles por cancha y día</p>
         </div>
         <input
           type="date"
@@ -545,12 +605,12 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
 
       <div className="flex items-center gap-5 text-xs text-mist-600 flex-wrap">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-crystal-400/25 border border-crystal-400/35 inline-block" />
-          Ocupada
+          <svg className="w-3.5 h-3.5 text-crystal-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          Ocupada · video disponible
         </span>
         <span className="flex items-center gap-1.5">
-          <svg className="w-3.5 h-3.5 text-crystal-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-          Video disponible
+          <svg className="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5v14l11-7z" /><path strokeLinecap="round" strokeWidth={2} d="M4 4l16 16" /></svg>
+          Ocupada · sin video
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-white/5 border border-white/10 inline-block" />
@@ -562,9 +622,9 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : sinDatos ? (
+      ) : courts.length === 0 ? (
         <div className="text-center py-12 text-mist-600 text-sm">
-          No hay datos de ocupación ni videos en esta fecha
+          Aún no hay cámaras registradas para este complejo.
         </div>
       ) : (
         <>
@@ -572,7 +632,7 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="bg-lake-900 text-mist-700 text-xs font-medium text-left px-4 py-2.5 sticky left-0 z-10 min-w-[100px] border-b border-mist-500/8">
+                  <th className="bg-lake-900 text-mist-700 text-xs font-medium text-left px-4 py-2.5 sticky left-0 z-10 min-w-[150px] border-b border-mist-500/8">
                     Cancha
                   </th>
                   {HORA_SLOTS.map((h) => (
@@ -583,47 +643,66 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
                 </tr>
               </thead>
               <tbody>
-                {canchas.map((c, ri) => (
-                  <tr key={c}>
-                    <td className={`bg-lake-800/60 text-mist-400 text-xs font-semibold px-4 py-3 sticky left-0 z-10 ${ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""}`}>
-                      Cancha {c}
-                    </td>
-                    {HORA_SLOTS.map((h) => {
-                      const p = getPartido(c, h);
-                      const ocupada = isOcupada(c, h);
-                      const titleParts = [ocupada ? "Ocupada" : null, p ? `Video · ${p.duracion_minutos} min` : null].filter(Boolean);
-                      return (
-                        <td
-                          key={h}
-                          title={titleParts.length ? titleParts.join(" · ") : undefined}
-                          className={`text-center text-xs py-3 transition-colors ${
-                            ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""
-                          } ${
-                            ocupada
-                              ? "bg-crystal-400/18 text-crystal-400"
-                              : "bg-lake-950 text-mist-700"
-                          }`}
-                        >
-                          {p ? (
-                            <a
-                              href={`/partido/${p.id}`}
-                              title="Ver partido"
-                              className="flex items-center justify-center mx-auto w-7 h-7 rounded-lg text-crystal-400 hover:bg-crystal-400/30 transition-colors"
-                            >
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </a>
-                          ) : ocupada ? (
-                            <svg className="w-3.5 h-3.5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : "-"}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                {courts.map((court, ri) => {
+                  const c = court.numero_cancha;
+                  const dep = court.deporte;
+                  return (
+                    <tr key={`${c}|${dep}`}>
+                      <td className={`bg-lake-800/60 px-4 py-3 sticky left-0 z-10 ${ri < courts.length - 1 ? "border-b border-mist-500/8" : ""}`}>
+                        <div className="text-mist-400 text-xs font-semibold whitespace-nowrap">Cancha {c}</div>
+                        <div className="text-mist-700 text-[11px] mt-0.5 whitespace-nowrap">{dep}</div>
+                      </td>
+                      {HORA_SLOTS.map((h) => {
+                        const p = getPartido(c, dep, h);
+                        const ocupada = isOcupada(c, dep, h);
+                        const bloqueada = isBloqueada(c, dep, h);
+                        const tint = p
+                          ? "bg-crystal-400/18 text-crystal-400"
+                          : ocupada
+                          ? "bg-amber-500/14 text-amber-400"
+                          : "bg-lake-950 text-mist-700";
+                        const title = p
+                          ? `Ocupada · Video · ${p.duracion_minutos} min`
+                          : ocupada
+                          ? (bloqueada ? "Ocupada · bloqueada (sin video)" : "Ocupada · sin video")
+                          : undefined;
+                        return (
+                          <td
+                            key={h}
+                            title={title}
+                            className={`text-center text-xs py-3 transition-colors ${
+                              ri < courts.length - 1 ? "border-b border-mist-500/8" : ""
+                            } ${tint}`}
+                          >
+                            {p ? (
+                              <a
+                                href={`/partido/${p.id}`}
+                                title="Ver partido"
+                                className="flex items-center justify-center mx-auto w-7 h-7 rounded-lg text-crystal-400 hover:bg-crystal-400/30 transition-colors"
+                              >
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </a>
+                            ) : ocupada ? (
+                              <button
+                                type="button"
+                                onClick={() => setInfo({ cancha: c, deporte: dep, hora: h, blocked: bloqueada })}
+                                title="Ocupada — sin video disponible"
+                                className="flex items-center justify-center mx-auto w-7 h-7 rounded-lg text-amber-400 hover:bg-amber-500/25 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5v14l11-7z" />
+                                  <path strokeLinecap="round" strokeWidth={2} d="M4 4l16 16" />
+                                </svg>
+                              </button>
+                            ) : "-"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -632,7 +711,7 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: "Partidos grabados", value: partidos.length },
-                { label: "Canchas activas", value: canchas.length },
+                { label: "Cámaras", value: courts.length },
                 { label: "Horas grabadas", value: Math.round(partidos.reduce((s, p) => s + p.duracion_minutos, 0) / 60) + " h" },
               ].map((s) => (
                 <div key={s.label} className="bg-lake-800/60 border border-mist-500/8 rounded-xl p-4">
@@ -643,6 +722,40 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
             </div>
           )}
         </>
+      )}
+
+      {/* Explicación al hacer clic en un bloque ocupado sin video */}
+      {info && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setInfo(null)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full max-w-sm bg-lake-800 border border-mist-500/12 rounded-2xl p-6 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/12 border border-amber-500/25 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 5v14l11-7z" />
+                  <path strokeLinecap="round" strokeWidth={1.8} d="M4 4l16 16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-snow">Cancha {info.cancha} · {info.deporte} · {info.hora}</h3>
+                <p className="text-xs text-mist-600 mt-0.5">
+                  {new Date(fecha + "T00:00:00").toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-mist-400 leading-relaxed">
+              {info.blocked
+                ? "La cancha estuvo ocupada, pero este horario estaba bloqueado para grabar. Por eso no hay video disponible para este bloque."
+                : "La cancha estuvo ocupada, pero no se grabó video en este horario. Probablemente el bloque estaba bloqueado para grabar."}
+            </p>
+            <button
+              onClick={() => setInfo(null)}
+              className="w-full py-2 text-xs font-semibold rounded-xl bg-crystal-400 hover:bg-crystal-300 text-lake-950 transition-all active:scale-[0.98]"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -657,13 +770,14 @@ CREATE TABLE camera_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   complejo text NOT NULL,
   numero_cancha integer NOT NULL,
+  deporte text NOT NULL DEFAULT '',
   fecha date NOT NULL,
   hora text NOT NULL,
   estado text NOT NULL DEFAULT 'publico',
   graba boolean NOT NULL DEFAULT true,
   password_hash text NULL,
   created_at timestamptz DEFAULT now(),
-  UNIQUE(complejo, numero_cancha, fecha, hora)
+  UNIQUE(complejo, numero_cancha, deporte, fecha, hora)
 );
 ALTER TABLE camera_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all" ON camera_settings FOR ALL USING (true);`;
@@ -700,28 +814,28 @@ function SlotIcon({ estado }: { estado: SlotEstado }) {
   );
 }
 
-function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: string }) {
+function CamarasConfig({ camaras, complejo }: { camaras: Camara[]; complejo?: string }) {
   const today = new Date().toISOString().split("T")[0];
   const [fecha, setFecha] = useState(today);
   const [slots, setSlots] = useState<Record<string, SlotInfo>>({});
   const [loading, setLoading] = useState(false);
   const [colError, setColError] = useState(false);
-  const [editing, setEditing] = useState<{ cancha: number; hora: string } | null>(null);
+  const [editing, setEditing] = useState<{ cancha: number; deporte: string; hora: string } | null>(null);
   const [editEstado, setEditEstado] = useState<SlotEstado>("publico");
   const [editPass, setEditPass] = useState("");
   const [saving, setSaving] = useState(false);
-  const [rowSaving, setRowSaving] = useState<number | null>(null);
+  const [rowSaving, setRowSaving] = useState<string | null>(null);
 
-  const slotKey = (cancha: number, hora: string) => `${cancha}|${hora}`;
-  const getSlot = (cancha: number, hora: string): SlotInfo =>
-    slots[slotKey(cancha, hora)] ?? { estado: "publico", hasPass: false };
+  const slotKey = (cancha: number, deporte: string, hora: string) => `${cancha}|${deporte}|${hora}`;
+  const getSlot = (cancha: number, deporte: string, hora: string): SlotInfo =>
+    slots[slotKey(cancha, deporte, hora)] ?? { estado: "publico", hasPass: false };
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       const { data, error } = await supabase
         .from("camera_settings")
-        .select("numero_cancha, hora, estado, password_hash")
+        .select("numero_cancha, deporte, hora, estado, password_hash")
         .eq("complejo", complejo ?? "")
         .eq("fecha", fecha);
       if (error) {
@@ -733,8 +847,8 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
       } else {
         setColError(false);
         const map: Record<string, SlotInfo> = {};
-        for (const r of (data ?? []) as { numero_cancha: number; hora: string; estado: string; password_hash: string | null }[]) {
-          map[slotKey(r.numero_cancha, r.hora.slice(0, 5))] = {
+        for (const r of (data ?? []) as { numero_cancha: number; deporte: string | null; hora: string; estado: string; password_hash: string | null }[]) {
+          map[slotKey(r.numero_cancha, r.deporte ?? "—", r.hora.slice(0, 5))] = {
             estado: (r.estado as SlotEstado) ?? "publico",
             hasPass: !!r.password_hash,
           };
@@ -746,18 +860,18 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
     load();
   }, [fecha, complejo]);
 
-  function openCell(cancha: number, hora: string) {
-    const s = getSlot(cancha, hora);
-    setEditing({ cancha, hora });
+  function openCell(cancha: number, deporte: string, hora: string) {
+    const s = getSlot(cancha, deporte, hora);
+    setEditing({ cancha, deporte, hora });
     setEditEstado(s.estado);
     setEditPass("");
   }
 
-  async function apply(cancha: number, horas: string[], estado: SlotEstado, password: string) {
+  async function apply(cancha: number, deporte: string, horas: string[], estado: SlotEstado, password: string) {
     const res = await fetch("/api/camera-slot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ complejo: complejo ?? "", numero_cancha: cancha, fecha, horas, estado, password }),
+      body: JSON.stringify({ complejo: complejo ?? "", numero_cancha: cancha, deporte, fecha, horas, estado, password }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -767,7 +881,7 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
     setSlots((prev) => {
       const next = { ...prev };
       for (const h of horas) {
-        const k = slotKey(cancha, h);
+        const k = slotKey(cancha, deporte, h);
         const hadPass = prev[k]?.hasPass ?? false;
         next[k] = { estado, hasPass: estado === "privado" ? (password ? true : hadPass) : false };
       }
@@ -779,14 +893,15 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
   async function saveCell() {
     if (!editing) return;
     setSaving(true);
-    const ok = await apply(editing.cancha, [editing.hora], editEstado, editPass);
+    const ok = await apply(editing.cancha, editing.deporte, [editing.hora], editEstado, editPass);
     setSaving(false);
     if (ok) setEditing(null);
   }
 
-  async function applyRow(cancha: number, estado: SlotEstado) {
-    setRowSaving(cancha);
-    await apply(cancha, HORA_SLOTS, estado, "");
+  async function applyRow(cancha: number, deporte: string, estado: SlotEstado) {
+    const key = `${cancha}|${deporte}`;
+    setRowSaving(key);
+    await apply(cancha, deporte, HORA_SLOTS, estado, "");
     setRowSaving(null);
   }
 
@@ -823,57 +938,67 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
         </div>
+      ) : camaras.length === 0 ? (
+        <div className="text-center py-12 text-mist-600 text-sm">
+          Aún no hay cámaras registradas para este complejo.
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-mist-500/8">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="bg-lake-900 text-mist-700 text-xs font-medium text-left px-4 py-2.5 sticky left-0 z-10 min-w-[120px] border-b border-mist-500/8">Cancha</th>
+                <th className="bg-lake-900 text-mist-700 text-xs font-medium text-left px-4 py-2.5 sticky left-0 z-10 min-w-[150px] border-b border-mist-500/8">Cancha</th>
                 {HORA_SLOTS.map((h) => (
                   <th key={h} className="bg-lake-900 text-mist-700 text-xs font-medium text-center px-1 py-2.5 border-b border-mist-500/8 min-w-[52px]">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {canchas.map((c, ri) => (
-                <tr key={c}>
-                  <td className={`bg-lake-800/60 px-4 py-3 sticky left-0 z-10 ${ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""}`}>
-                    <div className="text-mist-400 text-xs font-semibold whitespace-nowrap">Cancha {c}</div>
-                    <div className="flex gap-1 mt-1.5">
-                      <button
-                        onClick={() => applyRow(c, "bloqueado")}
-                        disabled={rowSaving === c}
-                        title="Bloquear todos los horarios de esta cancha"
-                        className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/20 text-red-400/80 hover:bg-red-500/10 disabled:opacity-40 transition-colors"
-                      >
-                        Bloquear
-                      </button>
-                      <button
-                        onClick={() => applyRow(c, "publico")}
-                        disabled={rowSaving === c}
-                        title="Habilitar todos los horarios de esta cancha"
-                        className="text-[10px] px-1.5 py-0.5 rounded border border-crystal-400/20 text-crystal-400/80 hover:bg-crystal-400/10 disabled:opacity-40 transition-colors"
-                      >
-                        Habilitar
-                      </button>
-                    </div>
-                  </td>
-                  {HORA_SLOTS.map((h) => {
-                    const s = getSlot(c, h);
-                    return (
-                      <td key={h} className={`p-1 ${ri < canchas.length - 1 ? "border-b border-mist-500/8" : ""}`}>
+              {camaras.map((court, ri) => {
+                const c = court.numero_cancha;
+                const dep = court.deporte;
+                const rowKey = `${c}|${dep}`;
+                return (
+                  <tr key={rowKey}>
+                    <td className={`bg-lake-800/60 px-4 py-3 sticky left-0 z-10 ${ri < camaras.length - 1 ? "border-b border-mist-500/8" : ""}`}>
+                      <div className="text-mist-400 text-xs font-semibold whitespace-nowrap">Cancha {c}</div>
+                      <div className="text-mist-700 text-[11px] mt-0.5 whitespace-nowrap">{dep}</div>
+                      <div className="flex gap-1 mt-1.5">
                         <button
-                          onClick={() => openCell(c, h)}
-                          title={`Cancha ${c} · ${h} · ${s.estado}`}
-                          className={`w-full h-8 rounded-lg flex items-center justify-center transition-colors ${SLOT_STYLE[s.estado]}`}
+                          onClick={() => applyRow(c, dep, "bloqueado")}
+                          disabled={rowSaving === rowKey}
+                          title="Bloquear todos los horarios de esta cámara"
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/20 text-red-400/80 hover:bg-red-500/10 disabled:opacity-40 transition-colors"
                         >
-                          <SlotIcon estado={s.estado} />
+                          Bloquear
                         </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                        <button
+                          onClick={() => applyRow(c, dep, "publico")}
+                          disabled={rowSaving === rowKey}
+                          title="Habilitar todos los horarios de esta cámara"
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-crystal-400/20 text-crystal-400/80 hover:bg-crystal-400/10 disabled:opacity-40 transition-colors"
+                        >
+                          Habilitar
+                        </button>
+                      </div>
+                    </td>
+                    {HORA_SLOTS.map((h) => {
+                      const s = getSlot(c, dep, h);
+                      return (
+                        <td key={h} className={`p-1 ${ri < camaras.length - 1 ? "border-b border-mist-500/8" : ""}`}>
+                          <button
+                            onClick={() => openCell(c, dep, h)}
+                            title={`Cancha ${c} · ${dep} · ${h} · ${s.estado}`}
+                            className={`w-full h-8 rounded-lg flex items-center justify-center transition-colors ${SLOT_STYLE[s.estado]}`}
+                          >
+                            <SlotIcon estado={s.estado} />
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -885,7 +1010,7 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
           <div className="absolute inset-0 bg-black/60" />
           <div className="relative w-full max-w-sm bg-lake-800 border border-mist-500/12 rounded-2xl p-6 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div>
-              <h3 className="text-sm font-semibold text-snow">Cancha {editing.cancha} · {editing.hora}</h3>
+              <h3 className="text-sm font-semibold text-snow">Cancha {editing.cancha} · {editing.deporte} · {editing.hora}</h3>
               <p className="text-xs text-mist-600 mt-0.5">{new Date(fecha + "T00:00:00").toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })}</p>
             </div>
 
@@ -914,7 +1039,7 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
                 type="text"
                 value={editPass}
                 onChange={(e) => setEditPass(e.target.value)}
-                placeholder={getSlot(editing.cancha, editing.hora).hasPass ? "Nueva clave (vacío = mantener actual)" : "Elige una clave de acceso"}
+                placeholder={getSlot(editing.cancha, editing.deporte, editing.hora).hasPass ? "Nueva clave (vacío = mantener actual)" : "Elige una clave de acceso"}
                 className="w-full bg-lake-950/60 border border-lake-700 focus:border-amber-500/40 text-snow placeholder-mist-700 rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
               />
             )}
@@ -929,7 +1054,7 @@ function CamarasConfig({ canchas, complejo }: { canchas: number[]; complejo?: st
               </button>
               <button
                 onClick={saveCell}
-                disabled={saving || (editEstado === "privado" && !getSlot(editing.cancha, editing.hora).hasPass && !editPass)}
+                disabled={saving || (editEstado === "privado" && !getSlot(editing.cancha, editing.deporte, editing.hora).hasPass && !editPass)}
                 className="flex-1 py-2 text-xs font-semibold rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 text-lake-950 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
               >
                 {saving ? (
@@ -1130,20 +1255,20 @@ const CAMERA_OPTIONS: { value: CameraState["estado"]; label: string; desc: strin
 
 function TabCamaras({ complejo }: { complejo?: string }) {
   const [subTab, setSubTab] = useState<"config" | "monitoreo">("config");
-  const [canchas, setCanchas] = useState<number[]>([]);
+  const [camaras, setCamaras] = useState<Camara[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      let qP = supabase.from("partidos").select("numero_cancha");
-      if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
-      const { data: pData } = await qP;
-      const nums = Array.from(new Set((pData ?? []).map((p: { numero_cancha: number }) => p.numero_cancha))).sort((a, b) => (a as number) - (b as number)) as number[];
-      setCanchas(nums.length > 0 ? nums : [1, 2, 3]);
+      const cams = await fetchCamaras(complejo);
+      setCamaras(cams);
       setLoading(false);
     }
     load();
   }, [complejo]);
+
+  // Monitoreo se sigue agrupando por número de cancha (heartbeat).
+  const canchasNumeros = Array.from(new Set(camaras.map((c) => c.numero_cancha))).sort((a, b) => a - b);
 
   const SUB_TABS = [
     { id: "config" as const, label: "Configuración" },
@@ -1179,9 +1304,9 @@ function TabCamaras({ complejo }: { complejo?: string }) {
           <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : subTab === "config" ? (
-        <CamarasConfig canchas={canchas} complejo={complejo} />
+        <CamarasConfig camaras={camaras} complejo={complejo} />
       ) : (
-        <CamarasMonitoreo canchas={canchas} complejo={complejo} />
+        <CamarasMonitoreo canchas={canchasNumeros} complejo={complejo} />
       )}
     </div>
   );
