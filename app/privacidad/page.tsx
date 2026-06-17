@@ -81,28 +81,13 @@ export default function PrivacidadPage() {
           ),
         },
         {
-          heading: "Almacenamiento e infraestructura",
+          heading: "Almacenamiento",
           body: (
-            <>
-              <p>
-                Los datos se almacenan en servicios de proveedores que pueden operar servidores
-                fuera de Chile:
-              </p>
-              <ul className={ul}>
-                <li>
-                  <strong className="text-snow">Supabase (PostgreSQL):</strong> base de datos de
-                  cuentas, estadísticas, reportes y metadatos de los partidos.
-                </li>
-                <li>
-                  <strong className="text-snow">Cloudflare R2:</strong> almacenamiento de los
-                  archivos de video.
-                </li>
-              </ul>
-              <p>
-                Adoptamos medidas técnicas y organizativas razonables para proteger los datos
-                contra acceso, alteración o pérdida no autorizados.
-              </p>
-            </>
+            <p>
+              Los datos se almacenan en servidores seguros, con medidas de protección técnicas y
+              organizativas adecuadas para resguardarlos contra acceso, alteración o pérdida no
+              autorizados.
+            </p>
           ),
         },
         {
@@ -171,10 +156,10 @@ export default function PrivacidadPage() {
             <p>
               Para consultas sobre privacidad o para ejercer tus derechos, contáctanos en{" "}
               <a
-                href="mailto:soporte@soporte.lacarsports.cl"
+                href="mailto:soporte@lacarsports.cl"
                 className="text-crystal-400 hover:text-crystal-300 underline underline-offset-2"
               >
-                soporte@soporte.lacarsports.cl
+                soporte@lacarsports.cl
               </a>
               .
             </p>

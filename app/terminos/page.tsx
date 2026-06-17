@@ -221,10 +221,10 @@ export default function TerminosPage() {
             <p>
               Ante cualquier duda sobre estos Términos, puedes escribirnos a{" "}
               <a
-                href="mailto:soporte@soporte.lacarsports.cl"
+                href="mailto:soporte@lacarsports.cl"
                 className="text-crystal-400 hover:text-crystal-300 underline underline-offset-2"
               >
-                soporte@soporte.lacarsports.cl
+                soporte@lacarsports.cl
               </a>
               .
             </p>
