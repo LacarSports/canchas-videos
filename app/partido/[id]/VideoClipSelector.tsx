@@ -288,8 +288,16 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
       setIsLandscape(window.innerWidth > window.innerHeight);
     };
     check();
+    // iOS reporta dimensiones obsoletas justo al rotar: re-chequeamos con un pequeño retraso
+    // para que isLandscape refleje la orientación real y no se aplique la rotación CSS encima
+    // de un viewport que ya está físicamente en horizontal (doble rotación).
+    const checkDeferred = () => { check(); setTimeout(check, 250); setTimeout(check, 600); };
     window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    window.addEventListener("orientationchange", checkDeferred);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", checkDeferred);
+    };
   }, []);
 
   useEffect(() => {
@@ -692,11 +700,13 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         style={{
           cursor: zoom > 1 ? (isDragging ? "grabbing" : "grab") : "pointer",
           touchAction: "manipulation",
+          // Unidades dinámicas (dvw/dvh) para que el contenedor ocupe sólo el viewport VISIBLE:
+          // así la barra inferior de Safari nunca tapa los controles (botón de salir, seekbar).
           ...(isCustomFullscreen
             ? isLandscape
-              ? { position: "fixed" as const, top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999 }
+              ? { position: "fixed" as const, top: 0, left: 0, width: "100dvw", height: "100dvh", zIndex: 9999 }
               // Portrait: rotate container 90° so video fills the screen horizontally
-              : { position: "fixed" as const, top: "calc((100vh - 100vw) / 2)", left: "calc((100vw - 100vh) / 2)", width: "100vh", height: "100vw", transform: "rotate(90deg)", transformOrigin: "center center", zIndex: 9999 }
+              : { position: "fixed" as const, top: "calc((100dvh - 100dvw) / 2)", left: "calc((100dvw - 100dvh) / 2)", width: "100dvh", height: "100dvw", transform: "rotate(90deg)", transformOrigin: "center center", zIndex: 9999 }
             : {}),
         }}
         onTouchStart={(e) => { const t = e.touches[0]; touchStartPosRef.current = { x: t.clientX, y: t.clientY }; }}
@@ -1062,28 +1072,30 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               </div>
             )}
 
-            {/* CENTER: play/pause + skip (siempre visible, también durante grabación) */}
-            <div className="absolute inset-0 flex items-center justify-center gap-10 pointer-events-none">
-              <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("left"); resetMobileAutoHide(); }}>
-                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
-                <span className="text-xs font-semibold">-5s</span>
-              </button>
-              <button className="pointer-events-auto flex items-center justify-center bg-white/25 rounded-full backdrop-blur-sm active:scale-95 transition-transform" style={{ width: 68, height: 68 }} onClick={(e) => { e.stopPropagation(); togglePlay(); resetMobileAutoHide(); }}>
-                {isPlaying ? (
-                  <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
-                ) : (
-                  <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                )}
-              </button>
-              <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("right"); resetMobileAutoHide(); }}>
-                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
-                <span className="text-xs font-semibold">+5s</span>
-              </button>
-            </div>
+            {/* CENTER: play/pause + skip — se ocultan durante la grabación para no tapar la jugada */}
+            {!isGrabando && (
+              <div className="absolute inset-0 flex items-center justify-center gap-10 pointer-events-none">
+                <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("left"); resetMobileAutoHide(); }}>
+                  <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
+                  <span className="text-xs font-semibold">-5s</span>
+                </button>
+                <button className="pointer-events-auto flex items-center justify-center bg-white/25 rounded-full backdrop-blur-sm active:scale-95 transition-transform" style={{ width: 68, height: 68 }} onClick={(e) => { e.stopPropagation(); togglePlay(); resetMobileAutoHide(); }}>
+                  {isPlaying ? (
+                    <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+                  ) : (
+                    <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  )}
+                </button>
+                <button className="pointer-events-auto flex flex-col items-center gap-1 text-white active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); handleSkip("right"); resetMobileAutoHide(); }}>
+                  <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/><text x="7.5" y="14.5" fontSize="6.5" fontWeight="bold" fill="currentColor">5</text></svg>
+                  <span className="text-xs font-semibold">+5s</span>
+                </button>
+              </div>
+            )}
 
             {/* BOTTOM: time + fullscreen + seekbar */}
             {!isGrabando && (
-              <div className="absolute bottom-0 left-0 right-0">
+              <div className="absolute bottom-0 left-0 right-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
                 <div className="flex items-center justify-between px-3 pb-1.5">
                   <span className="text-white/75 text-xs font-mono tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
                   <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); resetMobileAutoHide(); }} className="w-11 h-11 flex items-center justify-center text-white/85 active:scale-95 transition-transform">
