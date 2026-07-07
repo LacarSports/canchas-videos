@@ -118,6 +118,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const [cropParams, setCropParams] = useState<CropParams | null>(null);
 
   const [buffering, setBuffering] = useState(true);
+  // Porcentaje del video ya cargado (barra clara estilo YouTube en la seekbar)
+  const [bufferedPct, setBufferedPct] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   // Flash central de play/pausa (estilo YouTube), solo escritorio
   const [playFlash, setPlayFlash] = useState<{ type: "play" | "pause"; id: number } | null>(null);
@@ -161,6 +163,17 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     setReportError(null);
     setShowImageSettings(false);
     closeSettingsSheet();
+    // El modal de reporte usa position:fixed y necesita teclado: si estamos en
+    // pantalla completa quedaría tapado por el contenedor (z-index 9999), así
+    // que salimos de pantalla completa antes de abrirlo.
+    if (isCustomFullscreen) {
+      setIsCustomFullscreen(false);
+      closeMobileControls();
+      try { (screen.orientation as any)?.unlock?.(); } catch {}
+    }
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
     setShowReportSheet(true);
   }
 
@@ -246,7 +259,10 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   }, []);
 
   useEffect(() => {
-    if (showSettingsSheet) {
+    // En fullscreen el sheet vive DENTRO del contenedor (que ya bloquea el
+    // scroll del body); touchAction:none en el body además impediría hacer
+    // scroll dentro del propio sheet.
+    if (showSettingsSheet && !isCustomFullscreen) {
       document.body.style.overflow = "hidden";
       document.body.style.touchAction = "none";
       return () => {
@@ -254,7 +270,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         document.body.style.touchAction = "";
       };
     }
-  }, [showSettingsSheet]);
+  }, [showSettingsSheet, isCustomFullscreen]);
 
   useEffect(() => {
     if (isCustomFullscreen) {
@@ -284,7 +300,12 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
 
   useEffect(() => {
     const check = () => {
-      setIsMobile(window.innerWidth < 768);
+      // No basta con el ancho: un teléfono rotado a horizontal supera los 768px
+      // (iPhone landscape = 812px) y caía a los controles de escritorio, donde
+      // el fullscreen nativo sobre <div> no existe en iOS. El puntero "coarse"
+      // (táctil) identifica al dispositivo móvil en cualquier orientación.
+      const coarse = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+      setIsMobile(coarse || window.innerWidth < 768);
       setIsLandscape(window.innerWidth > window.innerHeight);
     };
     check();
@@ -306,7 +327,9 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     if (!video) return;
     if (video.canPlayType("application/vnd.apple.mpegurl")) { video.src = src; video.load(); return; }
     if (!Hls.isSupported()) return;
-    const hls = new Hls({ enableWorker: true, lowLatencyMode: false, maxBufferLength: 60, maxMaxBufferLength: 120 });
+    // Buffer adelantado generoso: permite pausar y dejar que el video cargue
+    // varios minutos por delante (backBufferLength acota la memoria hacia atrás).
+    const hls = new Hls({ enableWorker: true, lowLatencyMode: false, maxBufferLength: 120, maxMaxBufferLength: 300, backBufferLength: 90 });
     hls.loadSource(src);
     hls.attachMedia(video);
     hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -321,6 +344,18 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     video.addEventListener("waiting", () => { setTimeout(() => { if (video.paused && !userPaused) video.play().catch(() => {}); }, 800); });
     return () => hls.destroy();
   }, [src]);
+
+  // Hasta dónde llegó la carga del rango que contiene el tiempo actual.
+  const updateBuffered = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || !v.duration) return;
+    const t = v.currentTime;
+    let end = t;
+    for (let i = 0; i < v.buffered.length; i++) {
+      if (v.buffered.start(i) <= t + 0.5 && v.buffered.end(i) >= t) { end = v.buffered.end(i); break; }
+    }
+    setBufferedPct(Math.min(100, (end / v.duration) * 100));
+  }, []);
 
   const resetControlsTimer = useCallback(() => {
     setShowControls(true);
@@ -691,6 +726,42 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     window.addEventListener("touchend", onEnd);
   };
 
+  // Contenido del menú de ajustes móvil. Se comparte entre el bottom-sheet
+  // normal (fixed, fuera del video) y la variante de pantalla completa (que
+  // debe vivir DENTRO del contenedor fullscreen para quedar visible).
+  const settingsSheetInner = (
+    <>
+      <p className="text-xs font-semibold text-mist-500 uppercase tracking-wider text-center">Ajustes</p>
+      <div>
+        <span className="text-xs text-mist-400 block mb-2">Velocidad</span>
+        <div className="flex flex-wrap gap-2">
+          {([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4, 6] as const).map((s) => (
+            <button key={s} onClick={() => setPlaybackSpeed(s)}
+              className={`px-3 py-1.5 text-xs font-mono rounded-lg border transition-all ${playbackSpeed === s ? "bg-crystal-400/15 border-crystal-400/50 text-crystal-400" : "border-white/10 text-white/50"}`}
+            >
+              {s === 1 ? "1×" : `${s}×`}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Brillo</span><span className="text-xs font-mono text-mist-600">{brightness}%</span></div>
+        <input type="range" min={50} max={200} step={5} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
+      </div>
+      <div>
+        <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Contraste</span><span className="text-xs font-mono text-mist-600">{contrast}%</span></div>
+        <input type="range" min={50} max={200} step={5} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
+      </div>
+      <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-xs text-mist-600 text-center py-2.5 border border-mist-500/10 rounded-lg">
+        Restablecer todo
+      </button>
+      <button onClick={openReportSheet} className="w-full flex items-center justify-center gap-2 text-xs text-mist-400 hover:text-amber-300 py-2.5 border border-mist-500/10 rounded-lg transition-colors">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" /></svg>
+        Reportar problema
+      </button>
+    </>
+  );
+
   return (
     <div className="space-y-3">
       <div
@@ -721,7 +792,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         <video
           ref={videoRef}
           src={src.includes(".m3u8") ? undefined : src}
-          preload="metadata"
+          preload="auto"
           className="w-full block"
           style={{
             transform: zoom !== 1 ? `translate(${panX}px, ${panY}px) scale(${zoom})` : undefined,
@@ -733,8 +804,9 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           title={title}
           draggable={false}
           playsInline
-          onTimeUpdate={() => { const v = videoRef.current; if (v && !seekingRef.current) setCurrentTime(v.currentTime); }}
-          onLoadedMetadata={() => { const v = videoRef.current; if (v) setDuration(v.duration); }}
+          onTimeUpdate={() => { const v = videoRef.current; if (v && !seekingRef.current) setCurrentTime(v.currentTime); updateBuffered(); }}
+          onProgress={updateBuffered}
+          onLoadedMetadata={() => { const v = videoRef.current; if (v) setDuration(v.duration); updateBuffered(); }}
           onWaiting={() => setBuffering(true)}
           onSeeking={() => setBuffering(true)}
           onPlaying={() => { setBuffering(false); setIsPlaying(true); resetControlsTimer(); }}
@@ -869,8 +941,9 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                   window.addEventListener("touchend", onEnd);
                 }}
               >
-                <div className="w-full h-1 bg-white/25 rounded-full relative pointer-events-none">
-                  <div className="h-full bg-crystal-400 rounded-full pointer-events-none" style={{ width: `${pct}%` }} />
+                <div className="w-full h-1 bg-white/20 rounded-full relative pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 bg-white/35 rounded-full pointer-events-none" style={{ width: `${bufferedPct}%` }} />
+                  <div className="relative h-full bg-crystal-400 rounded-full pointer-events-none" style={{ width: `${pct}%` }} />
                   <div className="absolute top-1/2 w-3 h-3 rounded-full bg-white shadow-md pointer-events-none -translate-y-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ left: `${pct}%` }} />
                   {clips && duration > 0 && clips.map((clip) => {
                     const pctMark = Math.min(100, Math.max(0, (clip.inicioSeg / duration) * 100));
@@ -1110,13 +1183,14 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                 </div>
                 <div
                   ref={seekBarRef}
-                  className="w-full h-6 flex items-center cursor-pointer px-3"
+                  className="w-full h-8 flex items-center cursor-pointer px-3"
                   onTouchStart={mobileSeekBarTouchStart}
                   onTouchEnd={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="w-full h-1 bg-white/30 rounded-full relative pointer-events-none">
-                    <div className="h-full bg-crystal-400 rounded-full" style={{ width: `${pct}%` }} />
+                  <div className="w-full h-1 bg-white/20 rounded-full relative pointer-events-none">
+                    <div className="absolute inset-y-0 left-0 bg-white/35 rounded-full" style={{ width: `${bufferedPct}%` }} />
+                    <div className="relative h-full bg-crystal-400 rounded-full" style={{ width: `${pct}%` }} />
                     <div className="absolute top-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-md -translate-y-1/2 -translate-x-1/2" style={{ left: `${pct}%` }} />
                     {clips && duration > 0 && clips.map((clip) => {
                       const pctMark = Math.min(100, Math.max(0, (clip.inicioSeg / duration) * 100));
@@ -1135,10 +1209,34 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
             )}
           </div>
         )}
+
+        {/* ── Ajustes en pantalla completa móvil ──
+            El bottom-sheet normal usa position:fixed y queda TAPADO por el
+            contenedor fullscreen (z-index 9999). Acá se renderiza DENTRO del
+            contenedor: hereda la rotación 90° en vertical (el menú siempre se
+            ve horizontal respecto al video) y tocar fuera lo cierra sin salir
+            de pantalla completa. */}
+        {showSettingsSheet && isCustomFullscreen && (
+          <>
+            <div
+              className="absolute inset-0 bg-black/60 z-[45]"
+              onClick={(e) => { e.stopPropagation(); closeSettingsSheet(); }}
+              onTouchEnd={(e) => { e.stopPropagation(); closeSettingsSheet(); }}
+            />
+            <div
+              className={`absolute inset-x-0 bottom-0 max-h-[75%] overflow-y-auto bg-lake-900 border-t border-mist-500/10 rounded-t-2xl z-50 px-5 pt-3 pb-4 space-y-3 transition-transform duration-300 ${settingsSheetOpened ? "translate-y-0" : "translate-y-full"}`}
+              style={{ touchAction: "pan-y", paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+              onClick={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
+              {settingsSheetInner}
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Mobile settings bottom sheet ── */}
-      {showSettingsSheet && (
+      {showSettingsSheet && !isCustomFullscreen && (
         <>
           <div className="fixed inset-0 bg-black/60 z-50" onClick={closeSettingsSheet} onTouchEnd={closeSettingsSheet} />
           <div
@@ -1147,34 +1245,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
             onTouchEnd={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 bg-mist-500/30 rounded-full mx-auto mb-1" />
-            <p className="text-xs font-semibold text-mist-500 uppercase tracking-wider text-center">Ajustes</p>
-            <div>
-              <span className="text-xs text-mist-400 block mb-2">Velocidad</span>
-              <div className="flex flex-wrap gap-2">
-                {([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4, 6] as const).map((s) => (
-                  <button key={s} onClick={() => setPlaybackSpeed(s)}
-                    className={`px-3 py-1.5 text-xs font-mono rounded-lg border transition-all ${playbackSpeed === s ? "bg-crystal-400/15 border-crystal-400/50 text-crystal-400" : "border-white/10 text-white/50"}`}
-                  >
-                    {s === 1 ? "1×" : `${s}×`}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Brillo</span><span className="text-xs font-mono text-mist-600">{brightness}%</span></div>
-              <input type="range" min={50} max={200} step={5} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
-            </div>
-            <div>
-              <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Contraste</span><span className="text-xs font-mono text-mist-600">{contrast}%</span></div>
-              <input type="range" min={50} max={200} step={5} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
-            </div>
-            <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-xs text-mist-600 text-center py-2.5 border border-mist-500/10 rounded-lg">
-              Restablecer todo
-            </button>
-            <button onClick={openReportSheet} className="w-full flex items-center justify-center gap-2 text-xs text-mist-400 hover:text-amber-300 py-2.5 border border-mist-500/10 rounded-lg transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" /></svg>
-              Reportar problema
-            </button>
+            {settingsSheetInner}
           </div>
         </>
       )}

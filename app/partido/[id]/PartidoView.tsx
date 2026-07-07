@@ -315,7 +315,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                           a.click();
                         })() : handleSidebarDownload(clip)}
                         disabled={!!downloadingId}
-                        className="w-full flex items-center justify-center gap-1.5 text-xs text-mist-600 border border-mist-500/10 hover:border-crystal-400/30 hover:text-crystal-300 rounded-lg py-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-1.5 text-xs text-mist-600 border border-mist-500/10 hover:border-crystal-400/30 hover:text-crystal-300 rounded-lg py-2 sm:py-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {isDownloading ? (
                           <>
@@ -338,7 +338,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           onClick={() => handleSidebarShare(clip)}
-                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-1.5 rounded-lg ${
+                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
                             isCopied
                               ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
                               : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
@@ -358,7 +358,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                         </button>
                         <button
                           onClick={() => handleSidebarCopyLink(clip)}
-                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-1.5 rounded-lg ${
+                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
                             isCopiedLink
                               ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
                               : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"

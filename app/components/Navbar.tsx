@@ -235,7 +235,11 @@ export default function Navbar() {
 
         {/* Mobile dropdown */}
         {isOpen && (
-          <div className="mt-2 bg-lake-900 border border-mist-500/10 rounded-2xl p-2 shadow-[0_16px_48px_rgba(0,0,0,0.55)]">
+          <>
+            {/* Capa invisible: tocar fuera del menú lo cierra (onClick, no
+                pointerdown, para que el toque no "atraviese" hacia lo de abajo) */}
+            <div className="fixed inset-0 md:hidden" onClick={() => setIsOpen(false)} />
+            <div className="relative mt-2 bg-lake-900 border border-mist-500/10 rounded-2xl p-2 shadow-[0_16px_48px_rgba(0,0,0,0.55)] animate-[menu-in_0.18s_ease-out]">
             {links.map(({ href, label }) => {
               const isCross = !href.includes("#");
               const hash = href.includes("#") ? href.split("#")[1] : null;
@@ -283,7 +287,8 @@ export default function Navbar() {
                 {cta.label}
               </NavItem>
             </div>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </header>

@@ -13,6 +13,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Necesario para que env(safe-area-inset-*) funcione en iPhone (los
+  // controles del reproductor lo usan para esquivar la barra inferior).
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
