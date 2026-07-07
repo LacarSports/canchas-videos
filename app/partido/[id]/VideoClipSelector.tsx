@@ -152,6 +152,21 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [settingsSheetOpened, setSettingsSheetOpened] = useState(false);
 
+  // Consejo de rotación: en fullscreen con el celular físicamente horizontal el
+  // navegador muestra su barra (no se puede ocultar sin fullscreen nativo, que
+  // iOS no soporta sobre divs) y el video se ve más chico. Con la rotación
+  // bloqueada en vertical, la rotación por CSS sí ocupa toda la pantalla.
+  const [rotationHint, setRotationHint] = useState(false);
+  const rotationHintShownRef = useRef(false);
+  useEffect(() => {
+    if (!isMobile || !isCustomFullscreen || !isLandscape) return;
+    if (rotationHintShownRef.current) return;
+    rotationHintShownRef.current = true;
+    setRotationHint(true);
+    const t = setTimeout(() => setRotationHint(false), 6000);
+    return () => clearTimeout(t);
+  }, [isMobile, isCustomFullscreen, isLandscape]);
+
   // Reportar problema (jugador)
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [reportText, setReportText] = useState("");
@@ -475,12 +490,18 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     resetControlsTimer();
   }
 
-  function seekToClientX(clientX: number) {
+  // En fullscreen vertical el contenedor está rotado 90° (horario) por CSS, así
+  // que el eje del seekbar corre VERTICAL en la pantalla física (inicio arriba):
+  // el progreso se calcula con clientY. getBoundingClientRect() ya devuelve la
+  // caja post-rotación (angosta y alta). En el resto de los casos, con clientX.
+  function seekToPointer(clientX: number, clientY: number) {
     const bar = seekBarRef.current;
     const v = videoRef.current;
     if (!bar || !v || !v.duration) return;
     const rect = bar.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const pct = isCustomFullscreen && !isLandscape
+      ? Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+      : Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     v.currentTime = pct * v.duration;
     setCurrentTime(pct * v.duration);
   }
@@ -490,8 +511,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const wasPlaying = videoRef.current ? !videoRef.current.paused : false;
     isSeekingDrag.current = true;
     seekingRef.current = true;
-    seekToClientX(e.clientX);
-    const onMove = (ev: MouseEvent) => seekToClientX(ev.clientX);
+    seekToPointer(e.clientX, e.clientY);
+    const onMove = (ev: MouseEvent) => seekToPointer(ev.clientX, ev.clientY);
     const onUp = () => {
       isSeekingDrag.current = false;
       seekingRef.current = false;
@@ -713,8 +734,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const wasPlaying = videoRef.current ? !videoRef.current.paused : false;
     isSeekingDrag.current = true;
     seekingRef.current = true;
-    seekToClientX(touch.clientX);
-    const onMove = (ev: TouchEvent) => { ev.preventDefault(); if (ev.touches[0]) seekToClientX(ev.touches[0].clientX); };
+    seekToPointer(touch.clientX, touch.clientY);
+    const onMove = (ev: TouchEvent) => { ev.preventDefault(); if (ev.touches[0]) seekToPointer(ev.touches[0].clientX, ev.touches[0].clientY); };
     const onEnd = () => {
       isSeekingDrag.current = false; seekingRef.current = false;
       window.removeEventListener("touchmove", onMove);
@@ -833,6 +854,20 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           </div>
         )}
 
+        {/* Consejo: bloquear la rotación mejora la pantalla completa */}
+        {rotationHint && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] pointer-events-none">
+            <div className="flex items-center gap-2 bg-black/75 border border-white/15 rounded-full px-4 py-2 backdrop-blur-sm">
+              <svg className="w-4 h-4 text-crystal-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              <span className="text-white/90 text-xs leading-snug">
+                Consejo: con la rotación del celular <span className="text-crystal-300 font-medium">bloqueada</span> (vertical), la pantalla completa se ve más grande
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Flash central de play/pausa (estilo YouTube) — solo escritorio */}
         {playFlash && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
@@ -930,8 +965,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                   const touch = e.touches[0];
                   const wasPlaying = videoRef.current ? !videoRef.current.paused : false;
                   isSeekingDrag.current = true; seekingRef.current = true;
-                  seekToClientX(touch.clientX);
-                  const onMove = (ev: TouchEvent) => { ev.preventDefault(); if (ev.touches[0]) seekToClientX(ev.touches[0].clientX); };
+                  seekToPointer(touch.clientX, touch.clientY);
+                  const onMove = (ev: TouchEvent) => { ev.preventDefault(); if (ev.touches[0]) seekToPointer(ev.touches[0].clientX, ev.touches[0].clientY); };
                   const onEnd = () => {
                     isSeekingDrag.current = false; seekingRef.current = false;
                     window.removeEventListener("touchmove", onMove); window.removeEventListener("touchend", onEnd);
