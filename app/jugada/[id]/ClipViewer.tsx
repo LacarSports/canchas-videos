@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { processClip } from "../../partido/[id]/processClip";
+import { supabase } from "@/lib/supabase";
+import { registrarDescarga } from "@/lib/descargas";
 import ClipPlayer from "./ClipPlayer";
 
 const TAG_STYLES: Record<string, string> = {
@@ -28,6 +31,7 @@ interface Props {
   etiqueta: string;
   jugadaId: string;
   partidoId: string;
+  complejo?: string;
 }
 
 export default function ClipViewer({
@@ -38,7 +42,9 @@ export default function ClipViewer({
   etiqueta,
   jugadaId,
   partidoId,
+  complejo,
 }: Props) {
+  const router = useRouter();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -51,6 +57,15 @@ export default function ClipViewer({
 
   async function handleDownload() {
     if (downloading) return;
+
+    // Ver la jugada es libre, pero descargar el archivo exige cuenta
+    // (trazabilidad exigida por los T&C §6.3).
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push(`/login?modo=registro&next=${encodeURIComponent(`/jugada/${jugadaId}`)}`);
+      return;
+    }
+
     setDownloading(true);
     setDownloadError(null);
     try {
@@ -60,6 +75,17 @@ export default function ClipViewer({
       a.href = url;
       a.download = `clip_lacar_${etiqueta.replace(/\s+/g, "_")}_${Math.floor(inicioSeg)}s.mp4`;
       a.click();
+
+      registrarDescarga({
+        partidoId,
+        jugadaId,
+        complejo,
+        inicioSeg,
+        finSeg,
+        etiqueta,
+        tipo: "descarga",
+        origen: "jugada",
+      });
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Error al procesar");
     } finally {

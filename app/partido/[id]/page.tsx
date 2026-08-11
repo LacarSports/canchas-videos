@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PartidoView from "./PartidoView";
 import PasswordGate from "./PasswordGate";
+import AuthGate from "./AuthGate";
 import ShareMatchButton from "./ShareMatchButton";
 
 interface Partido {
@@ -104,12 +105,14 @@ export default async function PartidoPage({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        {/* Video + sidebar (client) */}
-        {partido.privado ? (
-          <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} />
-        ) : (
-          <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} />
-        )}
+        {/* Video + sidebar (client) — ver un partido requiere sesión iniciada */}
+        <AuthGate>
+          {partido.privado ? (
+            <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} />
+          ) : (
+            <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} />
+          )}
+        </AuthGate>
 
       </div>
     </main>

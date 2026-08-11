@@ -2102,27 +2102,45 @@ export default function DashboardPage() {
     );
   }
 
-  // El email del usuario no tiene ningún complejo asociado en la tabla `complejos`
+  // El email del usuario no tiene ningún complejo asociado en la tabla `complejos`:
+  // es un jugador (o un dueño aún no habilitado). Invitación comercial en vez de error.
   if (!complejo) {
     return (
       <div className="min-h-[100dvh] bg-lake-950 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-lake-800/60 border border-amber-500/20 rounded-2xl p-8 text-center space-y-4 backdrop-blur-sm">
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 mx-auto flex items-center justify-center">
-            <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+        <div className="max-w-md w-full bg-lake-800/60 border border-crystal-400/15 rounded-2xl p-8 text-center space-y-5 backdrop-blur-sm">
+          <div className="w-12 h-12 rounded-xl bg-crystal-400/10 border border-crystal-400/25 mx-auto flex items-center justify-center">
+            <svg className="w-6 h-6 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-snow">Sin complejo asociado</h2>
-            <p className="text-sm text-mist-500 mt-1">Tu cuenta no tiene un complejo asociado. Contacta a soporte.</p>
+            <h2 className="text-lg font-semibold text-snow">Tu cuenta no es administradora de un complejo</h2>
+            <p className="text-sm text-mist-500 mt-1.5 leading-relaxed">
+              Este panel es para los dueños y administradores de complejos deportivos con
+              cámaras de Lacar Sports instaladas. ¿Administras un complejo?
+            </p>
           </div>
           {user?.email && <p className="text-xs text-mist-700 font-mono break-all">{user.email}</p>}
-          <button
-            onClick={handleLogout}
-            className="w-full py-2.5 rounded-xl border border-white/10 text-mist-400 hover:text-snow hover:border-white/20 text-sm font-medium transition-all"
-          >
-            Cerrar sesión
-          </button>
+          <div className="space-y-2.5">
+            <a
+              href="/complejos"
+              className="block w-full py-2.5 rounded-xl bg-crystal-400 hover:bg-crystal-300 text-lake-950 text-sm font-semibold transition-all active:scale-[0.98]"
+            >
+              Quiero Lacar Sports en mi complejo
+            </a>
+            <a
+              href="/"
+              className="block w-full py-2.5 rounded-xl border border-mist-500/20 text-mist-400 hover:text-snow hover:border-mist-500/40 text-sm font-medium transition-all"
+            >
+              Volver a los partidos
+            </a>
+            <button
+              onClick={handleLogout}
+              className="w-full py-2.5 rounded-xl text-mist-600 hover:text-snow text-sm font-medium transition-all"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </div>
     );

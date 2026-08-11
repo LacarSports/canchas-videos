@@ -23,6 +23,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (duracion > 120) {
+    return Response.json(
+      { error: "Los clips pueden durar máximo 2 minutos." },
+      { status: 400, headers: { "Access-Control-Allow-Origin": "*" } }
+    );
+  }
+
   return new Promise<Response>((resolve) => {
     const chunks: Buffer[] = [];
 

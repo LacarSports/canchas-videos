@@ -5,6 +5,7 @@ import VideoClipSelector, { type ClipLocal } from "./VideoClipSelector";
 import { processClip } from "./processClip";
 import { supabase } from "@/lib/supabase";
 import { getSessionId } from "@/lib/session";
+import { registrarDescarga } from "@/lib/descargas";
 import InlineClipPlayer from "@/app/components/InlineClipPlayer";
 
 /* â”€â”€ tag styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -53,15 +54,21 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
     if (visitaRegistrada.current) return;
     visitaRegistrada.current = true;
     try {
-      // No contar visitas del dueño mientras está logueado en el panel
+      // Los jugadores logueados SÍ cuentan como visita; el API descarta solo
+      // al dueño de ESTE complejo (verificado contra complejos.owner_email).
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) return;
       const sessionId = getSessionId();
       if (!sessionId) return;
       await fetch("/api/visita", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ partidoId, complejo, sessionId }),
+        body: JSON.stringify({
+          partidoId,
+          complejo,
+          sessionId,
+          userId: session?.user?.id ?? null,
+          userEmail: session?.user?.email ?? null,
+        }),
       });
     } catch {
       // un fallo de registro no debe afectar la reproducción
@@ -106,6 +113,17 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
     setClips((prev) =>
       prev.some((c) => c.id === clip.id) ? prev : [clip, ...prev]
     );
+
+    // Trazabilidad: registrar quién descargó (blobUrl) o guardó el clip
+    registrarDescarga({
+      partidoId: clip.partidoId,
+      complejo,
+      inicioSeg: clip.inicioSeg,
+      finSeg: clip.finSeg,
+      etiqueta: clip.etiqueta,
+      tipo: clip.blobUrl ? "descarga" : "destacado",
+      origen: "partido",
+    });
 
     // Only persist to DB when saved as "destacado" (no blobUrl)
     if (!clip.blobUrl) {
@@ -154,6 +172,16 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
       a.href = url;
       a.download = `clip_lacar_${clip.etiqueta.replace(/\s+/g, "_")}_${Math.floor(clip.inicioSeg)}s.mp4`;
       a.click();
+
+      registrarDescarga({
+        partidoId: clip.partidoId,
+        complejo,
+        inicioSeg: clip.inicioSeg,
+        finSeg: clip.finSeg,
+        etiqueta: clip.etiqueta,
+        tipo: "descarga",
+        origen: "partido",
+      });
 
       // Keep blob URL alive for modal playback
       setClips((prev) =>

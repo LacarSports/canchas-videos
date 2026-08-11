@@ -139,6 +139,10 @@ export async function processClip({
   onFase,
   onProgreso,
 }: ProcessOptions): Promise<string> {
+  // Tope duro de duración: los clips exportables no pueden superar los 2 minutos.
+  if (finSeg - inicioSeg > 120) {
+    throw new Error("Los clips pueden durar máximo 2 minutos.");
+  }
   onFase?.("ffmpeg");
   const ff = await getFFmpeg();
 

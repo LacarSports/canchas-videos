@@ -99,6 +99,7 @@ export default async function JugadaPage({
           etiqueta={jugada.etiqueta}
           jugadaId={jugada.id}
           partidoId={jugada.partido_id}
+          complejo={partido.complejo}
         />
 
       </div>

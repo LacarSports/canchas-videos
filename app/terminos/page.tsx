@@ -4,230 +4,397 @@ import LegalDoc from "../components/LegalDoc";
 export const metadata: Metadata = {
   title: "Términos y Condiciones · Lacar Sports",
   description:
-    "Términos y Condiciones de Uso de la plataforma Lacar Sports SpA.",
+    "Términos y Condiciones de Uso de la plataforma audiovisual deportiva LacarSports, conforme a las Leyes N° 19.628 y N° 21.719 de la República de Chile.",
 };
 
 const ul = "list-disc pl-5 space-y-1.5 marker:text-crystal-400/60";
+const mail = "text-crystal-400 hover:text-crystal-300 underline underline-offset-2";
 
 export default function TerminosPage() {
   return (
     <LegalDoc
       title="Términos y Condiciones de Uso"
-      updated="17 de junio de 2026"
+      updated="20 de julio de 2026"
       intro={
         <>
-          Estos Términos y Condiciones (los &ldquo;Términos&rdquo;) regulan el acceso y uso de
-          la plataforma <strong className="text-snow">Lacar Sports</strong>, operada por{" "}
-          <strong className="text-snow">Lacar Sports SpA</strong>, sociedad constituida en
-          Chile (&ldquo;Lacar Sports&rdquo;, &ldquo;nosotros&rdquo;). Al acceder o utilizar la
-          plataforma, ya sea como jugador o como dueño de un complejo deportivo, aceptas estos
-          Términos en su totalidad. Si no estás de acuerdo, debes abstenerte de usar la
-          plataforma.
+          El presente documento de Términos y Condiciones establece el marco regulatorio y
+          contractual que rige la relación entre la empresa propietaria y operadora de la
+          tecnología (en adelante, la &ldquo;Organización&rdquo;), el ecosistema digital, entorno
+          web y aplicaciones móviles que sean de su propiedad o estén bajo su control directo (en
+          adelante, el &ldquo;Portal&rdquo; o el &ldquo;Sitio&rdquo;), y que permitan crear el
+          material audiovisual de registro deportivo procesado, transmitido, distribuido,
+          reproducido y que es grabado a través de las cámaras e infraestructura de la
+          Organización (en adelante, las &ldquo;Grabaciones&rdquo; o el &ldquo;Contenido&rdquo;) y
+          los Usuarios finales de la plataforma (en adelante, el &ldquo;Usuario&rdquo;).
+          <br />
+          <br />
+          La condición de Usuario se adquiere mediante el ingreso, navegación y/o creación de
+          credenciales en el Portal. Ello implica la aceptación irrestricta, expresa y consciente
+          de estos Términos y Condiciones y de todas las cláusulas vigentes al momento del acceso.
+          Estas directrices mantendrán plena validez legal mientras persista la interacción con
+          nuestros servicios, subsistiendo las responsabilidades por hechos acaecidos con
+          anterioridad tras el cierre de la cuenta o el cese del uso del Sitio.
+          <br />
+          <br />
+          El uso del Sitio web, la suscripción y el acceso a los servicios se rigen
+          complementariamente por los estatutos específicos disponibles en la plataforma, entre
+          los cuales se incluye de manera mandatoria la{" "}
+          <a href="/privacidad" className={mail}>
+            Política de Privacidad
+          </a>
+          .
         </>
       }
       sections={[
         {
-          heading: "Descripción del servicio",
+          heading: "Requisitos de edad y protocolo para menores (Ley chilena N° 21.719)",
           body: (
             <>
               <p>
-                Lacar Sports es una plataforma que permite grabar automáticamente partidos
-                disputados en complejos deportivos que cuentan con nuestras cámaras instaladas.
-                Una vez grabados, los partidos quedan disponibles en línea para que los
-                jugadores puedan buscarlos por complejo, cancha, fecha y hora, reproducirlos,
-                marcar sus mejores jugadas y descargar clips.
+                1.1 Conforme a las directrices de orden público dispuestas en la legislación de la
+                República de Chile sobre resguardo de datos en entornos digitales, la Plataforma
+                aplica un criterio diferenciado y restrictivo según la edad de los participantes.
               </p>
               <p>
-                Adicionalmente, ofrecemos a los dueños de complejos un panel de administración
-                con estadísticas de ocupación y actividad, configuración de cámaras y monitoreo
-                del estado del servicio.
+                1.2 El Usuario declara y garantiza que posee plena capacidad legal para obligarse
+                por sí mismo bajo estos Términos y Condiciones, teniendo al menos dieciocho (18)
+                años de edad. En caso de ser un menor de edad que tenga entre catorce (14) y
+                diecisiete (17) años, declara que cuenta con la debida asistencia o autorización de
+                sus padres, tutores o representantes legales.
               </p>
               <p>
-                Lacar Sports puede modificar, suspender o discontinuar funcionalidades del
-                servicio en cualquier momento, procurando dar aviso razonable cuando ello
-                afecte de forma relevante a los usuarios.
+                1.3 Se prohíbe de forma absoluta la suscripción individual de personas menores de
+                catorce (14) años. En el evento de actividades deportivas infantiles organizadas
+                (ligas de menores, academias o escuelas formativas), la captura y almacenamiento de
+                imágenes requerirá obligatoriamente el consentimiento expreso, por escrito y previo
+                de sus padres o representantes legales, cuya recaudación y custodia será
+                responsabilidad exclusiva del recinto deportivo organizador.
               </p>
             </>
           ),
         },
         {
-          heading: "Registro y cuentas (dueños de complejos)",
+          heading: "Perfil de usuario, resguardo de acceso y bajas",
           body: (
             <>
               <p>
-                El acceso al panel de administración está reservado a los dueños o
-                administradores de complejos con los que Lacar Sports mantiene una relación
-                comercial. Las cuentas son creadas y habilitadas por Lacar Sports mediante
-                correo electrónico y contraseña.
+                2.1 El acceso a las transmisiones vía streaming y la consulta de las Grabaciones
+                requiere la creación de un perfil digital individual protegido mediante un
+                identificador (ID) y una clave alfanumérica secreta elegida por el Usuario en el
+                Sitio Web www.lacarsports.cl
+              </p>
+              <p>
+                2.2 El uso del perfil tiene carácter estrictamente confidencial. El Usuario asume
+                la posición de guardián de sus datos de acceso, siendo responsable directo por
+                cualquier actividad, consulta o descarga efectuada en la Plataforma bajo sus
+                credenciales. La Organización queda liberada de toda responsabilidad civil ante
+                intromisiones derivadas del descuido o pérdida de las claves por parte del Usuario.
+              </p>
+              <p>
+                2.3 La Organización se reserva la facultad de cancelar, suspender o bloquear de
+                manera inmediata cualquier perfil de usuario si detecta conductas que amenacen la
+                integridad del sistema, sin que ello genere derecho a indemnización alguna.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading:
+            "Protección de datos personales y derechos de imagen (Ley N° 21.719 y Ley N° 19.628)",
+          body: (
+            <>
+              <p>
+                3.1 En virtud de la legislación chilena, la imagen y la voz de las personas
+                naturales constituyen datos personales. El tratamiento automatizado de las
+                filmaciones dentro de los complejos deportivos asociados se fundamenta
+                principalmente en:
               </p>
               <ul className={ul}>
                 <li>
-                  Eres responsable de mantener la confidencialidad de tus credenciales y de toda
-                  actividad realizada bajo tu cuenta.
+                  <strong className="text-snow">El Interés Legítimo comercial y recreativo:</strong>{" "}
+                  Destinado a proveer un servicio de entretención y análisis deportivo en recintos
+                  deportivos comerciales debidamente señalizados, donde el Usuario tiene la
+                  expectativa razonable de ser filmado en el marco del juego.
                 </li>
                 <li>
-                  Debes proporcionar información veraz y mantenerla actualizada.
-                </li>
-                <li>
-                  Debes notificarnos de inmediato ante cualquier uso no autorizado de tu cuenta.
+                  <strong className="text-snow">El Consentimiento Expreso:</strong> Otorgado
+                  formalmente por el Usuario al momento de registrarse en la Plataforma para
+                  buscar, reproducir o interactuar con el Contenido.
                 </li>
               </ul>
               <p>
-                Los jugadores no requieren registrarse para buscar y ver los partidos públicos
-                de su complejo.
+                3.2 <strong className="text-snow">Mecanismo de Exclusión Inmediata (Derechos ARCO):</strong>{" "}
+                La Plataforma garantiza el derecho permanente de Acceso, Rectificación, Cancelación
+                y Oposición. Cualquier Usuario o tercero que no desee que su imagen permanezca
+                alojada en el Portal podrá solicitar la baja inmediata remitiendo un correo
+                electrónico a los canales de soporte. La Organización se compromete a remover,
+                pixelar o bloquear de forma definitiva el archivo visual en un plazo máximo e
+                improrrogable de veinticuatro (24) horas hábiles desde la recepción de la
+                solicitud.
+              </p>
+              <p>
+                3.3 <strong className="text-snow">Prohibición de Datos Sensibles:</strong> Está
+                estrictamente prohibido cargar, comentar o asociar datos sensibles al perfil
+                (ideologías, religión, aspectos de salud física o mental ajenos al deporte). Las
+                imágenes se procesan de forma automatizada y con fines exclusivamente recreativos.
               </p>
             </>
           ),
         },
         {
-          heading: "Uso aceptable de la plataforma",
-          body: (
-            <>
-              <p>Al usar la plataforma, te comprometes a no:</p>
-              <ul className={ul}>
-                <li>Utilizarla con fines ilícitos o que infrinjan derechos de terceros.</li>
-                <li>
-                  Intentar acceder a partidos privados o a cuentas ajenas sin autorización.
-                </li>
-                <li>
-                  Descargar, reproducir o distribuir contenido para acosar, difamar o vulnerar
-                  la privacidad o dignidad de otras personas.
-                </li>
-                <li>
-                  Interferir con el funcionamiento de la plataforma, vulnerar sus medidas de
-                  seguridad o realizar ingeniería inversa.
-                </li>
-                <li>
-                  Emplear medios automatizados para extraer contenido o datos de forma masiva
-                  sin nuestro consentimiento.
-                </li>
-              </ul>
-              <p>
-                El incumplimiento de estas reglas puede derivar en la suspensión o terminación
-                del acceso al servicio.
-              </p>
-            </>
-          ),
-        },
-        {
-          heading: "Propiedad intelectual",
+          heading: "Reglas específicas de conducta y prohibiciones operativas",
           body: (
             <>
               <p>
-                La plataforma, su software, diseño, interfaz, la marca &ldquo;Lacar
-                Sports&rdquo;, logotipos y demás elementos distintivos son de propiedad de Lacar
-                Sports SpA o de sus licenciantes, y están protegidos por la legislación chilena
-                e internacional. No se concede ningún derecho sobre ellos salvo el uso permitido
-                por estos Términos.
-              </p>
-              <p>
-                Respecto de los videos de los partidos: Lacar Sports gestiona la grabación,
-                almacenamiento y puesta a disposición del contenido. Se autoriza a los jugadores
-                a descargar y compartir los clips de sus propias jugadas para uso personal y no
-                comercial. Cualquier uso comercial del contenido requiere autorización previa y
-                por escrito de Lacar Sports.
-              </p>
-            </>
-          ),
-        },
-        {
-          heading: "Grabación de partidos y consentimiento",
-          body: (
-            <>
-              <p>
-                Las cámaras instaladas en los complejos graban la actividad deportiva de las
-                canchas durante los horarios habilitados. Al ingresar y jugar en una cancha con
-                cámara de Lacar Sports, los jugadores reconocen que el partido puede ser grabado
-                y puesto a disposición en la plataforma conforme a estos Términos y a nuestra{" "}
-                <a href="/privacidad" className="text-crystal-400 hover:text-crystal-300 underline underline-offset-2">
-                  Política de Privacidad
-                </a>
-                .
-              </p>
-              <p>
-                El complejo deportivo es responsable de informar a sus usuarios, mediante
-                señalética visible u otros medios, de la existencia de cámaras y de la grabación
-                de los partidos. Si un jugador no desea aparecer en una grabación, puede
-                solicitarlo al complejo o contactarnos para gestionar la restricción o
-                eliminación del contenido cuando corresponda.
-              </p>
-            </>
-          ),
-        },
-        {
-          heading: "Privacidad de los videos (público vs. privado)",
-          body: (
-            <>
-              <p>
-                El dueño del complejo puede configurar, por bloque horario, si los videos son:
+                4.1 El Usuario se compromete a utilizar la Plataforma bajo criterios de buena fe y
+                respeto. Queda prohibido de forma categórica:
               </p>
               <ul className={ul}>
                 <li>
-                  <strong className="text-snow">Públicos:</strong> cualquier persona con el
-                  enlace puede buscarlos y verlos en la plataforma.
+                  (a) Suplantar identidades, utilizar perfiles ajenos o aportar datos falsos en el
+                  proceso de registro.
                 </li>
                 <li>
-                  <strong className="text-snow">Privados:</strong> el acceso al video requiere
-                  una clave definida por el complejo.
+                  (b) Emplear el Portal para fines comerciales externos, retransmisiones no
+                  autorizadas o lucro personal fuera de la visualización privada.
                 </li>
                 <li>
-                  <strong className="text-snow">Bloqueados:</strong> la cámara no graba ese
-                  bloque, por lo que no se genera video.
+                  (c) Desactivar, vulnerar, testear o sortear los esquemas de seguridad
+                  informática, cortafuegos o restricciones tecnológicas del código fuente de la
+                  Plataforma.
+                </li>
+                <li>
+                  (d) Alterar, borrar o superponer los avisos de copyright, logos o marcas de agua
+                  insertas en las Grabaciones.
+                </li>
+                <li>
+                  (e) Ejecutar técnicas de extracción automatizada de datos (tales como scraping,
+                  crawling o minería de datos) sobre los servidores de la Organización.
+                </li>
+                <li>
+                  (f) Propagar, inyectar o distribuir códigos maliciosos, virus, troyanos o gusanos
+                  informáticos destinados a alterar el normal funcionamiento del servicio.
                 </li>
               </ul>
-              <p>
-                Lacar Sports pone a disposición estas herramientas, pero la decisión sobre la
-                visibilidad de cada bloque corresponde al complejo.
-              </p>
             </>
           ),
         },
         {
-          heading: "Limitación de responsabilidad",
+          heading: "Régimen de almacenamiento temporal y caducidad de datos",
           body: (
             <>
               <p>
-                La plataforma se ofrece &ldquo;tal cual&rdquo; y &ldquo;según
-                disponibilidad&rdquo;. Lacar Sports no garantiza que el servicio sea
-                ininterrumpido o esté libre de errores. La grabación depende de factores como el
-                suministro eléctrico, la conexión a internet del complejo y el correcto
-                funcionamiento del equipamiento; ante cortes o fallas, es posible que algunos
-                partidos no se graben.
+                5.1 En observancia estricta del principio de minimización de datos, las Grabaciones
+                completas de los eventos deportivos tendrán una vigencia limitada en el Portal de
+                siete (07) días corridos contados desde su captura.
               </p>
               <p>
-                En la máxima medida permitida por la ley chilena, Lacar Sports no será
-                responsable por daños indirectos, incidentales o lucro cesante derivados del uso
-                o imposibilidad de uso de la plataforma, ni por la pérdida de videos no
-                grabados, eliminados conforme a los plazos de retención, o cuyo bloque haya sido
-                bloqueado por el complejo.
+                5.2 Terminado este periodo, el software ejecutará un proceso de depuración
+                automatizada y destrucción irreversible del archivo íntegro, salvo aquellos clips
+                cortos o resúmenes recortados que el Usuario guarde explícitamente en su panel
+                personal. Asimismo, aquellas cuentas de usuario que no registren inicios de sesión
+                por un plazo continuo de doce (12) meses serán dadas de baja por inactividad,
+                eliminándose de forma definitiva sus datos históricos asociados.
               </p>
             </>
           ),
         },
         {
-          heading: "Legislación aplicable y jurisdicción",
+          heading: "Exportación de resúmenes (highlights) y ruptura de custodia",
+          body: (
+            <>
+              <p>
+                6.1 El Portal provee herramientas técnicas para que el Usuario pueda segmentar
+                clips de video de corta duración (jugadas destacadas o goles) para su archivo
+                privado.
+              </p>
+              <p>
+                6.2 <strong className="text-snow">Limitación de Uso Comercial:</strong> Queda
+                prohibido vender, licenciar o lucrar con el material descargado. El Usuario solo
+                podrá conservar el fragmento para fines personales y domésticos.
+              </p>
+              <p>
+                6.3 <strong className="text-snow">Estatuto de Responsabilidad por Difusión:</strong>{" "}
+                La transmisión del partido completo se realiza de manera segura y cerrada por
+                streaming dentro del Portal. Si el Usuario decide exportar, descargar un clip de
+                video o difundir enlaces en redes sociales o plataformas externas (como Instagram,
+                TikTok o WhatsApp), se produce jurídicamente una ruptura de la cadena de custodia.
+                A partir de ese hito, el Usuario asume la calidad jurídica de Responsable
+                Independiente del Tratamiento de esas imágenes de terceros.
+              </p>
+              <p>
+                6.4 El Usuario declara expresamente bajo su responsabilidad que cuenta con la
+                anuencia y el respeto del fair-play y la convivencia deportiva respecto a los demás
+                integrantes del partido (compañeros y rivales). Queda estrictamente prohibido
+                difundir clips de video con propósitos de acoso, burla, difamación o cualquier uso
+                malicioso. El Usuario mantendrá completamente indemne a la Organización frente a
+                cualquier acción legal, demanda o sanción de terceros o de la Agencia de Protección
+                de Datos Personales derivada del mal uso o difusión no consentida de los archivos
+                descargados.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Modelo operativo y ausencia de transacciones digitales",
+          body: (
+            <>
+              <p>
+                7.1 El Usuario toma conocimiento de que la Plataforma actúa bajo un modelo de
+                habilitación institucional, por lo que no procesa, recauda ni ejecuta transacciones
+                económicas ni pasarelas de pago de cara al consumidor final en su entorno web.
+              </p>
+              <p>
+                7.2 Cualquier cobro, arriendo o habilitación del servicio se gestiona e implementa
+                de manera externa y directa con la administración del complejo deportivo
+                correspondiente, rigiéndose por los reglamentos comerciales propios de dicho
+                recinto.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Sitios de terceros e hiperenlaces limitados",
+          body: (
+            <>
+              <p>
+                8.1 Debido a que la Plataforma no integra pasarelas de pago ni herramientas
+                transaccionales, los hipervínculos externos en el Portal se limitan de manera
+                estricta a redireccionamientos informativos institucionales o redes sociales
+                oficiales de la Organización.
+              </p>
+              <p>
+                8.2 En caso de interactuar con dichos enlaces externos, el Usuario reconoce que
+                estos se rigen por políticas ajenas a nuestra Organización, por lo que su
+                navegación se realiza bajo su propio riesgo corporativo y personal.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Integridad y cláusula de salvaguarda",
+          body: (
+            <>
+              <p>
+                9.1 Estos Términos y Condiciones constituyen el pacto único y vinculante entre la
+                Organización y el Usuario respecto al Portal, anulando cualquier comunicación
+                verbal o escrita previa.
+              </p>
+              <p>
+                9.2 Si cualquier acápite o porción de este texto es declarada inaplicable o nula
+                por un tribunal chileno, dicha invalidez no contaminará al resto de las cláusulas,
+                las cuales mantendrán pleno vigor. El artículo afectado será sustituido por un
+                texto legalmente válido que refleje fielmente la intención económica y preventiva
+                original.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Exclusión de garantías operativas",
+          body: (
+            <>
+              <p>
+                10.1 Los Servicios se suministran en condiciones &ldquo;tal como están&rdquo; y
+                según su disponibilidad técnica. La Organización realiza sus mejores esfuerzos por
+                mantener la continuidad operativa, pero no garantiza la ausencia total de
+                interrupciones, demoras en el procesamiento de video por fallas en la conectividad
+                de Internet, fallas eléctricas del complejo deportivo o pérdidas fortuitas de
+                Contenido.
+              </p>
+              <p>
+                10.2 La Organización queda exonerada de responder por pérdidas fortuitas de
+                Grabaciones causadas por eventos de fuerza mayor o fallas en la conectividad
+                Internet o del suministro eléctrico de los recintos deportivos.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Indemnidad corporativa",
           body: (
             <p>
-              Estos Términos se rigen por las leyes de la República de Chile. Cualquier
-              controversia relativa a su interpretación o cumplimiento será sometida a los
-              Tribunales Ordinarios de Justicia de la ciudad de Santiago, sin perjuicio de los
-              derechos que la legislación de protección al consumidor reconozca a los usuarios.
+              11.1 El Usuario se obliga a defender, indemnizar y eximir de toda responsabilidad
+              legal a la Organización, sus directores y técnicos ante cualquier gasto, costo
+              judicial, honorarios de abogados o indemnizaciones derivadas de reclamos interpuestos
+              por otros jugadores, rivales o terceros, que tengan como causa directa la infracción
+              de estos Términos y Condiciones o el mal uso de las Grabaciones por parte del
+              Usuario.
             </p>
           ),
         },
         {
-          heading: "Contacto",
+          heading: "Límites sancionatorios y responsabilidad civil",
+          body: (
+            <>
+              <p>
+                12.1 Con el máximo alcance autorizado por el ordenamiento civil chileno, la
+                Organización no responderá bajo ninguna circunstancia por daños indirectos, lucro
+                cesante, pérdidas de oportunidades comerciales o perjuicios morales derivados de la
+                visualización o el uso de los clips de video.
+              </p>
+              <p>
+                12.2 Cualquier compensación o responsabilidad total acumulada imputable a la
+                Organización quedará topada de forma estricta a un monto máximo equivalente a una
+                (1) Unidad de Fomento (UF) vigente a la fecha del hito generador, salvo en eventos
+                donde se demuestre dolo directo o negligencia inexcusable calificada por un
+                tribunal.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Canales de comunicación oficial",
           body: (
             <p>
-              Ante cualquier duda sobre estos Términos, puedes escribirnos a{" "}
-              <a
-                href="mailto:soporte@lacarsports.cl"
-                className="text-crystal-400 hover:text-crystal-300 underline underline-offset-2"
-              >
-                soporte@lacarsports.cl
+              13.1 Para notificaciones legales, requerimientos institucionales o consultas
+              administrativas, la Organización dispone de la casilla oficial:{" "}
+              <a href="mailto:contacto@lacarsports.cl" className={mail}>
+                contacto@lacarsports.cl
+              </a>
+              . Para solicitudes exclusivas de eliminación preventiva de contenido bajo derechos de
+              imagen, el canal habilitado es:{" "}
+              <a href="mailto:bajas@lacarsports.cl" className={mail}>
+                bajas@lacarsports.cl
               </a>
               .
             </p>
+          ),
+        },
+        {
+          heading: "Revisión y enmiendas de los Términos y Condiciones",
+          body: (
+            <>
+              <p>
+                14.1 La Organización podrá ajustar, actualizar o reestructurar el texto de estos
+                Términos y Condiciones cuando las actualizaciones tecnológicas o los cambios
+                normativos en Chile lo exijan. Dichas enmiendas serán vinculantes desde el momento
+                de su publicación en el Portal.
+              </p>
+              <p>
+                14.2 Se informará a los usuarios registrados sobre las variaciones sustanciales
+                mediante alertas en el panel de control o correos informativos. El uso de los
+                servicios con posterioridad a las modificaciones implica la total conformidad con
+                el nuevo texto.
+              </p>
+            </>
+          ),
+        },
+        {
+          heading: "Legislación nacional y foro de resolución",
+          body: (
+            <>
+              <p>
+                15.1 Este clausulado se rige e interpreta de forma exclusiva bajo las leyes
+                vigentes de la República de Chile.
+              </p>
+              <p>
+                15.2 Ante cualquier controversia que no sea solucionada mediante avenimiento
+                directo entre las partes, estas fijan su domicilio contractual y se someten a la
+                jurisdicción de los Tribunales Ordinarios de Justicia de la comuna de Santiago de
+                Chile.
+              </p>
+            </>
           ),
         },
       ]}

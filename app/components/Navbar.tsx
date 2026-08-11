@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { smoothScrollTo } from "@/lib/smoothScroll";
+import { supabase } from "@/lib/supabase";
+import { useSession } from "@/lib/useSession";
 
 // Altura aprox. del navbar fijo (coincide con --scroll-padding-top en CSS).
 const NAV_OFFSET = 88;
@@ -79,6 +81,15 @@ function NavItem({
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname() ?? "/";
+
+  // Sesión (jugadores y dueños comparten el mismo login)
+  const { session } = useSession();
+  const userEmail = session?.user?.email ?? "";
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setIsOpen(false);
+  }
 
   const isOwners = pathname.startsWith("/complejos");
   const links = isOwners ? OWNER_LINKS : PLAYER_LINKS;
@@ -204,14 +215,37 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Desktop CTA */}
-          <NavItem
-            href={cta.href}
-            pathname={pathname}
-            className="hidden md:inline-flex items-center gap-1.5 bg-crystal-400 hover:bg-crystal-300 text-lake-950 font-semibold text-[13px] px-4 py-2 rounded-full transition-all duration-200 active:scale-[0.97] shadow-[0_0_16px_rgba(41,196,173,0.35)]"
-          >
-            {cta.label}
-          </NavItem>
+          {/* Desktop: CTA + sesión */}
+          <div className="hidden md:flex items-center gap-2">
+            <NavItem
+              href={cta.href}
+              pathname={pathname}
+              className="inline-flex items-center gap-1.5 bg-crystal-400 hover:bg-crystal-300 text-lake-950 font-semibold text-[13px] px-4 py-2 rounded-full transition-all duration-200 active:scale-[0.97] shadow-[0_0_16px_rgba(41,196,173,0.35)]"
+            >
+              {cta.label}
+            </NavItem>
+
+            {session ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                title={userEmail}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[13px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-full transition-all duration-200"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Cerrar sesión
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center px-3.5 py-1.5 text-[13px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-full transition-all duration-200"
+              >
+                Iniciar sesión
+              </Link>
+            )}
+          </div>
 
           {/* Mobile hamburger */}
           <button
@@ -286,6 +320,30 @@ export default function Navbar() {
               >
                 {cta.label}
               </NavItem>
+            </div>
+
+            {/* Sesión (móvil) */}
+            <div className="mt-2 pt-2 border-t border-mist-500/10 px-1">
+              {session ? (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-xl transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Cerrar sesión
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-xl transition-all"
+                >
+                  Iniciar sesión
+                </Link>
+              )}
             </div>
             </div>
           </>
