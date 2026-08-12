@@ -158,7 +158,11 @@ export default async function HomePage({
           {/* ── Right — floating card mockup (con parallax al mouse) ── */}
           <div className="hidden lg:flex justify-center items-center">
             <HeroParallax strength={18}>
-              <div className="relative animate-float">
+              <a
+                href="#buscador"
+                aria-label="Buscar mi partido"
+                className="group relative animate-float block cursor-pointer"
+              >
                 {/* Glow halo */}
                 <div
                   className="absolute -inset-8 rounded-3xl pointer-events-none"
@@ -166,7 +170,7 @@ export default async function HomePage({
                 />
 
                 {/* Card */}
-                <div className="relative bg-lake-900/80 border border-crystal-400/20 rounded-2xl overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl w-[340px]">
+                <div className="relative bg-lake-900/80 border border-crystal-400/20 group-hover:border-crystal-400/45 rounded-2xl overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl w-[340px] transition-colors duration-300">
 
                   {/* Video area */}
                   <div className="aspect-video relative overflow-hidden flex items-center justify-center">
@@ -188,7 +192,7 @@ export default async function HomePage({
 
                     {/* Play */}
                     <div className="relative z-10 w-14 h-14 rounded-full bg-black/40 border border-white/30 flex items-center justify-center backdrop-blur-sm shadow-[0_0_24px_rgba(0,0,0,0.5)]">
-                      <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>
@@ -250,7 +254,7 @@ export default async function HomePage({
                     </div>
                   </div>
                 </div>
-              </div>
+              </a>
             </HeroParallax>
           </div>
         </div>

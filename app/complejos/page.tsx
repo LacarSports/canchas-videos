@@ -166,12 +166,13 @@ export default function ComplejosPage() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tighter leading-[0.98] mb-6 animate-slide-up" style={{ animationDelay: "0.1s" }}>
-              <span className="text-snow">Tu complejo al siguiente nivel,</span>{" "}
-              <span className="text-crystal-400" style={{ textShadow: "0 0 45px rgba(41,196,173,0.5)" }}>súmate al cambio.</span>
+              <span className="text-snow">Tu complejo,</span>
+              <br />
+              <span className="text-crystal-400" style={{ textShadow: "0 0 45px rgba(41,196,173,0.5)" }}>al siguiente nivel</span>
             </h1>
 
             <p className="text-base sm:text-lg text-mist-400 mb-9 leading-relaxed max-w-[52ch] animate-slide-up" style={{ animationDelay: "0.18s" }}>
-              Instalamos cámaras que graban cada partido en automático. Tus jugadores reviven sus jugadas y tú monitoreas tu negocio desde un panel — sin personal extra.
+              Instalamos cámaras que graban cada partido en automático. Tus jugadores reviven sus jugadas y tú monitoreas tu negocio desde un panel, sin personal extra.
             </p>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 animate-slide-up" style={{ animationDelay: "0.26s" }}>
@@ -198,9 +199,14 @@ export default function ComplejosPage() {
 
           {/* Panel preview mockup */}
           <div className="hidden lg:flex justify-center items-center">
-            <div className="relative animate-float w-[360px]">
+            <HeroParallax strength={18}>
+              <Link
+                href="/auth/complejo"
+                aria-label="Ir a mi panel"
+                className="group relative animate-float block w-[360px] cursor-pointer"
+              >
               <div className="absolute -inset-8 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(circle, rgba(41,196,173,0.18), transparent 70%)", filter: "blur(30px)" }} />
-              <div className="relative bg-lake-900/85 border border-crystal-400/20 rounded-2xl p-5 shadow-[0_32px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl">
+              <div className="relative bg-lake-900/85 border border-crystal-400/20 group-hover:border-crystal-400/45 rounded-2xl p-5 shadow-[0_32px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl transition-colors duration-300">
                 {/* topbar */}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
@@ -230,7 +236,8 @@ export default function ComplejosPage() {
                   </div>
                 </div>
               </div>
-            </div>
+              </Link>
+            </HeroParallax>
           </div>
         </div>
       </section>

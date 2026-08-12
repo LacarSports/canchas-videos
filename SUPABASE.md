@@ -30,9 +30,14 @@ URL completa), `privado` (bool), `password_hash` (bcrypt, si el bloque era priva
 `deporte`. Los videos se eliminan a los ~7 días (política de retención de los T&C).
 
 ### `jugadas`
-Clips destacados guardados por jugadores desde el reproductor. `id`, `partido_id`,
-`etiqueta`, `inicio_seg`, `fin_seg`, `duracion`, `creado_en`. Alimenta la página pública
-`/jugada/[id]` y el sidebar del partido. Máximo 120 s por clip (validado en app y API).
+Clips destacados guardados por jugadores desde el reproductor. `id`, `partido_id`
+(FK a `partidos`, **ON DELETE CASCADE**), `etiqueta`, `inicio_seg`, `fin_seg`, `duracion`,
+`creado_en`. Alimenta la página pública `/jugada/[id]` y el sidebar del partido. Máximo
+120 s por clip (validado en app y API). **Retención (T&C aug26):** al borrarse el partido
+a los 7 días, sus `jugadas` se eliminan automáticamente por el cascade (y con ellas las
+páginas `/jugada/[id]`), cumpliendo la regla de que ningún material del partido sobrevive
+al plazo. La trazabilidad de quién descargó vive aparte en `descargas_clips`, que NO se
+borra (no guarda video, solo el registro).
 
 ### `complejos`
 Complejos clientes. `id`, `name_complex`, `owner_email`. **RLS bloquea lectura anónima**;
@@ -99,8 +104,21 @@ para investigar un clip difundido usar service role o el SQL Editor. Se inserta 
 - **Authentication → Sign In / Providers**: "Allow new users to sign up" debe estar
   **activado** (los jugadores se registran solos). Proveedor Google: requiere OAuth Client
   en Google Cloud Console con redirect `https://soyoxtzfedkgmiiiwllm.supabase.co/auth/v1/callback`.
-- **Authentication → URL Configuration**: Site URL `https://www.lacarsports.cl`; agregar
-  `http://localhost:3000/**` a Additional Redirect URLs para desarrollo.
+- **Authentication → URL Configuration** — ⚠️ crítico, aquí se cae el login con Google:
+  - **Site URL** = dominio de producción (NO dejar el `http://localhost:3000` que viene por
+    defecto). Supabase usa este valor como destino de respaldo, y si el `redirectTo` que
+    manda la app no está en la lista de abajo, **lo ignora y manda a Site URL** — ese es el
+    síntoma de "inicio sesión con Google y termino en localhost".
+  - **Redirect URLs** debe incluir todas las variantes que se usan:
+    `https://lacarsports.cl/**`, `https://www.lacarsports.cl/**` y
+    `http://localhost:3000/**`. El código manda `window.location.origin + next`
+    (`app/login/page.tsx`), o sea rutas profundas tipo `/partido/<id>`: por eso el `/**`.
+- **Marca en la pantalla de consentimiento de Google**: Google muestra el host del callback
+  (`soyoxtzfedkgmiiiwllm.supabase.co`) en vez de "Lacar Sports" porque el callback vive en
+  el dominio compartido de Supabase. Configurar App name + logo en Google Cloud → OAuth
+  consent screen ayuda, pero para que desaparezca la URL de Supabase hace falta el add-on
+  de **Custom Domain** de Supabase (de pago), que deja el callback en
+  `auth.lacarsports.cl`. Es cosmético: el login funciona igual sin eso.
 - **Confirm email**: **desactivado** (Authentication → Sign In / Providers → Email →
   "Confirm email" OFF). El registro entra directo, sin paso de confirmación.
 
