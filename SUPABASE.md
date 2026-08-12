@@ -77,8 +77,8 @@ Reportes de problemas sobre la plataforma: `origen` 'jugador'|'complejo', `comen
 ### `perfiles` (agosto 2026)
 Una fila por usuario de Auth. `id` (= auth.users.id), `email`, `nombre` (lo escribe el
 trigger desde user_metadata: `nombre` del formulario de /login, o `full_name`/`name` de
-Google), `accepted_tos_at`, `tos_version` (fecha del documento de T&C aceptado, ej.
-'2026-07-20'), `created_at`. Se crea automáticamente con el trigger `on_auth_user_created`
+Google), `accepted_tos_at`, `tos_version` (versión del documento de T&C aceptado; vigente:
+`'2026-08'`), `created_at`. Se crea automáticamente con el trigger `on_auth_user_created`
 (función `handle_new_user`, security definer). RLS: cada usuario lee/edita solo su fila.
 Si los T&C cambian de forma sustancial: subir la versión en el trigger y comparar
 `perfiles.tos_version` contra la versión vigente para pedir re-aceptación (pendiente de

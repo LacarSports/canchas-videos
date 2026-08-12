@@ -50,7 +50,7 @@ begin
       nullif(trim(new.raw_user_meta_data->>'name'), '')
     ),
     now(),
-    '2026-07-20'
+    '2026-08'   -- versión vigente de los T&C (ver app/terminos/page.tsx)
   )
   on conflict (id) do nothing;
   return new;

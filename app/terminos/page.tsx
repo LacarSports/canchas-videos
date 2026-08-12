@@ -14,7 +14,7 @@ export default function TerminosPage() {
   return (
     <LegalDoc
       title="Términos y Condiciones de Uso"
-      updated="20 de julio de 2026"
+      updated="agosto de 2026"
       intro={
         <>
           El presente documento de Términos y Condiciones establece el marco regulatorio y
@@ -190,11 +190,16 @@ export default function TerminosPage() {
               </p>
               <p>
                 5.2 Terminado este periodo, el software ejecutará un proceso de depuración
-                automatizada y destrucción irreversible del archivo íntegro, salvo aquellos clips
-                cortos o resúmenes recortados que el Usuario guarde explícitamente en su panel
-                personal. Asimismo, aquellas cuentas de usuario que no registren inicios de sesión
-                por un plazo continuo de doce (12) meses serán dadas de baja por inactividad,
-                eliminándose de forma definitiva sus datos históricos asociados.
+                automatizada y destrucción irreversible de la totalidad del material audiovisual
+                asociado al partido, incluyendo tanto la grabación completa como cualquier clip
+                corto o resumen (Highlight) generado a partir de ella. Ningún archivo permanecerá
+                disponible en el Portal una vez transcurrido el plazo de siete (7) días. Si el
+                Usuario desea conservar algún fragmento, deberá descargarlo en su dispositivo
+                personal antes del vencimiento de dicho plazo, asumiendo íntegramente la
+                responsabilidad conforme al Artículo 6 de estos Términos. Asimismo, aquellas
+                cuentas de usuario que no registren inicios de sesión por un plazo continuo de doce
+                (12) meses serán dadas de baja por inactividad, eliminándose de forma definitiva
+                sus datos históricos asociados.
               </p>
             </>
           ),
@@ -205,8 +210,8 @@ export default function TerminosPage() {
             <>
               <p>
                 6.1 El Portal provee herramientas técnicas para que el Usuario pueda segmentar
-                clips de video de corta duración (jugadas destacadas o goles) para su archivo
-                privado.
+                clips de video de corta duración (jugadas destacadas o goles) para su descarga y
+                archivo privado en el dispositivo personal del Usuario.
               </p>
               <p>
                 6.2 <strong className="text-snow">Limitación de Uso Comercial:</strong> Queda

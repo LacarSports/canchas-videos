@@ -15,7 +15,7 @@ export default function PrivacidadPage() {
   return (
     <LegalDoc
       title="Política de Privacidad y Tratamiento de Datos Personales"
-      updated="20 de julio de 2026"
+      updated="agosto de 2026"
       sections={[
         {
           heading: "Marco general y compromiso con la privacidad",
@@ -225,9 +225,11 @@ export default function PrivacidadPage() {
                   los partidos completos grabados de manera automatizada en las canchas de los
                   complejos deportivos permanecerán disponibles en el Portal por un plazo máximo
                   de siete (7) días corridos contados desde su captura. Terminado este periodo, el
-                  sistema ejecutará un borrado automatizado, definitivo e irreversible del archivo
-                  central, subsistiendo únicamente los resúmenes o &ldquo;Highlights&rdquo;
-                  recortados y guardados de forma voluntaria por el Usuario en su panel personal.
+                  sistema ejecutará un borrado automatizado, definitivo e irreversible de la
+                  totalidad del material audiovisual, incluyendo la grabación completa y cualquier
+                  resumen o &ldquo;Highlight&rdquo; generado a partir de ella. Transcurrido el
+                  plazo, ningún archivo de video de la fecha correspondiente permanecerá alojado en
+                  los servidores de la Organización.
                 </li>
                 <li>
                   <strong className="text-snow">Información del Perfil de Usuario:</strong> Los
