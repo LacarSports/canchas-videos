@@ -47,7 +47,8 @@ export default async function HomePage({
   if (hasSearch) {
     let query = supabase
       .from("partidos")
-      .select("*")
+      // Columnas explícitas: password_hash no es legible con la anon key.
+      .select("id, complejo, numero_cancha, ciudad, fecha, hora, duracion_minutos, archivo_url, deporte, privado")
       .order("fecha", { ascending: false })
       .order("hora", { ascending: false });
 

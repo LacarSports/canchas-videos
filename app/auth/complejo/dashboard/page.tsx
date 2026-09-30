@@ -30,6 +30,10 @@ interface Partido {
   deporte?: string | null;
 }
 
+// Columnas de `partidos` legibles desde el navegador (password_hash no lo es:
+// ver supabase/2026-10_seguridad.sql). No usar select("*") sobre partidos.
+const PARTIDO_COLS = "id, complejo, numero_cancha, ciudad, fecha, hora, duracion_minutos, archivo_url, deporte, privado";
+
 interface Jugada {
   id: string;
   partido_id: string;
@@ -545,7 +549,7 @@ function TabOcupacion({ complejo }: { complejo?: string }) {
       let qO = supabase.from("ocupacion_canchas").select("numero_cancha, deporte, hora, ocupada").eq("fecha", fecha);
       if (complejo) qO = qO.ilike("complejo", `%${complejo}%`);
       // Videos disponibles (por grabación)
-      let qP = supabase.from("partidos").select("*").eq("fecha", fecha).order("hora");
+      let qP = supabase.from("partidos").select(PARTIDO_COLS).eq("fecha", fecha).order("hora");
       if (complejo) qP = qP.ilike("complejo", `%${complejo}%`);
       // Bloques bloqueados para grabar (explican por qué hay ocupación sin video)
       const qB = supabase
@@ -833,11 +837,20 @@ function CamarasConfig({ camaras, complejo }: { camaras: Camara[]; complejo?: st
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("camera_settings")
-        .select("numero_cancha, deporte, hora, estado, password_hash")
+      // `tiene_clave` (columna generada) evita leer el hash de la clave desde el
+      // navegador. Si la columna aún no existe (antes de supabase/2026-10_seguridad.sql)
+      // se cae al formato anterior.
+      const base = () => supabase.from("camera_settings");
+      let { data, error } = await base()
+        .select("numero_cancha, deporte, hora, estado, tiene_clave")
         .eq("complejo", complejo ?? "")
         .eq("fecha", fecha);
+      if (error?.code === "42703") {
+        ({ data, error } = await base()
+          .select("numero_cancha, deporte, hora, estado, tiene_clave:password_hash")
+          .eq("complejo", complejo ?? "")
+          .eq("fecha", fecha));
+      }
       if (error) {
         if (error.code === "42P01" || error.code === "42703" ||
             (error.message ?? "").toLowerCase().includes("column")) {
@@ -847,10 +860,10 @@ function CamarasConfig({ camaras, complejo }: { camaras: Camara[]; complejo?: st
       } else {
         setColError(false);
         const map: Record<string, SlotInfo> = {};
-        for (const r of (data ?? []) as { numero_cancha: number; deporte: string | null; hora: string; estado: string; password_hash: string | null }[]) {
+        for (const r of (data ?? []) as unknown as { numero_cancha: number; deporte: string | null; hora: string; estado: string; tiene_clave: boolean | string | null }[]) {
           map[slotKey(r.numero_cancha, r.deporte ?? "—", r.hora.slice(0, 5))] = {
             estado: (r.estado as SlotEstado) ?? "publico",
-            hasPass: !!r.password_hash,
+            hasPass: !!r.tiene_clave,
           };
         }
         setSlots(map);
@@ -868,9 +881,14 @@ function CamarasConfig({ camaras, complejo }: { camaras: Camara[]; complejo?: st
   }
 
   async function apply(cancha: number, deporte: string, horas: string[], estado: SlotEstado, password: string) {
+    // La API verifica con el token que el usuario sea dueño de este complejo.
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch("/api/camera-slot", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+      },
       body: JSON.stringify({ complejo: complejo ?? "", numero_cancha: cancha, deporte, fecha, horas, estado, password }),
     });
     const data = await res.json().catch(() => ({}));
@@ -1080,7 +1098,10 @@ function CamarasMonitoreo({ canchas, complejo }: { canchas: number[]; complejo?:
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   async function load() {
-    const { data, error } = await supabase.from("heartbeat").select("*");
+    // Solo las canchas de este complejo (heartbeat tiene filas de todos los complejos)
+    let q = supabase.from("heartbeat").select("*");
+    if (complejo) q = q.eq("complejo", complejo);
+    const { data, error } = await q;
 
     if (error) {
       if (error.code === "42P01") setTableError(true);

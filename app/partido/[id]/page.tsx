@@ -16,7 +16,6 @@ interface Partido {
   duracion_minutos: number;
   archivo_url: string;
   privado: boolean;
-  password_hash: string | null;
   deporte?: string | null;
 }
 
@@ -44,7 +43,9 @@ export default async function PartidoPage({
 
   const { data: partido, error } = await supabase
     .from("partidos")
-    .select("*")
+    // Columnas explícitas: password_hash no es legible con la anon key (la clave se
+    // verifica en el servidor, /api/video-auth).
+    .select("id, complejo, numero_cancha, ciudad, fecha, hora, duracion_minutos, archivo_url, privado, deporte")
     .eq("id", id)
     .single<Partido>();
 

@@ -33,6 +33,16 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Lacar System — configs con secretos de las Raspberry (nunca commitear).
+# El patrón .env* de arriba ya ignora los .env.camaraN; estas líneas cubren
+# los nombres sin punto (env.camaraN...) y re-incluyen la plantilla de ejemplo.
+Lacar System/env.*
+# Claves reales (configs/comun.env, configs/respaldos/) y archivos antiguos archivados.
+# Las plantillas comun.env.example y camara.env.example sí se commitean.
+Lacar System/configs/
+Lacar System/_antiguo/
+__pycache__/
+
 # vercel
 .vercel
 

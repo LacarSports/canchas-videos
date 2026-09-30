@@ -1,0 +1,6 @@
+# Estos archivos se ejecutan en la Raspberry (Linux): siempre con saltos de línea LF,
+# aunque se editen en Windows. Con CRLF los .sh y el .service fallan en la Pi.
+*.sh       text eol=lf
+*.py       text eol=lf
+*.service  text eol=lf
+.env*      text eol=lf

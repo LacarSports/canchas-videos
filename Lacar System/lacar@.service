@@ -1,0 +1,29 @@
+[Unit]
+# Template unit: %i toma el nombre después del @ al habilitarlo.
+#   systemctl enable --now lacar@camara1   → usa /opt/lacar/.env.camara1
+#   systemctl enable --now lacar@camara2   → usa /opt/lacar/.env.camara2
+# Un solo archivo sirve para cualquier cantidad de cámaras.
+# instalar.sh lo copia a /etc/systemd/system/ poniendo el usuario correcto en User=.
+Description=Lacar Sports Pipeline — %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lacar0
+WorkingDirectory=/opt/lacar
+# Primero lo común (claves de R2/Supabase) y después lo de la cámara:
+# si una variable está en ambos, gana la de la cámara.
+EnvironmentFile=/opt/lacar/comun.env
+EnvironmentFile=/opt/lacar/.env.%i
+ExecStart=/usr/bin/python3 /opt/lacar/lacar_pipeline.py
+Restart=always
+RestartSec=15s
+MemoryMax=1400M
+CPUQuota=80%
+
+# NO redirigir stdout/stderr a un archivo: el script ya escribe su propio
+# logs/<instance>.log con rotación. journald captura stdout (journalctl -u ...).
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+# Lacar Sports — dependencias Python del pipeline (referencia).
+# instalar.sh las instala con apt (python3-requests, python3-boto3), que es lo
+# recomendado en Raspberry Pi OS. Alternativa manual:
+#   pip install -r requirements.txt --break-system-packages
+requests>=2.31
+boto3>=1.34

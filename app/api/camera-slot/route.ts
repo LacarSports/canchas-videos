@@ -1,14 +1,28 @@
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 
-// Usa la service_role key (solo servidor) para poder escribir en `partidos`,
-// cuyo RLS no permite UPDATE con la anon key. Si no está, cae a la anon
-// (y entonces requiere una policy de UPDATE en `partidos`).
+// Usa la service_role key (solo servidor): `camera_settings` y `partidos` no se
+// pueden escribir con la anon key (supabase/2026-10_seguridad.sql).
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } },
 );
+
+// Devuelve el complejo del usuario dueño del token, o null si el token no es
+// válido o el usuario no es dueño de ningún complejo (misma regla que /api/my-complejo).
+async function complejoDelDueno(req: Request): Promise<string | null> {
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user?.email) return null;
+  const { data } = await supabase
+    .from("complejos")
+    .select("name_complex")
+    .eq("owner_email", user.email)
+    .limit(1);
+  return data?.[0]?.name_complex ?? null;
+}
 
 type Estado = "publico" | "privado" | "bloqueado";
 
@@ -21,7 +35,15 @@ function isSchemaError(error: { code?: string; message?: string } | null) {
 }
 
 export async function POST(req: Request) {
-  const { complejo, numero_cancha, deporte, fecha, horas, estado, password } = await req.json();
+  // Solo el dueño de un complejo puede cambiar la configuración, y solo la de SU complejo.
+  const complejo = await complejoDelDueno(req);
+  if (!complejo) return Response.json({ error: "No autorizado" }, { status: 401 });
+
+  const body = await req.json();
+  if (body.complejo && body.complejo !== complejo) {
+    return Response.json({ error: "No autorizado para ese complejo" }, { status: 403 });
+  }
+  const { numero_cancha, deporte, fecha, horas, estado, password } = body;
 
   const dep: string = typeof deporte === "string" ? deporte : "";
   const horasList: string[] = Array.isArray(horas) ? horas : horas ? [horas] : [];
@@ -42,7 +64,7 @@ export async function POST(req: Request) {
 
   // 1) Upsert de la política por bloque en camera_settings
   const rows = horasList.map((hora) => ({
-    complejo: complejo ?? "",
+    complejo,
     numero_cancha,
     deporte: dep,
     fecha,
@@ -75,12 +97,14 @@ export async function POST(req: Request) {
   //    bloqueado: no se tocan los partidos existentes (el bloqueo es hacia adelante).
   let partidosActualizados = 0;
   if (est !== "bloqueado") {
+    // Nombre exacto del complejo: con un "contiene" (ilike %x%) un complejo cuyo
+    // nombre incluye el de otro podría tocar partidos ajenos.
     let sel = supabase
       .from("partidos")
       .select("id, hora")
       .eq("numero_cancha", numero_cancha)
-      .eq("fecha", fecha);
-    if (complejo) sel = sel.ilike("complejo", `%${complejo}%`);
+      .eq("fecha", fecha)
+      .eq("complejo", complejo);
     // Solo los partidos del mismo deporte (cancha 1 fútbol ≠ cancha 1 pádel)
     if (dep && dep !== "—") sel = sel.eq("deporte", dep);
     const { data: candidatos, error: selError } = await sel;
