@@ -98,7 +98,9 @@ con la service role key, siempre con `complejoDeAdmin()` de `lib/complejos.ts` (
 ### `camaras`
 Cámaras físicas instaladas (fuente de verdad de canchas): `complejo`, `numero_cancha`,
 `deporte`, `activa`. UNIQUE(complejo, numero_cancha, deporte) — la misma cancha puede
-existir en dos deportes.
+existir en dos deportes. El panel de cada complejo muestra (Ocupación, Cámaras/Configuración)
+**solo sus filas con `activa = true`**: para sacar una cancha del panel sin borrarla, poner
+`activa = false`.
 
 ### `camera_settings`
 Configuración por bloque horario (grilla "Configuración" del panel): una fila por

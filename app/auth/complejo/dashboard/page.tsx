@@ -93,20 +93,24 @@ function getMonthRange(year: number, month: number) {
 }
 
 // Lista las cámaras instaladas del complejo (cancha + deporte).
-// Fuente de verdad: tabla `camaras`. Mientras esté vacía o no exista, hace
-// fallback derivando las combinaciones cancha+deporte ya vistas en `partidos`.
+// Fuente de verdad: tabla `camaras`, solo las filas con `activa = true` (para
+// sacar una cancha del panel sin borrarla, se marca activa = false). Si el
+// complejo no tiene NINGUNA fila en `camaras`, hace fallback derivando las
+// combinaciones cancha+deporte ya vistas en `partidos`.
 async function fetchCamaras(complejo?: string): Promise<Camara[]> {
   const comp = complejo ?? "";
   const { data: cam } = await supabase
     .from("camaras")
-    .select("numero_cancha, deporte")
+    .select("numero_cancha, deporte, activa")
     .eq("complejo", comp)
     .order("numero_cancha");
   if (cam && cam.length > 0) {
-    return (cam as { numero_cancha: number; deporte: string | null }[]).map((c) => ({
-      numero_cancha: c.numero_cancha,
-      deporte: c.deporte ?? "—",
-    }));
+    return (cam as { numero_cancha: number; deporte: string | null; activa: boolean | null }[])
+      .filter((c) => c.activa !== false)
+      .map((c) => ({
+        numero_cancha: c.numero_cancha,
+        deporte: c.deporte ?? "—",
+      }));
   }
   // Fallback (transición): combinaciones cancha+deporte de partidos ya grabados.
   let qP = supabase.from("partidos").select("numero_cancha, deporte");
