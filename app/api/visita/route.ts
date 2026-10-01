@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { complejoDeAdmin } from "@/lib/complejos";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,13 +26,8 @@ export async function POST(req: Request) {
   // El dueño del complejo viendo sus propios videos no cuenta como visita.
   // (Un jugador logueado, o un dueño viendo videos de OTRO complejo, sí cuenta.)
   if (userEmail && comp && supabaseAdmin) {
-    const { data: owner } = await supabaseAdmin
-      .from("complejos")
-      .select("id")
-      .eq("owner_email", userEmail)
-      .eq("name_complex", comp)
-      .maybeSingle();
-    if (owner) return Response.json({ ok: true, skipped: "owner" });
+    const suComplejo = await complejoDeAdmin(supabaseAdmin, userEmail).catch(() => null);
+    if (suComplejo === comp) return Response.json({ ok: true, skipped: "owner" });
   }
 
   // 1) Registro de la visita (una fila por reproducción)

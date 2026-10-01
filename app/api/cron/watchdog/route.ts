@@ -1,11 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { correosAdmin } from "@/lib/complejos";
 
 // Watchdog de las Raspberry Pi. Pensado para correr cada 5 minutos (cron).
 // Lee el último reporte de cada Pi (vista `monitoreo_ultimo`, ver
 // supabase/2026-09_monitoreo.sql), detecta problemas y avisa por email:
 //   - ADMIN_EMAIL: alerta técnica al abrirse y al resolverse cada problema.
-//   - Dueño del complejo (complejos.owner_email): aviso simple solo si la cámara
+//   - Administradores del complejo (complejos.owner_email, uno o varios separados por
+//     coma): aviso simple solo si la cámara
 //     lleva >= 30 min caída, y otro cuando vuelve. Requiere WATCHDOG_ALERTAR_DUENOS=true.
 // El estado de cada alerta vive en `alertas_monitoreo` para no repetir correos.
 // Protegido con CRON_SECRET: Vercel Cron lo manda solo como "Authorization: Bearer ...".
@@ -216,7 +218,7 @@ export async function GET(request: Request) {
     const correoDe = new Map(
       (complejos ?? []).map((c: { name_complex: string; owner_email: string | null }) => [
         c.name_complex,
-        (c.owner_email ?? "").split(",").map((e) => e.trim()).filter(Boolean),
+        correosAdmin(c.owner_email),
       ]),
     );
 

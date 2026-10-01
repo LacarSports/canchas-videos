@@ -14,8 +14,11 @@ Proyecto: `soyoxtzfedkgmiiiwllm.supabase.co`
 - Jugadores se registran solos en `/login` (nombre y apellido + correo + contraseña,
   aceptando T&C; versión aceptada guardada en `perfiles`). Sin confirmación de correo
   (desactivada para reducir fricción).
-- Cuentas de dueños se crean a mano en Dashboard → Authentication → Users, y se asocian
-  agregando su correo en `complejos.owner_email`.
+- Administradores de un complejo: la persona se registra sola en `/login` (o se crea a mano
+  en Dashboard → Authentication → Users) y se agrega su correo en `complejos.owner_email`.
+  Admite **varios correos separados por coma** (`dueno@club.cl, encargado@club.cl`); se
+  comparan sin importar mayúsculas ni espacios (`lib/complejos.ts`). Un correo administra un
+  solo complejo.
 - La sesión persiste en localStorage del navegador (cliente `lib/supabase.ts`); el token se
   renueva solo. `lib/useSession.ts` expone el hook `useSession()` para componentes cliente.
 - Ver un partido (`/partido/[id]`) exige sesión (gate en `app/partido/[id]/AuthGate.tsx`).
@@ -86,9 +89,11 @@ al plazo. La trazabilidad de quién descargó vive aparte en `descargas_clips`, 
 borra (no guarda video, solo el registro).
 
 ### `complejos`
-Complejos clientes. `id`, `name_complex`, `owner_email`. **RLS bloquea lectura anónima**;
-la resolución dueño→complejo se hace server-side en `app/api/my-complejo/route.ts` con la
-service role key. `name_complex` es el string que une casi todas las tablas (`complejo`).
+Complejos clientes. `id`, `name_complex`, `owner_email` (uno o varios correos separados por
+coma). **RLS bloquea lectura anónima**; la resolución correo→complejo se hace server-side
+con la service role key, siempre con `complejoDeAdmin()` de `lib/complejos.ts` (la usan
+`/api/my-complejo`, `/api/camera-slot`, `/api/visita` y el watchdog). No comparar
+`owner_email` con `.eq()`: falla cuando hay varios correos. `name_complex` es el string que une casi todas las tablas (`complejo`).
 
 ### `camaras`
 Cámaras físicas instaladas (fuente de verdad de canchas): `complejo`, `numero_cancha`,

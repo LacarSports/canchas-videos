@@ -1,9 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import { complejoDeAdmin } from "@/lib/complejos";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Resuelve el complejo del dueño (complejos.name_complex) a partir de su email.
+// `owner_email` puede tener varios correos separados por coma (lib/complejos.ts).
 // Se hace en el servidor porque el RLS de `complejos` no permite leerla con la
 // anon key. Verificamos el JWT del usuario y luego buscamos con la service_role.
 export async function POST(req: Request) {
@@ -16,16 +18,12 @@ export async function POST(req: Request) {
   if (error || !user?.email) return Response.json({ complejo: null }, { status: 401 });
 
   // 2) Busca su complejo con la service_role (salta el RLS de `complejos`)
-  const admin = createClient(URL, process.env.SUPABASE_SERVICE_ROLE_KEY ?? ANON, {
+  const admin = createClient(URL, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   });
-  const { data, error: dbError } = await admin
-    .from("complejos")
-    .select("name_complex")
-    .eq("owner_email", user.email)
-    .limit(1);
-
-  if (dbError) return Response.json({ complejo: null, error: dbError.message }, { status: 500 });
-
-  return Response.json({ complejo: data?.[0]?.name_complex ?? null });
+  try {
+    return Response.json({ complejo: await complejoDeAdmin(admin, user.email) });
+  } catch (e) {
+    return Response.json({ complejo: null, error: (e as Error).message }, { status: 500 });
+  }
 }

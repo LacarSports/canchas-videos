@@ -208,10 +208,13 @@ def main():
         try:
             r = dahua._get("/cgi-bin/mediaFileFind.cgi", {"action": "factory.create"})
             oid = r.text.strip().split("=", 1)[-1]
-            dahua._get("/cgi-bin/mediaFileFind.cgi", raw_query=(
+            ff = dahua._get("/cgi-bin/mediaFileFind.cgi", raw_query=(
                 f"action=findFile&object={oid}&condition.Channel=1"
                 f"&condition.StartTime={fecha} 00:00:00&condition.EndTime={fecha} 23:59:59"
                 f"&condition.Types[0]=dav"))
+            if not ff.text.strip().startswith("OK"):
+                # La cámara rechaza ~1 de cada 10 búsquedas: no es un problema de filtros.
+                raise RuntimeError("la cámara rechazó esta búsqueda de comparación (ocasional, normal)")
             sin_filtro = 0
             while True:
                 t = dahua._get("/cgi-bin/mediaFileFind.cgi",

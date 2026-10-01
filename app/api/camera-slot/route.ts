@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { complejoDeAdmin } from "@/lib/complejos";
 
 // Usa la service_role key (solo servidor): `camera_settings` y `partidos` no se
 // pueden escribir con la anon key (supabase/2026-10_seguridad.sql).
@@ -10,18 +11,13 @@ const supabase = createClient(
 );
 
 // Devuelve el complejo del usuario dueño del token, o null si el token no es
-// válido o el usuario no es dueño de ningún complejo (misma regla que /api/my-complejo).
+// válido o el usuario no administra ningún complejo (misma regla que /api/my-complejo).
 async function complejoDelDueno(req: Request): Promise<string | null> {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token) return null;
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user?.email) return null;
-  const { data } = await supabase
-    .from("complejos")
-    .select("name_complex")
-    .eq("owner_email", user.email)
-    .limit(1);
-  return data?.[0]?.name_complex ?? null;
+  return complejoDeAdmin(supabase, user.email).catch(() => null);
 }
 
 type Estado = "publico" | "privado" | "bloqueado";
