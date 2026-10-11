@@ -2,7 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Hls from "hls.js";
-import { processClip, type FaseDescarga, type CropParams } from "./processClip";
+import type { FaseDescarga } from "./processClip";
+import { exportarClip, haySeguimiento, type Vista, type KeyframeVista } from "./exportarClip";
+import { crearMarcaAgua, type FormatoClip } from "@/lib/marcaAgua";
+import ElegirFormato from "./ElegirFormato";
+
+const ZOOM_MAX = 4;
 
 export interface ClipLocal {
   id: string;
@@ -110,16 +115,28 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const [prevVolume, setPrevVolume] = useState(1);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 
+  // Encuadre actual: centro (0–1 del cuadro original) y zoom (alto original / alto visible).
+  // Se aplica directo al <video> (applyView) sin pasar por React, para que arrastrar y
+  // pellizcar vayan fluidos. `zoom` (estado) solo refleja el valor para la interfaz.
+  const vistaRef = useRef<Vista>({ cx: 0.5, cy: 0.5, zoom: 1 });
+  const ventanaRef = useRef({ x: 0, y: 0, w: 1, h: 1, s: 1, sw: 16, sh: 9 });
+  const frameRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
+  const [srcAspect, setSrcAspect] = useState(16 / 9);
   const [isDragging, setIsDragging] = useState(false);
   const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
-  const zoomRef = useRef(1);
-  const panXRef = useRef(0);
-  const panYRef = useRef(0);
 
-  const [cropParams, setCropParams] = useState<CropParams | null>(null);
+  // Seguimiento: encuadres registrados mientras se graba la jugada (tiempo de la playlist).
+  const seguimientoRef = useRef<KeyframeVista[]>([]);
+  const [seguimiento, setSeguimiento] = useState<KeyframeVista[]>([]);
+  const estadoRef = useRef<Estado>("idle");
+  const [eligiendoFormato, setEligiendoFormato] = useState(false);
+  const [formatoDescarga, setFormatoDescarga] = useState<FormatoClip>("reel");
+  const [marcaReelUrl, setMarcaReelUrl] = useState<string | null>(null);
+
+  // Gestos táctiles (pellizcar / arrastrar)
+  const gestureRef = useRef<{ modo: "pan" | "pinch" | null; x: number; y: number; d0: number; z0: number }>({ modo: null, x: 0, y: 0, d0: 0, z0: 1 });
+  const gestureMovedRef = useRef(false);
 
   const [buffering, setBuffering] = useState(true);
   // Porcentaje del video ya cargado (barra clara estilo YouTube en la seekbar)
@@ -156,20 +173,9 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [settingsSheetOpened, setSettingsSheetOpened] = useState(false);
 
-  // Consejo de rotación: en fullscreen con el celular físicamente horizontal el
-  // navegador muestra su barra (no se puede ocultar sin fullscreen nativo, que
-  // iOS no soporta sobre divs) y el video se ve más chico. Con la rotación
-  // bloqueada en vertical, la rotación por CSS sí ocupa toda la pantalla.
-  const [rotationHint, setRotationHint] = useState(false);
-  const rotationHintShownRef = useRef(false);
-  useEffect(() => {
-    if (!isMobile || !isCustomFullscreen || !isLandscape) return;
-    if (rotationHintShownRef.current) return;
-    rotationHintShownRef.current = true;
-    setRotationHint(true);
-    const t = setTimeout(() => setRotationHint(false), 6000);
-    return () => clearTimeout(t);
-  }, [isMobile, isCustomFullscreen, isLandscape]);
+  // Pantalla completa en el celular: vertical = modo reel (cuadro 9:16, lo mismo que
+  // tendrá el reel descargado); celular girado = partido completo horizontal.
+  const modoReel = isMobile && isCustomFullscreen && !isLandscape;
 
   // Reportar problema (jugador)
   const [showReportSheet, setShowReportSheet] = useState(false);
@@ -188,7 +194,6 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     if (isCustomFullscreen) {
       setIsCustomFullscreen(false);
       closeMobileControls();
-      try { (screen.orientation as any)?.unlock?.(); } catch {}
     }
     if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
       document.exitFullscreen?.().catch(() => {});
@@ -236,19 +241,84 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     v.muted = volume === 0;
   }, [volume]);
 
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-  useEffect(() => { panXRef.current = panX; }, [panX]);
-  useEffect(() => { panYRef.current = panY; }, [panY]);
+  useEffect(() => { estadoRef.current = estado; }, [estado]);
+
+  // Guarda el encuadre actual en el seguimiento mientras se graba la jugada.
+  const registrarVista = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || estadoRef.current !== "grabando") return;
+    const kf = seguimientoRef.current;
+    const nuevo: KeyframeVista = { t: v.currentTime, ...vistaRef.current };
+    const ultimo = kf[kf.length - 1];
+    if (ultimo && nuevo.t - ultimo.t < 0.03) kf[kf.length - 1] = { ...nuevo, t: Math.max(ultimo.t, nuevo.t) };
+    else kf.push(nuevo);
+  }, []);
+
+  /**
+   * Pinta el encuadre (vistaRef) en el <video>: el cuadro visible (frame) muestra una
+   * ventana del video original con la forma del frame (16:9 normal, 9:16 en modo reel).
+   * El zoom se mide como alto original / alto visible, igual que al exportar.
+   */
+  const applyView = useCallback(() => {
+    const v = videoRef.current, frame = frameRef.current;
+    if (!v || !frame) return;
+    const Fw = frame.clientWidth, Fh = frame.clientHeight;
+    if (!Fw || !Fh) return;
+    const sw = v.videoWidth || 16, sh = v.videoHeight || 9;
+    const R = Fw / Fh;
+    const vista = vistaRef.current;
+    const z = Math.max(1, Math.min(ZOOM_MAX, vista.zoom));
+    let h = sh / z, w = h * R;
+    if (w > sw) { w = sw; h = w / R; }
+    const x = Math.max(0, Math.min(sw - w, vista.cx * sw - w / 2));
+    const y = Math.max(0, Math.min(sh - h, vista.cy * sh - h / 2));
+    vistaRef.current = { cx: (x + w / 2) / sw, cy: (y + h / 2) / sh, zoom: z };
+    const s = Fw / w;
+    ventanaRef.current = { x, y, w, h, s, sw, sh };
+    v.style.width = `${sw * s}px`;
+    v.style.height = `${sh * s}px`;
+    v.style.transform = `translate(${-x * s}px, ${-y * s}px)`;
+    registrarVista();
+  }, [registrarVista]);
+
+  /** Zoom anclado a un punto del frame (px desde su esquina), que queda fijo en pantalla. */
+  const zoomEn = useCallback((nuevoZoom: number, px?: number, py?: number) => {
+    const frame = frameRef.current;
+    const { x, y, s, sw, sh } = ventanaRef.current;
+    const z = Math.max(1, Math.min(ZOOM_MAX, nuevoZoom));
+    const ax = px ?? (frame ? frame.clientWidth / 2 : 0);
+    const ay = py ?? (frame ? frame.clientHeight / 2 : 0);
+    // Punto del video original bajo el ancla, antes del zoom
+    const srcX = x + ax / s, srcY = y + ay / s;
+    const s2 = s * (z / vistaRef.current.zoom);
+    const w2 = (frame?.clientWidth ?? 0) / s2, h2 = (frame?.clientHeight ?? 0) / s2;
+    const x2 = srcX - ax / s2, y2 = srcY - ay / s2;
+    vistaRef.current = { cx: (x2 + w2 / 2) / sw, cy: (y2 + h2 / 2) / sh, zoom: z };
+    applyView();
+    setZoom(Math.round(vistaRef.current.zoom * 10) / 10);
+  }, [applyView]);
+
+  /** Desplaza el encuadre según el arrastre del dedo/mouse (px de pantalla). */
+  const moverVista = useCallback((dx: number, dy: number) => {
+    const { s, sw, sh } = ventanaRef.current;
+    const v = vistaRef.current;
+    vistaRef.current = { ...v, cx: v.cx - dx / (s * sw), cy: v.cy - dy / (s * sh) };
+    applyView();
+  }, [applyView]);
+
+  /** ¿Hay espacio para arrastrar? (con zoom, o en modo reel donde se ve solo una franja) */
+  function puedeMover() {
+    const { w, h, sw, sh } = ventanaRef.current;
+    return w < sw - 1 || h < sh - 1;
+  }
 
   useEffect(() => {
-    if (zoom <= 1) { setPanX(0); setPanY(0); return; }
-    const el = containerRef.current;
-    if (!el) return;
-    const maxPanX = (el.clientWidth * (zoom - 1)) / 2;
-    const maxPanY = (el.clientHeight * (zoom - 1)) / 2;
-    setPanX((p) => Math.max(-maxPanX, Math.min(maxPanX, p)));
-    setPanY((p) => Math.max(-maxPanY, Math.min(maxPanY, p)));
-  }, [zoom]);
+    const frame = frameRef.current;
+    if (!frame) return;
+    const ro = new ResizeObserver(() => applyView());
+    ro.observe(frame);
+    return () => ro.disconnect();
+  }, [applyView]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -259,13 +329,93 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
       if (e.deltaMode === 1) delta *= 15;
       if (e.deltaMode === 2) delta *= 400;
       const factor = Math.exp(-delta * 0.002);
-      const newZoom = Math.max(1, Math.min(4, zoomRef.current * factor));
-      zoomRef.current = newZoom;
-      setZoom(newZoom);
+      const rect = frameRef.current?.getBoundingClientRect();
+      zoomEn(vistaRef.current.zoom * factor, rect ? e.clientX - rect.left : undefined, rect ? e.clientY - rect.top : undefined);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [zoomEn]);
+
+  // Gestos táctiles: un dedo arrastra el encuadre, dos dedos hacen zoom (pellizcar).
+  // Listeners nativos con passive:false para poder evitar el scroll/zoom de la página.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const esControl = (t: EventTarget | null) =>
+      !!(t as HTMLElement | null)?.closest?.("button, input, [data-no-gesture]");
+    const distancia = (ts: TouchList) => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+    const centro = (ts: TouchList) => ({ x: (ts[0].clientX + ts[1].clientX) / 2, y: (ts[0].clientY + ts[1].clientY) / 2 });
+
+    const onStart = (e: TouchEvent) => {
+      if (esControl(e.target)) { gestureRef.current.modo = null; return; }
+      const g = gestureRef.current;
+      if (e.touches.length === 1) {
+        gestureMovedRef.current = false;
+        g.modo = "pan"; g.x = e.touches[0].clientX; g.y = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        const c = centro(e.touches);
+        g.modo = "pinch"; g.d0 = distancia(e.touches); g.z0 = vistaRef.current.zoom; g.x = c.x; g.y = c.y;
+        gestureMovedRef.current = true;
+        e.preventDefault();
+      }
+    };
+    const onMove = (e: TouchEvent) => {
+      const g = gestureRef.current;
+      if (g.modo === "pinch" && e.touches.length >= 2) {
+        e.preventDefault();
+        const c = centro(e.touches);
+        const rect = frameRef.current?.getBoundingClientRect();
+        moverVista(c.x - g.x, c.y - g.y);
+        g.x = c.x; g.y = c.y;
+        zoomEn(g.z0 * (distancia(e.touches) / g.d0), rect ? c.x - rect.left : undefined, rect ? c.y - rect.top : undefined);
+      } else if (g.modo === "pan" && e.touches.length === 1) {
+        const t = e.touches[0];
+        const dx = t.clientX - g.x, dy = t.clientY - g.y;
+        if (!gestureMovedRef.current && Math.hypot(dx, dy) < 6) return;
+        if (!puedeMover()) return; // sin zoom en vista normal: dejar que la página haga scroll
+        e.preventDefault();
+        gestureMovedRef.current = true;
+        moverVista(dx, dy);
+        g.x = t.clientX; g.y = t.clientY;
+      }
+    };
+    const onEnd = (e: TouchEvent) => {
+      const g = gestureRef.current;
+      if (e.touches.length === 1) {
+        // Quedó un dedo tras pellizcar: sigue arrastrando desde ahí sin saltos
+        g.modo = "pan"; g.x = e.touches[0].clientX; g.y = e.touches[0].clientY;
+      } else if (e.touches.length === 0) {
+        g.modo = null;
+      }
+    };
+    // Safari iOS: evita que el pellizco haga zoom a toda la página
+    const onGesture = (e: Event) => e.preventDefault();
+    el.addEventListener("touchstart", onStart, { passive: false });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+    el.addEventListener("gesturestart", onGesture);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+      el.removeEventListener("gesturestart", onGesture);
+    };
+  }, [moverVista, zoomEn]);
+
+  // Al cambiar de modo (pantalla completa, rotación, video cargado) recalcular el encuadre.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => applyView());
+    const t = setTimeout(applyView, 120); // por si el layout tarda (barra de Safari, rotación)
+    return () => { cancelAnimationFrame(id); clearTimeout(t); };
+  }, [isCustomFullscreen, isLandscape, isFullscreen, srcAspect, applyView]);
+
+  // Vista previa de la marca de agua del reel sobre el cuadro 9:16 (lo que se descargará).
+  useEffect(() => {
+    if (!modoReel || marcaReelUrl) return;
+    crearMarcaAgua("reel", 540, 960).then((c) => setMarcaReelUrl(c.toDataURL("image/png"))).catch(() => {});
+  }, [modoReel, marcaReelUrl]);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
@@ -457,13 +607,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
 
   async function toggleFullscreen() {
     if (isMobile) {
-      if (isCustomFullscreen) {
-        setIsCustomFullscreen(false);
-        try { (screen.orientation as any)?.unlock?.(); } catch {}
-      } else {
-        setIsCustomFullscreen(true);
-        try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
-      }
+      // Sin rotar ni bloquear orientación: vertical = modo reel, girado = horizontal.
+      setIsCustomFullscreen(!isCustomFullscreen);
       return;
     }
     if (document.fullscreenElement || (document as any).webkitFullscreenElement) { document.exitFullscreen?.().catch(() => {}); return; }
@@ -494,18 +639,13 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     resetControlsTimer();
   }
 
-  // En fullscreen vertical el contenedor está rotado 90° (horario) por CSS, así
-  // que el eje del seekbar corre VERTICAL en la pantalla física (inicio arriba):
-  // el progreso se calcula con clientY. getBoundingClientRect() ya devuelve la
-  // caja post-rotación (angosta y alta). En el resto de los casos, con clientX.
-  function seekToPointer(clientX: number, clientY: number) {
+  // El contenedor ya no se rota en pantalla completa: el seekbar siempre es horizontal.
+  function seekToPointer(clientX: number, _clientY: number) {
     const bar = seekBarRef.current;
     const v = videoRef.current;
     if (!bar || !v || !v.duration) return;
     const rect = bar.getBoundingClientRect();
-    const pct = isCustomFullscreen && !isLandscape
-      ? Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
-      : Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     v.currentTime = pct * v.duration;
     setCurrentTime(pct * v.duration);
   }
@@ -536,15 +676,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     else if (e.key === " ") { e.preventDefault(); togglePlay(); }
   }
 
-  // Decide si un tap cae en el lado izquierdo o derecho del VIDEO para avanzar/retroceder.
-  // En fullscreen vertical el contenedor se rota 90° (horario) por CSS, así que el eje
-  // izquierda↔derecha del video corre verticalmente en la pantalla: el lado derecho queda
-  // en la mitad inferior y el izquierdo en la superior. En el resto de los casos (no
-  // fullscreen, o fullscreen ya en landscape sin rotación) se divide por el eje horizontal.
-  function tapSide(clientX: number, clientY: number, rect: DOMRect): "left" | "right" {
-    if (isCustomFullscreen && !isLandscape) {
-      return clientY - rect.top < rect.height / 2 ? "left" : "right";
-    }
+  // Decide si un tap cae en el lado izquierdo o derecho del video para avanzar/retroceder.
+  function tapSide(clientX: number, _clientY: number, rect: DOMRect): "left" | "right" {
     return clientX - rect.left < rect.width / 2 ? "left" : "right";
   }
 
@@ -552,6 +685,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const touch = e.changedTouches[0];
     const target = e.target as HTMLElement;
     if (target.closest("button, input") || seekBarRef.current?.contains(target)) return;
+    // Arrastrar o pellizcar no cuenta como tap
+    if (gestureMovedRef.current || e.touches.length > 0) { touchStartPosRef.current = null; return; }
 
     // Ignore pan/zoom gestures — only react to pure taps (< 8px movement)
     if (touchStartPosRef.current) {
@@ -599,7 +734,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
 
   function handleMouseDown(e: React.MouseEvent) {
     hasDraggedRef.current = false;
-    if (zoomRef.current <= 1) return;
+    if (!puedeMover()) return;
     e.preventDefault();
     setIsDragging(true);
     lastMouseRef.current = { x: e.clientX, y: e.clientY };
@@ -612,13 +747,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const dx = e.clientX - lastMouseRef.current.x;
     const dy = e.clientY - lastMouseRef.current.y;
     lastMouseRef.current = { x: e.clientX, y: e.clientY };
-    const el = containerRef.current;
-    if (!el) return;
-    const z = zoomRef.current;
-    const maxPanX = (el.clientWidth * (z - 1)) / 2;
-    const maxPanY = (el.clientHeight * (z - 1)) / 2;
-    setPanX((p) => Math.max(-maxPanX, Math.min(maxPanX, p + dx)));
-    setPanY((p) => Math.max(-maxPanY, Math.min(maxPanY, p + dy)));
+    moverVista(dx, dy);
   }
 
   function stopDrag() { setIsDragging(false); lastMouseRef.current = null; }
@@ -632,16 +761,20 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   }
 
   function resetView() {
-    setZoom(1); setPanX(0); setPanY(0);
-    zoomRef.current = 1; panXRef.current = 0; panYRef.current = 0;
+    vistaRef.current = { cx: 0.5, cy: 0.5, zoom: 1 };
+    applyView();
+    setZoom(1);
   }
 
   function handleIniciarGrabacion() {
     const v = videoRef.current;
     if (!v) return;
     setInicioSeg(v.currentTime);
-    setFinSeg(null); setError(null); setEtiqueta(null); setEtiquetaCustom(""); setGuardado(false); setCropParams(null);
-    resetView();
+    setFinSeg(null); setError(null); setEtiqueta(null); setEtiquetaCustom(""); setGuardado(false);
+    setEligiendoFormato(false);
+    // El encuadre actual se mantiene: desde aquí cada movimiento queda registrado.
+    seguimientoRef.current = [{ t: v.currentTime, ...vistaRef.current }];
+    estadoRef.current = "grabando";
     if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     v.play().catch(() => {});
     setEstado("grabando");
@@ -650,21 +783,20 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   function handleDetenerGrabacion(auto = false) {
     const v = videoRef.current;
     if (!v) return;
-    setFinSeg(inicioSeg !== null ? Math.min(v.currentTime, inicioSeg + MAX_CLIP_SEG) : v.currentTime);
+    const fin = inicioSeg !== null ? Math.min(v.currentTime, inicioSeg + MAX_CLIP_SEG) : v.currentTime;
+    setFinSeg(fin);
     setAutoDetenido(auto);
     v.pause();
-    const z = zoomRef.current;
-    if (z > 1.01) {
-      setCropParams({ zoom: z, panX: panXRef.current, panY: panYRef.current, containerW: v.clientWidth, containerH: v.clientHeight, videoW: v.videoWidth, videoH: v.videoHeight });
-    } else {
-      setCropParams(null);
-    }
-    resetView(); stopDrag(); setEstado("preview");
+    registrarVista();
+    seguimientoRef.current.push({ t: fin, ...vistaRef.current });
+    setSeguimiento([...seguimientoRef.current]);
+    setFormatoDescarga(modoReel || isMobile ? "reel" : "completo");
+    estadoRef.current = "preview";
+    stopDrag(); setEstado("preview");
     const scrollToPanel = () => setTimeout(() => { controlPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 80);
     if (isCustomFullscreen) {
       setIsCustomFullscreen(false);
       closeMobileControls();
-      try { (screen.orientation as any)?.unlock?.(); } catch {}
       setTimeout(scrollToPanel, 150);
     } else if (document.fullscreenElement) {
       document.exitFullscreen?.().then(scrollToPanel).catch(scrollToPanel);
@@ -675,8 +807,10 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
 
   function resetToIdle() {
     setEstado("idle"); setInicioSeg(null); setFinSeg(null); setAutoDetenido(false); setError(null); setFase(null); setProgreso(0);
-    setEtiqueta(null); setEtiquetaCustom(""); setGuardado(false); setCropParams(null);
-    resetView(); stopDrag();
+    setEtiqueta(null); setEtiquetaCustom(""); setGuardado(false);
+    setSeguimiento([]); seguimientoRef.current = []; setEligiendoFormato(false);
+    estadoRef.current = "idle";
+    stopDrag();
     if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
   }
 
@@ -693,17 +827,28 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     guardadoTimerRef.current = setTimeout(() => { guardadoTimerRef.current = null; resetToIdle(); }, 1500);
   }
 
-  async function handleDescargar() {
+  async function handleDescargar(formato: FormatoClip, conSeguimiento: boolean) {
     if (inicioSeg === null || finSeg === null) return;
     if (finSeg <= inicioSeg) { setError("El clip no tiene duración válida."); return; }
     if (finSeg - inicioSeg > MAX_CLIP_SEG) { setError("Los clips pueden durar máximo 2 minutos."); return; }
-    setError(null); setEstado("descargando"); setFase("ffmpeg"); setProgreso(0);
+    setFormatoDescarga(formato);
+    setEligiendoFormato(false);
+    setError(null); setEstado("descargando"); setFase("video"); setProgreso(0);
+    // Sin seguimiento: encuadre fijo en la zona donde estuvo la jugada, sin zoom.
+    const promedioCx = seguimiento.length ? seguimiento.reduce((n, k) => n + k.cx, 0) / seguimiento.length : 0.5;
     try {
-      const url = await processClip({ videoUrl, inicioSeg, finSeg, crop: cropParams ?? undefined, speed: playbackSpeed, brightness, contrast, onFase: (f) => setFase(f), onProgreso: (p) => setProgreso(p) });
+      const url = await exportarClip({
+        videoUrl, inicioSeg, finSeg, formato,
+        seguimiento: conSeguimiento ? seguimiento : undefined,
+        vistaFija: { cx: formato === "reel" ? promedioCx : 0.5, cy: 0.5, zoom: 1 },
+        speed: playbackSpeed, brightness, contrast,
+        onFase: (f) => setFase(f), onProgreso: (p) => setProgreso(p),
+      });
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = url;
+      const nombre = (getEtiquetaFinal() || "jugada").toLowerCase().normalize("NFD").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "");
       const a = document.createElement("a");
-      a.href = url; a.download = `clip_lacar_sports_${Math.floor(inicioSeg)}s-${Math.floor(finSeg)}s.mp4`; a.click();
+      a.href = url; a.download = `lacar-sports_${nombre}_${formato === "reel" ? "reel" : "completo"}.mp4`; a.click();
       onClipGuardado?.({ id: crypto.randomUUID(), partidoId, etiqueta: getEtiquetaFinal(), inicioSeg, finSeg, duracion: finSeg - inicioSeg, blobUrl: url });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al procesar el clip");
@@ -727,9 +872,10 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
 
   const labelFase: Record<FaseDescarga, string> = {
     ffmpeg: "Cargando editor...",
-    video: `Descargando video${progreso > 0 ? ` ${progreso}%` : ""}`,
-    procesando: `${[cropParams ? "zoom" : null, playbackSpeed !== 1 ? `${playbackSpeed}×` : null, (brightness !== 100 || contrast !== 100) ? "imagen" : null].filter(Boolean).join(" + ") || "clip"}...${progreso > 0 ? ` ${progreso}%` : ""}`,
+    video: "Bajando el video...",
+    procesando: formatoDescarga === "reel" ? "Preparando tu reel..." : "Preparando tu clip...",
   };
+  const seguimientoGrabado = haySeguimiento(seguimiento);
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const effectiveFullscreen = isMobile ? isCustomFullscreen : isFullscreen;
@@ -797,15 +943,14 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         tabIndex={0}
         className={`relative overflow-hidden bg-black select-none outline-none ${isCustomFullscreen ? "" : "rounded-xl"}`}
         style={{
-          cursor: zoom > 1 ? (isDragging ? "grabbing" : "grab") : "pointer",
-          touchAction: "manipulation",
+          cursor: zoom > 1 || modoReel ? (isDragging ? "grabbing" : "grab") : "pointer",
+          // Pantalla completa o con zoom: los dedos mueven el encuadre. Sin zoom en la
+          // página: un dedo hace scroll vertical y dos dedos hacen zoom en el video.
+          touchAction: isCustomFullscreen || zoom > 1 ? "none" : "pan-y",
           // Unidades dinámicas (dvw/dvh) para que el contenedor ocupe sólo el viewport VISIBLE:
           // así la barra inferior de Safari nunca tapa los controles (botón de salir, seekbar).
           ...(isCustomFullscreen
-            ? isLandscape
-              ? { position: "fixed" as const, top: 0, left: 0, width: "100dvw", height: "100dvh", zIndex: 9999 }
-              // Portrait: rotate container 90° so video fills the screen horizontally
-              : { position: "fixed" as const, top: "calc((100dvh - 100dvw) / 2)", left: "calc((100dvw - 100dvh) / 2)", width: "100dvh", height: "100dvw", transform: "rotate(90deg)", transformOrigin: "center center", zIndex: 9999 }
+            ? { position: "fixed" as const, top: 0, left: 0, width: "100dvw", height: "100dvh", zIndex: 9999 }
             : {}),
         }}
         onTouchStart={(e) => { const t = e.touches[0]; touchStartPosRef.current = { x: t.clientX, y: t.clientY }; }}
@@ -817,15 +962,26 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
         onClick={handleContainerClick}
         onKeyDown={handleKeyDown}
       >
+        {/* Cuadro visible: 16:9 normal; en pantalla completa vertical es el cuadro 9:16
+            del reel, centrado. El <video> se posiciona dentro con applyView(). */}
+        <div
+          ref={frameRef}
+          className="overflow-hidden"
+          style={
+            modoReel
+              ? { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(100dvw, calc(100dvh * 9 / 16))", aspectRatio: "9 / 16" }
+              : isCustomFullscreen || isFullscreen
+                ? { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: `min(100%, calc(100dvh * ${srcAspect}))`, aspectRatio: `${srcAspect}` }
+                : { position: "relative", width: "100%", aspectRatio: `${srcAspect}` }
+          }
+        >
         <video
           ref={videoRef}
           src={src.includes(".m3u8") ? undefined : src}
           preload="auto"
-          className="w-full block"
+          className="block absolute top-0 left-0 max-w-none"
           style={{
-            transform: zoom !== 1 ? `translate(${panX}px, ${panY}px) scale(${zoom})` : undefined,
-            transformOrigin: "center center",
-            transition: isDragging ? "none" : "transform 0.12s ease",
+            transformOrigin: "0 0",
             pointerEvents: isGrabando ? "none" : undefined,
             filter: (brightness !== 100 || contrast !== 100) ? `brightness(${brightness}%) contrast(${contrast}%)` : undefined,
           }}
@@ -839,7 +995,15 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
             updateBuffered();
           }}
           onProgress={updateBuffered}
-          onLoadedMetadata={() => { const v = videoRef.current; if (v) setDuration(v.duration); updateBuffered(); }}
+          onLoadedMetadata={() => {
+            const v = videoRef.current;
+            if (v) {
+              setDuration(v.duration);
+              if (v.videoWidth && v.videoHeight) setSrcAspect(v.videoWidth / v.videoHeight);
+            }
+            updateBuffered(); applyView();
+          }}
+          onResize={applyView}
           onWaiting={() => setBuffering(true)}
           onSeeking={() => setBuffering(true)}
           onPlaying={() => { setBuffering(false); setIsPlaying(true); resetControlsTimer(); }}
@@ -857,6 +1021,12 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
             }
           }}
         />
+        {/* Vista previa de la marca de agua del reel: se ve igual que en el archivo */}
+        {modoReel && marcaReelUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={marcaReelUrl} alt="" className="absolute inset-0 w-full h-full pointer-events-none z-10" draggable={false} />
+        )}
+        </div>
 
         {buffering && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
@@ -866,16 +1036,11 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           </div>
         )}
 
-        {/* Consejo: bloquear la rotación mejora la pantalla completa */}
-        {rotationHint && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] pointer-events-none">
-            <div className="flex items-center gap-2 bg-black/75 border border-white/15 rounded-full px-4 py-2 backdrop-blur-sm">
-              <svg className="w-4 h-4 text-crystal-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              <span className="text-white/90 text-xs leading-snug">
-                Consejo: con la rotación del celular <span className="text-crystal-300 font-medium">bloqueada</span> (vertical), la pantalla completa se ve más grande
-              </span>
+        {/* Móvil grabando: indicación de cómo seguir la jugada */}
+        {isMobile && isGrabando && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none whitespace-nowrap" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+            <div className="bg-black/60 backdrop-blur-sm rounded-full px-3.5 py-1.5 text-white/80 text-xs">
+              Arrastra para seguir la jugada · Pellizca para zoom
             </div>
           </div>
         )}
@@ -1031,7 +1196,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                 <span className="text-white/55 text-xs font-mono ml-1 tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
                 <div className="flex-1" />
                 {zoom > 1.05 && (
-                  <button onClick={(e) => { e.stopPropagation(); setZoom(1); setPanX(0); setPanY(0); zoomRef.current = 1; panXRef.current = 0; panYRef.current = 0; }} className="text-[10px] text-crystal-400 font-mono border border-crystal-400/30 rounded-full px-2 py-0.5 hover:bg-crystal-400/10 transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); resetView(); }} className="text-[10px] text-crystal-400 font-mono border border-crystal-400/30 rounded-full px-2 py-0.5 hover:bg-crystal-400/10 transition-colors">
                     {zoom.toFixed(1)}× ✕
                   </button>
                 )}
@@ -1111,6 +1276,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               if (target.closest("button, input") || seekBarRef.current?.contains(target)) return;
               e.stopPropagation();
               if (isGrabando) return;
+              if (gestureMovedRef.current || e.touches.length > 0) return; // arrastre/pellizco, no tap
               if (showImageSettings) { setShowImageSettings(false); return; }
               const touch = e.changedTouches[0];
               const rect = containerRef.current?.getBoundingClientRect();
@@ -1133,7 +1299,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               }, 280);
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-transparent to-black/80 pointer-events-none" />
+            {/* Degradado para leer los controles; mientras se graba no se oscurece la jugada */}
+            {!isGrabando && <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-transparent to-black/80 pointer-events-none" />}
 
             {/* TOP-LEFT: Marcar inicio / Marcar fin (misma posición) */}
             <div className="absolute top-3 left-3 z-10">
@@ -1378,10 +1545,10 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                 El clip se cerró automáticamente al alcanzar la duración máxima de 2 minutos
               </div>
             )}
-            {cropParams && (
+            {seguimientoGrabado && (
               <div className="flex items-center gap-1.5 text-xs text-crystal-400/70 bg-crystal-400/5 border border-crystal-400/8 rounded-lg px-3 py-2">
                 <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
-                Zoom {cropParams.zoom.toFixed(1)}× guardado — el clip incluirá el encuadre
+                Tu seguimiento (zoom y movimiento) quedó guardado para el clip
               </div>
             )}
             {(playbackSpeed !== 1 || brightness !== 100 || contrast !== 100) && (
@@ -1415,6 +1582,14 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               </div>
             )}
             {error && <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+            {eligiendoFormato && estado === "preview" && (
+              <ElegirFormato
+                formatoInicial={formatoDescarga}
+                haySeguimiento={seguimientoGrabado}
+                onElegir={(f, conSeg) => handleDescargar(f, conSeg)}
+                onCancelar={() => setEligiendoFormato(false)}
+              />
+            )}
             <div className="grid grid-cols-3 gap-2">
               <button onClick={handleReintentar} disabled={estado === "descargando"} className="py-2.5 rounded-lg text-xs border border-mist-500/15 text-mist-600 hover:text-snow hover:border-mist-500/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Otro Clip</button>
               <button onClick={handleGuardarDestacado} disabled={!puedeActuar() || estado === "descargando" || guardado}
@@ -1422,7 +1597,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
               >
                 {guardado ? (<><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Guardado</>) : "Guardar destacado"}
               </button>
-              <button onClick={handleDescargar} disabled={!puedeActuar() || estado === "descargando"} className="py-2.5 rounded-lg text-xs border border-crystal-400/30 bg-crystal-400/8 text-crystal-400 hover:bg-crystal-400/15 hover:border-crystal-400/50 transition-all disabled:opacity-25 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+              <button onClick={() => setEligiendoFormato((v) => !v)} disabled={!puedeActuar() || estado === "descargando"} className="py-2.5 rounded-lg text-xs border border-crystal-400/30 bg-crystal-400/8 text-crystal-400 hover:bg-crystal-400/15 hover:border-crystal-400/50 transition-all disabled:opacity-25 disabled:cursor-not-allowed flex items-center justify-center gap-1">
                 {estado === "descargando" ? (<svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>) : (<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>)}
                 {estado === "descargando" ? "..." : "Descargar"}
               </button>

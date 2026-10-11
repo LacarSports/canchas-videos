@@ -5,7 +5,9 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { processClip } from "../../../partido/[id]/processClip";
+import { exportarClip } from "../../../partido/[id]/exportarClip";
+import ElegirFormato from "../../../partido/[id]/ElegirFormato";
+import type { FormatoClip } from "@/lib/marcaAgua";
 import InlineClipPlayer from "../../../components/InlineClipPlayer";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar,
@@ -1662,6 +1664,7 @@ function TabVideos({ complejo }: { complejo?: string }) {
   const [copied, setCopied] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [eligiendoId, setEligiendoId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
@@ -1715,15 +1718,16 @@ function TabVideos({ complejo }: { complejo?: string }) {
     setTimeout(() => setCopied(null), 2000);
   }
 
-  async function handleDownload(j: Jugada) {
+  async function handleDownload(j: Jugada, formato: FormatoClip) {
     if (downloadingId || !j.partidos?.archivo_url) return;
+    setEligiendoId(null);
     setDownloadingId(j.id);
     setDownloadError(null);
     try {
-      const url = await processClip({ videoUrl: buildVideoUrl(j.partidos.archivo_url), inicioSeg: j.inicio_seg, finSeg: j.fin_seg });
+      const url = await exportarClip({ videoUrl: buildVideoUrl(j.partidos.archivo_url), inicioSeg: j.inicio_seg, finSeg: j.fin_seg, formato });
       const a = document.createElement("a");
       a.href = url;
-      a.download = `clip_lacar_${j.etiqueta.replace(/\s+/g, "_")}_${Math.floor(j.inicio_seg)}s.mp4`;
+      a.download = `lacar-sports_${j.etiqueta.replace(/\s+/g, "-").toLowerCase()}_${formato}.mp4`;
       a.click();
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Error al procesar");
@@ -1860,7 +1864,10 @@ function TabVideos({ complejo }: { complejo?: string }) {
 
                     {/* Actions — always visible */}
                     <div className="px-3 pb-2.5 pt-1.5 space-y-1.5">
-                      <button onClick={() => handleDownload(j)} disabled={!!downloadingId} className="w-full flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg border border-white/8 text-mist-500 hover:text-crystal-300 hover:border-crystal-400/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                      {eligiendoId === j.id && !downloadingId && (
+                        <ElegirFormato onElegir={(f) => handleDownload(j, f)} onCancelar={() => setEligiendoId(null)} />
+                      )}
+                      <button onClick={() => setEligiendoId((id) => (id === j.id ? null : j.id))} disabled={!!downloadingId} className="w-full flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg border border-white/8 text-mist-500 hover:text-crystal-300 hover:border-crystal-400/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                         {isDownloading ? (
                           <><svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Procesando...</>
                         ) : (

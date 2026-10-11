@@ -4,6 +4,8 @@
  * regardless of how many components call processClip().
  */
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
+import { crearMarcaAgua, type FormatoClip } from "@/lib/marcaAgua";
+import type { Vista } from "./exportarClip";
 
 let _ff: FFmpeg | null = null;
 let _loadPromise: Promise<FFmpeg> | null = null;
@@ -119,6 +121,10 @@ export interface ProcessOptions {
   brightness?: number;
   /** CSS contrast % value. 100 = normal, 150 = more contrast. Default 100. */
   contrast?: number;
+  /** Formato de salida con marca de agua (respaldo de exportarClip sin WebCodecs). */
+  formato?: FormatoClip;
+  /** Encuadre fijo para `formato` (centro 0–1 y zoom). */
+  vistaFija?: Vista;
   onFase?: (fase: FaseDescarga) => void;
   onProgreso?: (pct: number) => void;
 }
@@ -136,6 +142,8 @@ export async function processClip({
   speed = 1,
   brightness = 100,
   contrast = 100,
+  formato,
+  vistaFija,
   onFase,
   onProgreso,
 }: ProcessOptions): Promise<string> {
@@ -181,7 +189,15 @@ export async function processClip({
   const hasCrop = !!(crop && crop.zoom > 1.01);
   const hasBriCon = brightness !== 100 || contrast !== 100;
   const hasSpeed = speed !== 1;
-  const needsReencode = hasCrop || hasBriCon || hasSpeed;
+  const needsReencode = hasCrop || hasBriCon || hasSpeed || !!formato;
+
+  // Marca de agua: PNG del tamaño de salida, ajustado al video con scale2ref.
+  if (formato) {
+    const [mw, mh] = formato === "reel" ? [1080, 1920] : [1920, 1080];
+    const marca = await crearMarcaAgua(formato, mw, mh);
+    const png = await new Promise<Blob>((r, rej) => marca.toBlob((b) => (b ? r(b) : rej(new Error("marca"))), "image/png"));
+    await ff.writeFile("marca.png", new Uint8Array(await png.arrayBuffer()));
+  }
 
   if (!needsReencode) {
     const args = [
@@ -198,7 +214,14 @@ export async function processClip({
     // Build video filter chain
     const vfParts: string[] = [];
 
-    if (hasCrop) {
+    if (formato) {
+      const v = vistaFija ?? { cx: 0.5, cy: 0.5, zoom: 1 };
+      const z = Math.max(1, v.zoom).toFixed(4);
+      const w = formato === "reel" ? `min(iw,ih/${z}*9/16)` : `iw/${z}`;
+      const h = `ih/${z}`;
+      vfParts.push(`crop=w='${w}':h='${h}':x='max(0,min(iw-ow,${v.cx.toFixed(4)}*iw-ow/2))':y='max(0,min(ih-oh,${v.cy.toFixed(4)}*ih-oh/2))'`);
+      vfParts.push(formato === "reel" ? "scale=1080:1920" : "scale=1920:-2");
+    } else if (hasCrop) {
       const scaleX = crop!.videoW / crop!.containerW;
       const scaleY = crop!.videoH / crop!.containerH;
       const cropW = Math.round(crop!.videoW / crop!.zoom);
@@ -244,8 +267,11 @@ export async function processClip({
       "-t", duration.toString(),
     ];
 
-    if (vfParts.length > 0) args.push("-vf", vfParts.join(","));
-    args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", "26");
+    if (formato) {
+      args.splice(4, 0, "-i", "marca.png");
+      args.push("-filter_complex", `[0:v]${vfParts.join(",")}[v];[1:v][v]scale2ref=w=iw:h=ih[m][vv];[vv][m]overlay=0:0`);
+    } else if (vfParts.length > 0) args.push("-vf", vfParts.join(","));
+    args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", formato ? "20" : "26");
 
     if (afStr) {
       args.push("-af", afStr, "-c:a", "aac");
@@ -267,6 +293,7 @@ export async function processClip({
 
   await ff.deleteFile(inputFile);
   await ff.deleteFile("output.mp4");
+  if (formato) await ff.deleteFile("marca.png").catch(() => {});
 
   return url;
 }

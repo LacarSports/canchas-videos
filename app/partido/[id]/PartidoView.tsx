@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import VideoClipSelector, { type ClipLocal } from "./VideoClipSelector";
-import { processClip } from "./processClip";
+import { exportarClip } from "./exportarClip";
+import ElegirFormato from "./ElegirFormato";
+import type { FormatoClip } from "@/lib/marcaAgua";
 import { supabase } from "@/lib/supabase";
 import { getSessionId } from "@/lib/session";
 import { registrarDescarga } from "@/lib/descargas";
@@ -78,6 +80,8 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   // Sidebar download state (one at a time)
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [eligiendoId, setEligiendoId] = useState<string | null>(null);
+  const [downloadPct, setDownloadPct] = useState(0);
 
   // Share copy feedback per clip
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
@@ -156,21 +160,26 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
 
 /* â”€â”€ sidebar download â”€â”€ */
 
-  async function handleSidebarDownload(clip: ClipLocal) {
+  async function handleSidebarDownload(clip: ClipLocal, formato: FormatoClip) {
     if (downloadingId) return;
+    setEligiendoId(null);
     setDownloadingId(clip.id);
     setDownloadError(null);
+    setDownloadPct(0);
 
     try {
-      const url = await processClip({
+      // Las jugadas guardadas no tienen seguimiento: encuadre fijo centrado.
+      const url = await exportarClip({
         videoUrl,
         inicioSeg: clip.inicioSeg,
         finSeg: clip.finSeg,
+        formato,
+        onProgreso: (p) => setDownloadPct(p),
       });
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `clip_lacar_${clip.etiqueta.replace(/\s+/g, "_")}_${Math.floor(clip.inicioSeg)}s.mp4`;
+      a.download = `lacar-sports_${clip.etiqueta.replace(/\s+/g, "-").toLowerCase()}_${formato}.mp4`;
       a.click();
 
       registrarDescarga({
@@ -290,7 +299,6 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                 const isDownloading = downloadingId === clip.id;
                 const isCopied = copiadoId === clip.id;
                 const isCopiedLink = copiedLinkId === clip.id;
-                const hasBlob = !!clip.blobUrl;
                 const isExpanded = playingClipId === clip.id;
 
                 return (
@@ -336,12 +344,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                     {/* Actions — always visible */}
                     <div className="px-3 pb-2.5 pt-1.5 space-y-1.5">
                       <button
-                        onClick={() => hasBlob ? (() => {
-                          const a = document.createElement("a");
-                          a.href = clip.blobUrl!;
-                          a.download = `clip_lacar_${clip.etiqueta.replace(/\s+/g, "_")}.mp4`;
-                          a.click();
-                        })() : handleSidebarDownload(clip)}
+                        onClick={() => setEligiendoId((id) => (id === clip.id ? null : clip.id))}
                         disabled={!!downloadingId}
                         className="w-full flex items-center justify-center gap-1.5 text-xs text-mist-600 border border-mist-500/10 hover:border-crystal-400/30 hover:text-crystal-300 rounded-lg py-2 sm:py-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -351,7 +354,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
-                            Procesando...
+                            Preparando... {downloadPct > 0 ? `${downloadPct}%` : ""}
                           </>
                         ) : (
                           <>
@@ -362,6 +365,12 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                           </>
                         )}
                       </button>
+                      {eligiendoId === clip.id && !downloadingId && (
+                        <ElegirFormato
+                          onElegir={(f) => handleSidebarDownload(clip, f)}
+                          onCancelar={() => setEligiendoId(null)}
+                        />
+                      )}
 
                       <div className="grid grid-cols-2 gap-1.5">
                         <button

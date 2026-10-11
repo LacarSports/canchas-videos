@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Input, BufferSource, MPEG_TS, Output, Mp4OutputFormat, BufferTarget, Conversion,
-  VideoSampleSink, Quality, canEncodeVideo, type VideoSample,
+  VideoSampleSink, Quality, canEncodeVideo, UrlSource, HLS_FORMATS, type VideoSample,
 } from "mediabunny";
 import { supabase } from "@/lib/supabase";
 import { crearMarcaAgua, type FormatoClip } from "@/lib/marcaAgua";
@@ -196,6 +196,66 @@ export default function PruebaClip() {
     setVideos((vs) => [{ titulo: `${titulo} (${seg.toFixed(1)} s)`, src: URL.createObjectURL(blob), blob }, ...vs]);
   }
 
+  // Lee la playlist HLS directo (sin bajar trozos a mano) y recorta [inicio, inicio+dur]
+  // usando los tiempos de la playlist. Sirve para probar cortes que cruzan un bloque de 5 min.
+  async function hlsDirecto() {
+    const t0 = performance.now();
+    const input = new Input({ source: new UrlSource(url), formats: HLS_FORMATS });
+    const vt = (await input.getPrimaryVideoTrack())!;
+    const first = await vt.getFirstTimestamp();
+    add(`HLS: primer timestamp ${first.toFixed(3)} · ${vt.displayWidth}x${vt.displayHeight} (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
+    const W = 1080, H = 1920;
+    const marca = await crearMarcaAgua("reel", W, H);
+    const canvas = new OffscreenCanvas(W, H);
+    const ctx = canvas.getContext("2d")!;
+    const srcW = vt.displayWidth, srcH = vt.displayHeight;
+    let primero: number | null = null, ultimo = 0, n = 0;
+    const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
+    const conv = await Conversion.init({
+      input, output, tracks: "primary",
+      trim: { start: first + inicio, end: first + inicio + dur },
+      video: {
+        codec: "avc", quality: new Quality({ bitrate: 10_000_000 }), processedWidth: W, processedHeight: H,
+        process: (s: VideoSample) => {
+          if (primero === null) primero = s.timestamp; ultimo = s.timestamp; n++;
+          const r = rectFuente("reel", srcW, srcH, { t: 0, cx: 0.5, cy: 0.5, zoom: 1 });
+          s.draw(ctx, r.x, r.y, r.w, r.h, 0, 0, W, H);
+          ctx.drawImage(marca, 0, 0);
+          return canvas;
+        },
+      },
+    });
+    conv.onProgress = (p) => setProg(Math.round(p * 100));
+    await conv.execute();
+    const buf = (output.target as BufferTarget).buffer!;
+    const seg = (performance.now() - t0) / 1000;
+    add(`✔ HLS directo ${dur}s desde ${inicio}s: ${seg.toFixed(1)} s total · ${n} cuadros (${primero}→${ultimo.toFixed(2)}) · ${(buf.byteLength / 1e6).toFixed(1)} MB`);
+    const blob = new Blob([buf], { type: "video/mp4" });
+    setVideos((vs) => [{ titulo: `HLS directo desde ${inicio}s (${seg.toFixed(1)} s)`, src: URL.createObjectURL(blob), blob }, ...vs]);
+  }
+
+  // Diagnóstico: tiempos internos de cada trozo .ts frente a su tiempo en la playlist.
+  async function diagnostico() {
+    const txt = await (await fetch(url + "?cors=1")).text();
+    const base = url.substring(0, url.lastIndexOf("/") + 1);
+    let t = 0, d = 0, bloque = 0;
+    const segs: { uri: string; start: number; dur: number; bloque: number }[] = [];
+    for (const l0 of txt.split("\n")) { const l = l0.trim();
+      if (l.startsWith("#EXTINF:")) d = parseFloat(l.slice(8));
+      else if (l.startsWith("#EXT-X-DISCONTINUITY")) bloque++;
+      else if (l && !l.startsWith("#")) { segs.push({ uri: base + l, start: t, dur: d, bloque }); t += d; } }
+    const sel = segs.filter((s) => s.start + s.dur > inicio && s.start < inicio + dur);
+    for (const s of sel) {
+      const data = new Uint8Array(await (await fetch(s.uri + "?cors=1")).arrayBuffer());
+      const input = new Input({ source: new BufferSource(data), formats: [MPEG_TS] });
+      const vt = (await input.getPrimaryVideoTrack())!;
+      const at = await input.getPrimaryAudioTrack();
+      const v0 = await vt.getFirstTimestamp(); const vd = await vt.computeDuration();
+      const a0 = at ? await at.getFirstTimestamp() : NaN;
+      add(`${s.uri.split("/").pop()} bloque ${s.bloque} playlist ${s.start.toFixed(2)}+${s.dur} · video ${v0.toFixed(2)}→${vd.toFixed(2)} · audio ${a0.toFixed(2)}`);
+    }
+  }
+
   async function ffmpegWasm() {
     const tBajada = await cargar();
     const t0 = performance.now();
@@ -257,6 +317,8 @@ export default function PruebaClip() {
         <button disabled={ocupado} className={btn} onClick={() => correr(() => webcodecs(VARIANTES.completoNativo, false))}>Completo (original)</button>
         <button disabled={ocupado} className={btn} onClick={() => correr(() => webcodecs(VARIANTES.completo1080, false))}>Completo 1080p</button>
         <button disabled={ocupado} className={btn} onClick={() => correr(ffmpegWasm)}>Método actual (lento)</button>
+        <button disabled={ocupado} className={btn} onClick={() => correr(hlsDirecto)}>HLS directo</button>
+        <button disabled={ocupado} className={btn} onClick={() => correr(diagnostico)}>Diagnóstico</button>
       </div>
       <div className="text-sm">{ocupado ? `Procesando… ${prog}%` : "Listo"}</div>
       <pre id="log" className="text-xs bg-black/40 p-2 rounded whitespace-pre-wrap">{log.join("\n")}</pre>

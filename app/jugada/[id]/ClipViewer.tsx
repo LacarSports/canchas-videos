@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { processClip } from "../../partido/[id]/processClip";
+import { exportarClip } from "../../partido/[id]/exportarClip";
+import ElegirFormato from "../../partido/[id]/ElegirFormato";
+import type { FormatoClip } from "@/lib/marcaAgua";
 import { supabase } from "@/lib/supabase";
 import { registrarDescarga } from "@/lib/descargas";
 import ClipPlayer from "./ClipPlayer";
@@ -49,13 +51,15 @@ export default function ClipViewer({
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [eligiendo, setEligiendo] = useState(false);
+  const [pct, setPct] = useState(0);
 
   const clipUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/jugada/${jugadaId}`
       : `/jugada/${jugadaId}`;
 
-  async function handleDownload() {
+  async function handleDownload(formato?: FormatoClip) {
     if (downloading) return;
 
     // Ver la jugada es libre, pero descargar el archivo exige cuenta
@@ -66,14 +70,19 @@ export default function ClipViewer({
       return;
     }
 
+    // Primero se elige el formato (reel o completo)
+    if (!formato) { setEligiendo((v) => !v); return; }
+
+    setEligiendo(false);
     setDownloading(true);
     setDownloadError(null);
+    setPct(0);
     try {
-      const url = await processClip({ videoUrl, inicioSeg, finSeg });
+      const url = await exportarClip({ videoUrl, inicioSeg, finSeg, formato, onProgreso: setPct });
       setBlobUrl(url);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `clip_lacar_${etiqueta.replace(/\s+/g, "_")}_${Math.floor(inicioSeg)}s.mp4`;
+      a.download = `lacar-sports_${etiqueta.replace(/\s+/g, "-").toLowerCase()}_${formato}.mp4`;
       a.click();
 
       registrarDescarga({
@@ -148,11 +157,15 @@ export default function ClipViewer({
         </p>
       )}
 
+      {eligiendo && !downloading && (
+        <ElegirFormato onElegir={(f) => handleDownload(f)} onCancelar={() => setEligiendo(false)} />
+      )}
+
       {/* Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {/* Download */}
         <button
-          onClick={handleDownload}
+          onClick={() => handleDownload()}
           disabled={downloading}
           className="flex items-center justify-center gap-1.5 text-sm font-medium py-2.5 rounded-xl border border-crystal-400/20 bg-crystal-400/8 hover:bg-crystal-400/15 text-crystal-400 hover:text-crystal-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -162,7 +175,7 @@ export default function ClipViewer({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Procesando...
+              Preparando... {pct > 0 ? `${pct}%` : ""}
             </>
           ) : (
             <>
