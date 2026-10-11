@@ -127,7 +127,10 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
                 <button
                   key={opt}
                   type="button"
-                  onPointerDown={(e) => { e.preventDefault(); onSelect(opt); onClose(); if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); } /* Ocultar teclado en móvil */ }}
+                  // Se elige en el "click" y no al apoyar el dedo: si el desplegable se cerrara al
+                  // apoyar, el mismo toque caería en lo que hay debajo (p. ej. "Buscar partidos").
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => { onSelect(opt); onClose(); if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); } /* Ocultar teclado en móvil */ }}
                   className="w-full text-left px-4 py-3 text-sm text-mist-400 hover:bg-crystal-400/8 hover:text-snow transition-colors"
                   style={{ touchAction: "manipulation" }}
                 >
@@ -211,7 +214,9 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
                 <button
                   key={opt}
                   type="button"
-                  onPointerDown={(e) => { e.preventDefault(); onSelect(opt); onClose(); }}
+                  // Se elige en el "click": así el toque no atraviesa al botón de buscar de abajo
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => { onSelect(opt); onClose(); }}
                   className={`w-full text-left px-4 py-3 text-sm hover:bg-crystal-400/8 hover:text-snow transition-colors ${opt === value ? "text-crystal-400 bg-crystal-400/5" : "text-mist-400"}`}
                   style={{ touchAction: "manipulation" }}
                 >

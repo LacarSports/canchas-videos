@@ -13,14 +13,11 @@ export default function CargandoPartido() {
           <div className="h-4 w-48 rounded bg-white/5" />
         </div>
       </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_288px] gap-5 items-start">
-          <div className="relative w-full aspect-video rounded-xl bg-black/60 border border-white/5 flex flex-col items-center justify-center gap-3">
-            <div className="w-9 h-9 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-mist-400">Cargando tu partido…</p>
-          </div>
-          <div className="hidden lg:block h-40 rounded-xl bg-lake-800/40 border border-white/5 animate-pulse" />
-        </div>
+      {/* Aviso neutro (sin reproductor): después puede venir el video, la clave o el
+          inicio de sesión, y no debe parecer que "cargaba el video y se devolvió" */}
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <div className="w-7 h-7 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-mist-500">Abriendo partido…</p>
       </div>
     </main>
   );
