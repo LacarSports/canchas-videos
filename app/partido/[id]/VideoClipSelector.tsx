@@ -664,10 +664,16 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
     const bar = seekBarRef.current;
     const v = videoRef.current;
     if (!bar || !v || !v.duration) return;
-    const rect = bar.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    v.currentTime = pct * v.duration;
-    setCurrentTime(pct * v.duration);
+    // Se mide sobre la pista visible (sin el margen lateral del área táctil): así el
+    // final del partido se alcanza sin tener que llegar al borde mismo de la pantalla.
+    const pista = (bar.firstElementChild as HTMLElement | null) ?? bar;
+    const rect = pista.getBoundingClientRect();
+    let pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    if (pct > 0.995) pct = 1;
+    // Al final se deja un pelo antes del término para que el video no se dé por terminado
+    const t = Math.min(pct * v.duration, Math.max(0, v.duration - 0.3));
+    v.currentTime = t;
+    setCurrentTime(t);
   }
 
   function handleSeekBarMouseDown(e: React.MouseEvent) {
