@@ -1038,10 +1038,14 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
         </div>
 
         {buffering && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none z-40">
             <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
               <div className="w-7 h-7 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
             </div>
+            {/* Primera carga: decir qué está pasando (después basta con el círculo) */}
+            {duration === 0 && (
+              <span className="text-xs text-white/80 bg-black/50 rounded-full px-3 py-1">Cargando video…</span>
+            )}
           </div>
         )}
 

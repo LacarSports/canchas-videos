@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 
 interface PartidoCardData {
   id: string;
@@ -21,6 +21,33 @@ function formatFecha(fecha: string) {
   });
 }
 
+/** Ícono de play que pasa a "cargando" apenas se toca la tarjeta. */
+function IconoPlay() {
+  const { pending } = useLinkStatus();
+  return (
+    <div className={`shrink-0 w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-200 ${pending ? "bg-crystal-400/20 border-crystal-400/60" : "bg-crystal-400/8 border-crystal-400/15 group-hover:bg-crystal-400/15 group-hover:border-crystal-400/40"}`}>
+      {pending ? (
+        <span className="w-4 h-4 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <svg className="w-3.5 h-3.5 text-crystal-400/60 group-hover:text-crystal-400 ml-0.5 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+/** Flecha que se cambia por "Abriendo…" mientras carga el partido. */
+function Flecha() {
+  const { pending } = useLinkStatus();
+  if (pending) return <span className="shrink-0 text-xs text-crystal-300 font-medium">Abriendo…</span>;
+  return (
+    <svg className="shrink-0 w-4 h-4 text-mist-700 group-hover:text-crystal-400 group-hover:translate-x-0.5 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
 export default function PartidoCard({ partido }: { partido: PartidoCardData }) {
   return (
     <Link
@@ -28,11 +55,7 @@ export default function PartidoCard({ partido }: { partido: PartidoCardData }) {
       className="group flex items-center gap-4 bg-lake-900/60 hover:bg-lake-800/80 rounded-xl border border-mist-500/10 hover:border-crystal-400/30 px-4 py-3.5 transition-all duration-200 hover:shadow-[0_0_20px_rgba(41,196,173,0.07)]"
     >
       {/* Icono play */}
-      <div className="shrink-0 w-9 h-9 rounded-full bg-crystal-400/8 border border-crystal-400/15 group-hover:bg-crystal-400/15 group-hover:border-crystal-400/40 flex items-center justify-center transition-all duration-200">
-        <svg className="w-3.5 h-3.5 text-crystal-400/60 group-hover:text-crystal-400 ml-0.5 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-      </div>
+      <IconoPlay />
 
       {/* Info principal */}
       <div className="min-w-0 flex-1">
@@ -54,9 +77,7 @@ export default function PartidoCard({ partido }: { partido: PartidoCardData }) {
       </div>
 
       {/* Flecha */}
-      <svg className="shrink-0 w-4 h-4 text-mist-700 group-hover:text-crystal-400 group-hover:translate-x-0.5 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
+      <Flecha />
     </Link>
   );
 }

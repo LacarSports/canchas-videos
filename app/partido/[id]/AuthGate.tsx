@@ -17,8 +17,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
         <div className="w-7 h-7 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-mist-500">Cargando tu partido…</p>
       </div>
     );
   }

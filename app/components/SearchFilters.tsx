@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { smoothScrollTo } from "@/lib/smoothScroll";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, useTransition, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
 /* ── utils ──────────────────────────────────────────────── */
@@ -158,12 +158,15 @@ interface SelectFieldProps {
   displayOptions?: string[];
   onSelect: (val: string) => void;
   disabled?: boolean;
+  /** Buscando las opciones: se muestra "Cargando…" y no se puede abrir. */
+  loading?: boolean;
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
 }
 
-function SelectField({ id, label, placeholder, value, displayValue, options, displayOptions, onSelect, disabled, isOpen, onOpen, onClose }: SelectFieldProps) {
+function SelectField({ id, label, placeholder, value, displayValue, options, displayOptions, onSelect, disabled: disabledProp, loading, isOpen, onOpen, onClose }: SelectFieldProps) {
+  const disabled = disabledProp || loading;
   const containerRef = useRef<HTMLDivElement>(null);
 
   useOutsideClose(isOpen, onClose, containerRef);
@@ -189,11 +192,15 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
             : "border-lake-700 hover:border-mist-700/50 cursor-pointer"
         } ${!disabled && shown ? "text-snow" : !disabled ? "text-lake-600" : ""}`}
       >
-        {shown || placeholder}
+        {loading ? <span className="text-mist-500">Cargando…</span> : shown || placeholder}
         <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg className={`w-3.5 h-3.5 text-mist-700 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          {loading ? (
+            <span className="inline-block w-3.5 h-3.5 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin align-[-2px]" />
+          ) : (
+            <svg className={`w-3.5 h-3.5 text-mist-700 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
         </span>
       </button>
       {isOpen && !disabled && (
@@ -213,7 +220,7 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
               ))}
             </div>
           ) : (
-            <div className="px-4 py-3.5 text-sm text-mist-700 text-center">Cargando...</div>
+            <div className="px-4 py-3.5 text-sm text-mist-700 text-center">No hay opciones disponibles</div>
           )}
         </div>
       )}
@@ -250,6 +257,13 @@ function Filters() {
   const [fechaDisplayOpts, setFechaDisplayOpts] = useState<string[]>([]);
   const [horaOpts, setHoraOpts] = useState<string[]>([]);
 
+  // Qué opciones se están buscando en la base (para avisar "Cargando…" en cada campo)
+  const [cargando, setCargando] = useState({ complejo: true, deporte: false, cancha: false, fecha: false, hora: false });
+  const marcarCarga = useCallback((campo: keyof typeof cargando, valor: boolean) =>
+    setCargando((c) => (c[campo] === valor ? c : { ...c, [campo]: valor })), []);
+  // Búsqueda en curso (la página trae los partidos del servidor)
+  const [buscando, startBuscar] = useTransition();
+
   // Restore from sessionStorage when URL has no search params (e.g. navigating back from a partido)
   useEffect(() => {
     if (sp.get("complejo")) return;
@@ -270,7 +284,7 @@ function Filters() {
         params.set("cancha", s.cancha);
         params.set("fecha", s.fechaRaw);
         params.set("hora", s.hora);
-        router.push(`/?${params.toString()}`, { scroll: false });
+        startBuscar(() => router.push(`/?${params.toString()}`, { scroll: false }));
       }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,6 +293,7 @@ function Filters() {
   // Fetch all complejo options once
   useEffect(() => {
     supabase.from("partidos").select("complejo").order("complejo").then(({ data }) => {
+      marcarCarga("complejo", false);
       if (!data) return;
       const seen = new Map<string, string>();
       for (const r of data) {
@@ -288,14 +303,19 @@ function Filters() {
       }
       setComplejoOpts([...seen.values()].sort((a, b) => a.localeCompare(b, "es")));
     });
-  }, []);
+  }, [marcarCarga]);
 
   // Fetch deporte options when complejo changes
   useEffect(() => {
-    if (!complejoSel) { setDeporteOpts([]); return; }
+    if (!complejoSel) { setDeporteOpts([]); marcarCarga("deporte", false); return; }
+    let vigente = true;
+    setDeporteOpts([]);
+    marcarCarga("deporte", true);
     supabase
       .from("partidos").select("deporte").ilike("complejo", complejoSel)
       .then(({ data }) => {
+        if (!vigente) return;
+        marcarCarga("deporte", false);
         if (!data) return;
         const unique = [
           ...new Set(data.map((r) => r.deporte as string | null).filter((d): d is string => !!d)),
@@ -303,47 +323,67 @@ function Filters() {
         setDeporteOpts(unique);
         if (unique.length === 1) setDeporteSel(unique[0]);
       });
+    return () => { vigente = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complejoSel]);
 
   // Fetch cancha options when complejo or deporte changes
   useEffect(() => {
-    if (!complejoSel) { setCanchaOpts([]); return; }
+    if (!complejoSel) { setCanchaOpts([]); marcarCarga("cancha", false); return; }
+    let vigente = true;
+    marcarCarga("cancha", true);
     let q = supabase.from("partidos").select("numero_cancha").ilike("complejo", complejoSel);
     if (deporteSel) q = q.eq("deporte", deporteSel);
     q.then(({ data }) => {
+      if (!vigente) return;
+      marcarCarga("cancha", false);
       if (!data) return;
       const unique = [...new Set(data.map((r) => String(r.numero_cancha as number)))].sort(
         (a, b) => Number(a) - Number(b)
       );
       setCanchaOpts(unique);
     });
+    return () => { vigente = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complejoSel, deporteSel]);
 
   // Fetch fecha options (last 8 days) when complejo, deporte, or cancha changes
   useEffect(() => {
-    if (!complejoSel) { setFechaOpts([]); setFechaDisplayOpts([]); return; }
+    if (!complejoSel) { setFechaOpts([]); setFechaDisplayOpts([]); marcarCarga("fecha", false); return; }
+    let vigente = true;
+    marcarCarga("fecha", true);
     let q = supabase.from("partidos").select("fecha").ilike("complejo", complejoSel).in("fecha", last8);
     if (deporteSel) q = q.eq("deporte", deporteSel);
     if (canchaSel)  q = q.eq("numero_cancha", parseInt(canchaSel));
     q.then(({ data }) => {
+      if (!vigente) return;
+      marcarCarga("fecha", false);
       if (!data) return;
       const unique = [...new Set(data.map((r) => r.fecha as string))].sort().reverse();
       setFechaOpts(unique);
       setFechaDisplayOpts(unique.map((f) => formatFechaLabel(f, last8)));
     });
+    return () => { vigente = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complejoSel, deporteSel, canchaSel, last8]);
 
   // Fetch hora options when complejo, deporte, cancha, or fecha changes
   useEffect(() => {
-    if (!complejoSel || !fechaRaw) { setHoraOpts([]); return; }
+    if (!complejoSel || !fechaRaw) { setHoraOpts([]); marcarCarga("hora", false); return; }
+    let vigente = true;
+    marcarCarga("hora", true);
     let q = supabase.from("partidos").select("hora").ilike("complejo", complejoSel).eq("fecha", fechaRaw);
     if (deporteSel) q = q.eq("deporte", deporteSel);
     if (canchaSel)  q = q.eq("numero_cancha", parseInt(canchaSel));
     q.then(({ data }) => {
+      if (!vigente) return;
+      marcarCarga("hora", false);
       if (!data) return;
       const unique = [...new Set(data.map((r) => r.hora as string))].sort();
       setHoraOpts(unique);
     });
+    return () => { vigente = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complejoSel, deporteSel, canchaSel, fechaRaw]);
 
   /* ── handlers ── */
@@ -418,7 +458,7 @@ function Filters() {
       }
       return;
     }
-    router.push(`/?${params.toString()}`, { scroll: false });
+    startBuscar(() => router.push(`/?${params.toString()}`, { scroll: false }));
   }
 
   function handleLimpiar() {
@@ -428,6 +468,8 @@ function Filters() {
     try { sessionStorage.removeItem("lacar_filters"); } catch {}
     router.push("/#buscador");
   }
+
+  const cargandoAlgo = !!complejoSel && (cargando.deporte || cargando.cancha || cargando.fecha || (!!fechaRaw && cargando.hora));
 
   /* ── hint for missing field ── */
   const missingHint = !canBuscar && complejoSel
@@ -466,6 +508,7 @@ function Filters() {
           options={deporteOpts}
           onSelect={handleSelectDeporte}
           disabled={!complejoSel || deporteOpts.length <= 1}
+          loading={!!complejoSel && cargando.deporte}
           isOpen={openField === "deporte"}
           onOpen={() => setOpenField("deporte")}
           onClose={() => setOpenField(null)}
@@ -480,6 +523,7 @@ function Filters() {
           options={canchaOpts}
           onSelect={handleSelectCancha}
           disabled={!complejoSel}
+          loading={!!complejoSel && cargando.cancha}
           isOpen={openField === "cancha"}
           onOpen={() => setOpenField("cancha")}
           onClose={() => setOpenField(null)}
@@ -496,6 +540,7 @@ function Filters() {
           displayOptions={fechaDisplayOpts}
           onSelect={handleSelectFecha}
           disabled={!complejoSel}
+          loading={!!complejoSel && cargando.fecha}
           isOpen={openField === "fecha"}
           onOpen={() => setOpenField("fecha")}
           onClose={() => setOpenField(null)}
@@ -510,6 +555,7 @@ function Filters() {
           options={horaOpts}
           onSelect={setHora}
           disabled={!complejoSel || !fechaRaw}
+          loading={!!complejoSel && !!fechaRaw && cargando.hora}
           isOpen={openField === "hora"}
           onOpen={() => setOpenField("hora")}
           onClose={() => setOpenField(null)}
@@ -519,20 +565,32 @@ function Filters() {
       <div className="flex items-center gap-3 mt-5 flex-wrap">
         <button
           type="submit"
-          disabled={!canBuscar}
+          disabled={!canBuscar || buscando}
           className={`inline-flex items-center gap-2 font-semibold px-6 py-2.5 rounded-xl text-sm transition-all duration-200 ${
-            canBuscar
+            buscando
+              ? "bg-crystal-400/80 text-lake-950 cursor-wait"
+              : canBuscar
               ? "bg-crystal-400 hover:bg-crystal-300 text-lake-950 active:scale-[0.98] shadow-[0_0_20px_rgba(41,196,173,0.28)]"
               : "bg-lake-700/60 text-mist-600 cursor-not-allowed"
           }`}
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          Buscar partidos
+          {buscando ? (
+            <span className="w-3.5 h-3.5 border-2 border-lake-950 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          )}
+          {buscando ? "Buscando partidos…" : "Buscar partidos"}
         </button>
 
-        {missingHint && (
+        {!buscando && cargandoAlgo && (
+          <span className="text-xs text-mist-500 flex items-center gap-1.5">
+            <span className="w-3 h-3 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+            Cargando opciones…
+          </span>
+        )}
+        {!buscando && !cargandoAlgo && missingHint && (
           <span className="text-xs text-mist-700">{missingHint}</span>
         )}
 
