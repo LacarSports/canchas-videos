@@ -55,9 +55,7 @@ function urlCors(url: string) {
 }
 
 async function leerPlaylist(url: string): Promise<Segmento[]> {
-  const res = await fetch(urlCors(url));
-  if (!res.ok) throw new Error(`Error ${res.status} al leer el video`);
-  const txt = await res.text();
+  const txt = await bajarConReintentos(urlCors(url), (r) => r.text());
   const base = url.substring(0, url.lastIndexOf("/") + 1);
   const segs: Segmento[] = [];
   let dur = 0, t = 0, bloque = 0;
@@ -73,22 +71,41 @@ async function leerPlaylist(url: string): Promise<Segmento[]> {
   return segs;
 }
 
-/** Baja en paralelo los trozos .ts directo desde R2 (bucket público con CORS abierto). */
+/**
+ * Baja una URL completa (incluido el cuerpo) con reintentos y espera creciente: en datos
+ * móviles la conexión se corta a ratos, a veces a mitad de la respuesta.
+ */
+async function bajarConReintentos<T>(url: string, leer: (r: Response) => Promise<T>, intentos = 4): Promise<T> {
+  let ultimoError: unknown;
+  for (let i = 0; i < intentos; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return await leer(res);
+      ultimoError = new Error(`HTTP ${res.status}`);
+      if (res.status === 404) break;
+    } catch (e) { ultimoError = e; }
+    await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+  }
+  console.error("Descarga fallida", url, ultimoError);
+  throw new Error("Se cortó la conexión al bajar el video. Revisa tu señal e inténtalo de nuevo.");
+}
+
+/**
+ * Baja los trozos .ts directo desde R2 (bucket público con CORS abierto), de a 3 a la
+ * vez: pedirlos todos juntos satura la red del celular mientras el partido sigue cargando.
+ */
 async function bajarTrozos(segs: Segmento[], onPct: (pct: number) => void): Promise<Uint8Array[]> {
-  let listos = 0;
-  return Promise.all(segs.map(async (s) => {
-    let ultimoError: unknown;
-    for (let intento = 0; intento < 3; intento++) {
-      try {
-        const res = await fetch(urlCors(s.uri));
-        if (!res.ok) throw new Error(`Error ${res.status} al descargar el video`);
-        const data = new Uint8Array(await res.arrayBuffer());
-        onPct(Math.round((++listos / segs.length) * 100));
-        return data;
-      } catch (e) { ultimoError = e; }
+  const out: Uint8Array[] = new Array(segs.length);
+  let siguiente = 0, listos = 0;
+  const trabajador = async () => {
+    while (siguiente < segs.length) {
+      const i = siguiente++;
+      out[i] = await bajarConReintentos(urlCors(segs[i].uri), async (r) => new Uint8Array(await r.arrayBuffer()));
+      onPct(Math.round((++listos / segs.length) * 100));
     }
-    throw ultimoError;
-  }));
+  };
+  await Promise.all(Array.from({ length: Math.min(3, segs.length) }, trabajador));
+  return out;
 }
 
 function unir(partes: Uint8Array[]): Uint8Array {
