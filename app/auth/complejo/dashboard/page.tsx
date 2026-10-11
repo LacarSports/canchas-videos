@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { exportarClip } from "../../../partido/[id]/exportarClip";
 import ElegirFormato from "../../../partido/[id]/ElegirFormato";
+import { guardarVideo, nombreVideo } from "@/lib/guardarVideo";
 import type { FormatoClip } from "@/lib/marcaAgua";
 import InlineClipPlayer from "../../../components/InlineClipPlayer";
 import {
@@ -1724,11 +1725,8 @@ function TabVideos({ complejo }: { complejo?: string }) {
     setDownloadingId(j.id);
     setDownloadError(null);
     try {
-      const url = await exportarClip({ videoUrl: buildVideoUrl(j.partidos.archivo_url), inicioSeg: j.inicio_seg, finSeg: j.fin_seg, formato });
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `lacar-sports_${j.etiqueta.replace(/\s+/g, "-").toLowerCase()}_${formato}.mp4`;
-      a.click();
+      const { url, blob } = await exportarClip({ videoUrl: buildVideoUrl(j.partidos.archivo_url), inicioSeg: j.inicio_seg, finSeg: j.fin_seg, formato });
+      guardarVideo(blob, url, nombreVideo(j.etiqueta, formato));
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Error al procesar");
     } finally { setDownloadingId(null); }

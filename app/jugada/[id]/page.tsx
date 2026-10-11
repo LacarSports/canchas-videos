@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ClipViewer from "./ClipViewer";
+import type { Edicion } from "@/lib/jugadas";
 
 interface JugadaRow {
   id: string;
@@ -10,6 +11,7 @@ interface JugadaRow {
   inicio_seg: number;
   fin_seg: number;
   duracion: number;
+  edicion?: Edicion | null;
   partidos: {
     id: string;
     complejo: string;
@@ -43,13 +45,14 @@ export default async function JugadaPage({
 }) {
   const { id } = await params;
 
-  const { data, error } = await supabase
+  const CAMPOS = "id, partido_id, etiqueta, inicio_seg, fin_seg, duracion, partidos(id, complejo, numero_cancha, ciudad, fecha, hora, archivo_url)";
+  let { data, error } = await supabase
     .from("jugadas")
-    .select(
-      "id, partido_id, etiqueta, inicio_seg, fin_seg, duracion, partidos(id, complejo, numero_cancha, ciudad, fecha, hora, archivo_url)"
-    )
+    .select(`${CAMPOS}, edicion`)
     .eq("id", id)
     .single();
+  // Si la columna `edicion` aún no existe en la base, se carga sin ella
+  if (error) ({ data, error } = await supabase.from("jugadas").select(CAMPOS).eq("id", id).single());
 
   if (error || !data) notFound();
   const jugada = data as unknown as JugadaRow;
@@ -100,6 +103,7 @@ export default async function JugadaPage({
           jugadaId={jugada.id}
           partidoId={jugada.partido_id}
           complejo={partido.complejo}
+          edicion={jugada.edicion ?? null}
         />
 
       </div>

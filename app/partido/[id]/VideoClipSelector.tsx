@@ -2,24 +2,31 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Hls from "hls.js";
-import type { FaseDescarga } from "./processClip";
-import { exportarClip, haySeguimiento, type Vista, type KeyframeVista } from "./exportarClip";
 import { crearMarcaAgua, type FormatoClip } from "@/lib/marcaAgua";
-import ElegirFormato from "./ElegirFormato";
+import { ventana, zoomMinimo, haySeguimiento, compactarSeguimiento, ZOOM_MAX, type Vista, type KeyframeVista } from "@/lib/encuadre";
+import { useAjustesReproductor, setAjustes, getAjustes, filtroImagen } from "@/lib/ajustesReproductor";
+import type { Edicion } from "@/lib/jugadas";
+import FormularioJugada from "./FormularioJugada";
+import BarraImagen from "./BarraImagen";
 
-const ZOOM_MAX = 4;
-
-export interface ClipLocal {
-  id: string;
-  partidoId: string;
+/** Jugada creada en el reproductor: se guarda como destacada y se prepara en segundo plano. */
+export interface NuevaJugada {
   etiqueta: string;
   inicioSeg: number;
   finSeg: number;
   duracion: number;
-  blobUrl?: string;
+  edicion: Edicion;
 }
 
-type Estado = "idle" | "grabando" | "preview" | "descargando";
+/** Marca de una jugada en la barra de tiempo. */
+export interface MarcaJugada {
+  id: string;
+  etiqueta: string;
+  inicioSeg: number;
+  finSeg: number;
+}
+
+type Estado = "idle" | "grabando" | "preview";
 
 // Duración máxima de un clip en segundos (también se valida en /api/clip y processClip).
 export const MAX_CLIP_SEG = 120;
@@ -61,8 +68,8 @@ interface Props {
   deporte?: string | null;
   complejo?: string;
   numeroCancha?: number;
-  clips?: ClipLocal[];
-  onClipGuardado?: (clip: ClipLocal) => void;
+  clips?: MarcaJugada[];
+  onCrearJugada?: (jugada: NuevaJugada) => void;
   onPlayStart?: () => void;
 }
 
@@ -85,12 +92,11 @@ function detectNavegador(): string {
   return "Otro";
 }
 
-export default function VideoClipSelector({ src, title, videoUrl, partidoId, deporte, complejo, numeroCancha, clips, onClipGuardado, onPlayStart }: Props) {
+export default function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCancha, clips, onCrearJugada, onPlayStart }: Props) {
   const ETIQUETAS = getEtiquetas(deporte);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const seekBarRef = useRef<HTMLDivElement>(null);
-  const blobUrlRef = useRef<string | null>(null);
   const controlPanelRef = useRef<HTMLDivElement>(null);
 
   const [estado, setEstado] = useState<Estado>("idle");
@@ -98,20 +104,21 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const [finSeg, setFinSeg] = useState<number | null>(null);
   const [autoDetenido, setAutoDetenido] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fase, setFase] = useState<FaseDescarga | null>(null);
-  const [progreso, setProgreso] = useState(0);
 
   const [etiqueta, setEtiqueta] = useState<string | null>(null);
   const [etiquetaCustom, setEtiquetaCustom] = useState("");
-  const [copiado, setCopiado] = useState(false);
-  const [guardado, setGuardado] = useState(false);
+  const [formatoSel, setFormatoSel] = useState<FormatoClip>("reel");
+  const [conSeguimiento, setConSeguimiento] = useState(true);
 
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
+  // Volumen, brillo, contraste y velocidad: compartidos con los reproductores de jugadas.
+  const ajustes = useAjustesReproductor();
+  const { volumen: volume, brillo: brightness, contraste: contrast, velocidad: playbackSpeed } = ajustes;
+  const setVolume = (v: number) => setAjustes({ volumen: v });
+  const setPlaybackSpeed = (v: number) => setAjustes({ velocidad: v });
   const [showImageSettings, setShowImageSettings] = useState(false);
+  // Barra flotante de brillo/contraste (deja ver el video mientras se ajusta)
+  const [showBarraImagen, setShowBarraImagen] = useState(false);
 
-  const [volume, setVolume] = useState(1);
   const [prevVolume, setPrevVolume] = useState(1);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 
@@ -119,7 +126,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   // Se aplica directo al <video> (applyView) sin pasar por React, para que arrastrar y
   // pellizcar vayan fluidos. `zoom` (estado) solo refleja el valor para la interfaz.
   const vistaRef = useRef<Vista>({ cx: 0.5, cy: 0.5, zoom: 1 });
-  const ventanaRef = useRef({ x: 0, y: 0, w: 1, h: 1, s: 1, sw: 16, sh: 9 });
+  const ventanaRef = useRef({ x: 0, y: 0, w: 1, h: 1, s: 1, sw: 16, sh: 9, R: 16 / 9 });
   const frameRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [srcAspect, setSrcAspect] = useState(16 / 9);
@@ -130,8 +137,6 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const seguimientoRef = useRef<KeyframeVista[]>([]);
   const [seguimiento, setSeguimiento] = useState<KeyframeVista[]>([]);
   const estadoRef = useRef<Estado>("idle");
-  const [eligiendoFormato, setEligiendoFormato] = useState(false);
-  const [formatoDescarga, setFormatoDescarga] = useState<FormatoClip>("reel");
   const [marcaReelUrl, setMarcaReelUrl] = useState<string | null>(null);
 
   // Gestos táctiles (pellizcar / arrastrar)
@@ -161,7 +166,6 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   const seekingRef = useRef(false);
   const isSeekingDrag = useRef(false);
   const hasDraggedRef = useRef(false);
-  const guardadoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showMobileControlsRef = useRef(false);
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -266,15 +270,11 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     if (!Fw || !Fh) return;
     const sw = v.videoWidth || 16, sh = v.videoHeight || 9;
     const R = Fw / Fh;
-    const vista = vistaRef.current;
-    const z = Math.max(1, Math.min(ZOOM_MAX, vista.zoom));
-    let h = sh / z, w = h * R;
-    if (w > sw) { w = sw; h = w / R; }
-    const x = Math.max(0, Math.min(sw - w, vista.cx * sw - w / 2));
-    const y = Math.max(0, Math.min(sh - h, vista.cy * sh - h / 2));
+    // En el reel se puede alejar hasta ver todo el ancho (con franjas negras arriba y abajo).
+    const { x, y, w, h, zoom: z } = ventana(R, sw, sh, vistaRef.current);
     vistaRef.current = { cx: (x + w / 2) / sw, cy: (y + h / 2) / sh, zoom: z };
     const s = Fw / w;
-    ventanaRef.current = { x, y, w, h, s, sw, sh };
+    ventanaRef.current = { x, y, w, h, s, sw, sh, R };
     v.style.width = `${sw * s}px`;
     v.style.height = `${sh * s}px`;
     v.style.transform = `translate(${-x * s}px, ${-y * s}px)`;
@@ -284,8 +284,8 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   /** Zoom anclado a un punto del frame (px desde su esquina), que queda fijo en pantalla. */
   const zoomEn = useCallback((nuevoZoom: number, px?: number, py?: number) => {
     const frame = frameRef.current;
-    const { x, y, s, sw, sh } = ventanaRef.current;
-    const z = Math.max(1, Math.min(ZOOM_MAX, nuevoZoom));
+    const { x, y, s, sw, sh, R } = ventanaRef.current;
+    const z = Math.max(zoomMinimo(R, sw, sh), Math.min(ZOOM_MAX, nuevoZoom));
     const ax = px ?? (frame ? frame.clientWidth / 2 : 0);
     const ay = py ?? (frame ? frame.clientHeight / 2 : 0);
     // Punto del video original bajo el ancla, antes del zoom
@@ -458,14 +458,13 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
       else if (e.key === "ArrowRight") { e.preventDefault(); handleSkip("right"); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); handleSkip("left"); }
       else if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); }
-      else if (e.key === "m" || e.key === "M") { e.preventDefault(); setVolume((v) => v === 0 ? 1 : 0); }
-      else if (e.key === "g" || e.key === "G") { e.preventDefault(); setShowImageSettings((s) => !s); }
+      else if (e.key === "m" || e.key === "M") { e.preventDefault(); setAjustes({ volumen: getAjustes().volumen === 0 ? 1 : 0 }); }
+      else if (e.key === "g" || e.key === "G") { e.preventDefault(); setShowBarraImagen((s) => !s); }
     };
     document.addEventListener("keydown", onKey, { capture: true });
     return () => document.removeEventListener("keydown", onKey, { capture: true });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current); }, []);
 
   useEffect(() => {
     const check = () => {
@@ -540,10 +539,6 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     return etiqueta === "Otro" ? etiquetaCustom.trim() || "Otro" : etiqueta;
   }
   function puedeActuar() { return etiqueta !== null && (etiqueta !== "Otro" || etiquetaCustom.trim() !== ""); }
-  function getShareUrl() {
-    if (typeof window === "undefined" || inicioSeg === null || finSeg === null) return "";
-    return `${window.location.origin}${window.location.pathname}?t=${Math.floor(inicioSeg)}-${Math.floor(finSeg)}`;
-  }
 
   function openMobileControls() {
     setShowMobileControls(true);
@@ -770,12 +765,10 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     const v = videoRef.current;
     if (!v) return;
     setInicioSeg(v.currentTime);
-    setFinSeg(null); setError(null); setEtiqueta(null); setEtiquetaCustom(""); setGuardado(false);
-    setEligiendoFormato(false);
+    setFinSeg(null); setError(null); setEtiqueta(null); setEtiquetaCustom("");
     // El encuadre actual se mantiene: desde aquí cada movimiento queda registrado.
     seguimientoRef.current = [{ t: v.currentTime, ...vistaRef.current }];
     estadoRef.current = "grabando";
-    if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     v.play().catch(() => {});
     setEstado("grabando");
   }
@@ -790,91 +783,51 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
     registrarVista();
     seguimientoRef.current.push({ t: fin, ...vistaRef.current });
     setSeguimiento([...seguimientoRef.current]);
-    setFormatoDescarga(modoReel || isMobile ? "reel" : "completo");
+    setFormatoSel(modoReel || isMobile ? "reel" : "completo");
+    setConSeguimiento(true);
     estadoRef.current = "preview";
     stopDrag(); setEstado("preview");
-    const scrollToPanel = () => setTimeout(() => { controlPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 80);
-    if (isCustomFullscreen) {
-      setIsCustomFullscreen(false);
-      closeMobileControls();
-      setTimeout(scrollToPanel, 150);
-    } else if (document.fullscreenElement) {
-      document.exitFullscreen?.().then(scrollToPanel).catch(scrollToPanel);
-    } else {
-      scrollToPanel();
+    // En pantalla completa el formulario aparece encima del video (sin salir de ella);
+    // si no, en el panel de abajo.
+    if (!effectiveFullscreen) {
+      setTimeout(() => { controlPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 80);
     }
   }
 
   function resetToIdle() {
-    setEstado("idle"); setInicioSeg(null); setFinSeg(null); setAutoDetenido(false); setError(null); setFase(null); setProgreso(0);
-    setEtiqueta(null); setEtiquetaCustom(""); setGuardado(false);
-    setSeguimiento([]); seguimientoRef.current = []; setEligiendoFormato(false);
+    setEstado("idle"); setInicioSeg(null); setFinSeg(null); setAutoDetenido(false); setError(null);
+    setEtiqueta(null); setEtiquetaCustom("");
+    setSeguimiento([]); seguimientoRef.current = [];
     estadoRef.current = "idle";
     stopDrag();
-    if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
   }
 
-  function handleReintentar() {
-    if (guardadoTimerRef.current) { clearTimeout(guardadoTimerRef.current); guardadoTimerRef.current = null; }
+  function handleDescartar() {
     resetToIdle(); videoRef.current?.pause();
   }
 
-  function handleGuardarDestacado() {
+  /** Crea la jugada: queda en destacadas y se prepara mientras se sigue viendo el partido. */
+  function handleCrearJugada() {
     if (inicioSeg === null || finSeg === null || !puedeActuar()) return;
-    if (finSeg - inicioSeg > MAX_CLIP_SEG) { setError("Los clips pueden durar máximo 2 minutos."); return; }
-    onClipGuardado?.({ id: crypto.randomUUID(), partidoId, etiqueta: getEtiquetaFinal(), inicioSeg, finSeg, duracion: finSeg - inicioSeg });
-    setGuardado(true);
-    guardadoTimerRef.current = setTimeout(() => { guardadoTimerRef.current = null; resetToIdle(); }, 1500);
-  }
-
-  async function handleDescargar(formato: FormatoClip, conSeguimiento: boolean) {
-    if (inicioSeg === null || finSeg === null) return;
-    if (finSeg <= inicioSeg) { setError("El clip no tiene duración válida."); return; }
-    if (finSeg - inicioSeg > MAX_CLIP_SEG) { setError("Los clips pueden durar máximo 2 minutos."); return; }
-    setFormatoDescarga(formato);
-    setEligiendoFormato(false);
-    setError(null); setEstado("descargando"); setFase("video"); setProgreso(0);
-    // Sin seguimiento: encuadre fijo en la zona donde estuvo la jugada, sin zoom.
+    if (finSeg <= inicioSeg) { setError("La jugada no tiene duración válida."); return; }
+    if (finSeg - inicioSeg > MAX_CLIP_SEG) { setError("Las jugadas pueden durar máximo 2 minutos."); return; }
+    const usarSeguimiento = conSeguimiento && haySeguimiento(seguimiento);
+    // Sin seguimiento: encuadre fijo donde estuvo la jugada, sin zoom.
     const promedioCx = seguimiento.length ? seguimiento.reduce((n, k) => n + k.cx, 0) / seguimiento.length : 0.5;
-    try {
-      const url = await exportarClip({
-        videoUrl, inicioSeg, finSeg, formato,
-        seguimiento: conSeguimiento ? seguimiento : undefined,
-        vistaFija: { cx: formato === "reel" ? promedioCx : 0.5, cy: 0.5, zoom: 1 },
-        speed: playbackSpeed, brightness, contrast,
-        onFase: (f) => setFase(f), onProgreso: (p) => setProgreso(p),
-      });
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = url;
-      const nombre = (getEtiquetaFinal() || "jugada").toLowerCase().normalize("NFD").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "");
-      const a = document.createElement("a");
-      a.href = url; a.download = `lacar-sports_${nombre}_${formato === "reel" ? "reel" : "completo"}.mp4`; a.click();
-      onClipGuardado?.({ id: crypto.randomUUID(), partidoId, etiqueta: getEtiquetaFinal(), inicioSeg, finSeg, duracion: finSeg - inicioSeg, blobUrl: url });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al procesar el clip");
-    } finally {
-      setEstado("preview"); setFase(null); setProgreso(0);
-    }
+    const edicion: Edicion = {
+      formato: formatoSel,
+      seguimiento: usarSeguimiento
+        ? compactarSeguimiento(seguimiento.map((k) => ({ ...k, t: k.t - inicioSeg })))
+        : null,
+      cx: formatoSel === "reel" ? Math.round(promedioCx * 10000) / 10000 : 0.5,
+      velocidad: playbackSpeed, brillo: brightness, contraste: contrast,
+    };
+    onCrearJugada?.({ etiqueta: getEtiquetaFinal(), inicioSeg, finSeg, duracion: finSeg - inicioSeg, edicion });
+    resetToIdle();
+    // Seguir viendo el partido desde donde terminó la jugada
+    videoRef.current?.play().catch(() => {});
   }
 
-  function copiar(txt: string) { navigator.clipboard.writeText(txt).catch(() => {}); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }
-
-  async function handleShare() {
-    const url = getShareUrl(); const et = getEtiquetaFinal();
-    if (typeof navigator !== "undefined" && "share" in navigator) {
-      try {
-        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({ title: et ? `Jugada: ${et}` : "Jugada en Lacar Sports", text: et ? `Mirá esta jugada (${et})` : "Mirá esta jugada", url });
-        return;
-      } catch { /* cancelled */ }
-    }
-    copiar(url);
-  }
-
-  const labelFase: Record<FaseDescarga, string> = {
-    ffmpeg: "Cargando editor...",
-    video: "Bajando el video...",
-    procesando: formatoDescarga === "reel" ? "Preparando tu reel..." : "Preparando tu clip...",
-  };
   const seguimientoGrabado = haySeguimiento(seguimiento);
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -903,6 +856,33 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
   // Contenido del menú de ajustes móvil. Se comparte entre el bottom-sheet
   // normal (fixed, fuera del video) y la variante de pantalla completa (que
   // debe vivir DENTRO del contenedor fullscreen para quedar visible).
+  function abrirBarraImagen() {
+    setShowImageSettings(false);
+    if (showSettingsSheet) closeSettingsSheet();
+    setShowBarraImagen(true);
+  }
+
+  const formularioJugada = (enVideo: boolean) => (
+    <FormularioJugada
+      enVideo={enVideo}
+      etiquetas={ETIQUETAS}
+      etiqueta={etiqueta}
+      etiquetaCustom={etiquetaCustom}
+      onEtiqueta={(e) => { setEtiqueta(e); if (e !== "Otro") setEtiquetaCustom(""); }}
+      onEtiquetaCustom={setEtiquetaCustom}
+      formato={formatoSel}
+      onFormato={setFormatoSel}
+      haySeguimiento={seguimientoGrabado}
+      conSeguimiento={conSeguimiento}
+      onConSeguimiento={setConSeguimiento}
+      duracionTexto={duracionClip !== null ? fmt(duracionClip) : ""}
+      error={error}
+      puedeCrear={puedeActuar()}
+      onCrear={handleCrearJugada}
+      onDescartar={handleDescartar}
+    />
+  );
+
   const settingsSheetInner = (
     <>
       <p className="text-xs font-semibold text-mist-500 uppercase tracking-wider text-center">Ajustes</p>
@@ -918,15 +898,12 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           ))}
         </div>
       </div>
-      <div>
-        <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Brillo</span><span className="text-xs font-mono text-mist-600">{brightness}%</span></div>
-        <input type="range" min={50} max={200} step={5} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
-      </div>
-      <div>
-        <div className="flex justify-between mb-2"><span className="text-xs text-mist-400">Contraste</span><span className="text-xs font-mono text-mist-600">{contrast}%</span></div>
-        <input type="range" min={50} max={200} step={5} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-crystal-400 h-1.5 rounded-full cursor-pointer" />
-      </div>
-      <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-xs text-mist-600 text-center py-2.5 border border-mist-500/10 rounded-lg">
+      {/* Brillo/contraste se ajustan con una barra flotante sobre el video, para ver el resultado */}
+      <button onClick={abrirBarraImagen} className="w-full flex items-center justify-center gap-2 text-xs text-snow py-2.5 border border-crystal-400/25 bg-crystal-400/5 rounded-lg">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1.5M12 19.5V21M4.22 4.22l1.06 1.06M18.72 18.72l1.06 1.06M3 12h1.5M19.5 12H21M4.22 19.78l1.06-1.06M18.72 5.28l1.06-1.06M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+        Brillo y contraste{brightness !== 100 || contrast !== 100 ? ` · ${brightness}% / ${contrast}%` : ""}
+      </button>
+      <button onClick={() => setAjustes({ brillo: 100, contraste: 100, velocidad: 1 })} className="w-full text-xs text-mist-600 text-center py-2.5 border border-mist-500/10 rounded-lg">
         Restablecer todo
       </button>
       <button onClick={openReportSheet} className="w-full flex items-center justify-center gap-2 text-xs text-mist-400 hover:text-amber-300 py-2.5 border border-mist-500/10 rounded-lg transition-colors">
@@ -983,7 +960,7 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           style={{
             transformOrigin: "0 0",
             pointerEvents: isGrabando ? "none" : undefined,
-            filter: (brightness !== 100 || contrast !== 100) ? `brightness(${brightness}%) contrast(${contrast}%)` : undefined,
+            filter: filtroImagen(ajustes),
           }}
           title={title}
           draggable={false}
@@ -1223,15 +1200,11 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
                           ))}
                         </div>
                       </div>
-                      <div>
-                        <div className="flex justify-between mb-1.5"><span className="text-[11px] text-mist-400">Brillo</span><span className="text-[11px] font-mono text-mist-600">{brightness}%</span></div>
-                        <input type="range" min={50} max={200} step={5} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} className="w-full accent-crystal-400 h-1 rounded-full cursor-pointer" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1.5"><span className="text-[11px] text-mist-400">Contraste</span><span className="text-[11px] font-mono text-mist-600">{contrast}%</span></div>
-                        <input type="range" min={50} max={200} step={5} value={contrast} onChange={(e) => setContrast(Number(e.target.value))} className="w-full accent-crystal-400 h-1 rounded-full cursor-pointer" />
-                      </div>
-                      <button onClick={() => { setBrightness(100); setContrast(100); setPlaybackSpeed(1); }} className="w-full text-[11px] text-mist-600 hover:text-snow text-center py-1 hover:bg-white/5 rounded-lg transition-colors">Restablecer todo</button>
+                      <button onClick={abrirBarraImagen} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-snow py-1.5 border border-crystal-400/25 bg-crystal-400/5 hover:bg-crystal-400/10 rounded-lg transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1.5M12 19.5V21M4.22 4.22l1.06 1.06M18.72 18.72l1.06 1.06M3 12h1.5M19.5 12H21M4.22 19.78l1.06-1.06M18.72 5.28l1.06-1.06M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                        Brillo y contraste
+                      </button>
+                      <button onClick={() => setAjustes({ brillo: 100, contraste: 100, velocidad: 1 })} className="w-full text-[11px] text-mist-600 hover:text-snow text-center py-1 hover:bg-white/5 rounded-lg transition-colors">Restablecer todo</button>
                       <div className="border-t border-mist-500/10 pt-2">
                         <button onClick={(e) => { e.stopPropagation(); openReportSheet(); }} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-mist-500 hover:text-amber-300 text-center py-1.5 hover:bg-white/5 rounded-lg transition-colors">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" /></svg>
@@ -1424,12 +1397,32 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           </div>
         )}
 
+        {/* ── Nueva jugada en pantalla completa: el formulario aparece encima del
+            video, sin salir de la pantalla completa ── */}
+        {estado === "preview" && effectiveFullscreen && (
+          <div
+            data-no-gesture
+            className="absolute inset-x-0 bottom-0 max-h-[85%] overflow-y-auto bg-lake-900/95 backdrop-blur-sm border-t border-mist-500/10 rounded-t-2xl z-50 px-4 pt-4 sm:max-w-md sm:mx-auto"
+            style={{ touchAction: "pan-y", paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {formularioJugada(true)}
+          </div>
+        )}
+
+        {/* ── Brillo/contraste sobre el video (pantalla completa o escritorio) ── */}
+        {showBarraImagen && (effectiveFullscreen || !isMobile) && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[46]" style={{ marginTop: isCustomFullscreen ? "env(safe-area-inset-top)" : undefined }}>
+            <BarraImagen onCerrar={() => setShowBarraImagen(false)} />
+          </div>
+        )}
+
         {/* ── Ajustes en pantalla completa móvil ──
             El bottom-sheet normal usa position:fixed y queda TAPADO por el
             contenedor fullscreen (z-index 9999). Acá se renderiza DENTRO del
-            contenedor: hereda la rotación 90° en vertical (el menú siempre se
-            ve horizontal respecto al video) y tocar fuera lo cierra sin salir
-            de pantalla completa. */}
+            contenedor y tocar fuera lo cierra sin salir de pantalla completa. */}
         {showSettingsSheet && isCustomFullscreen && (
           <>
             <div
@@ -1448,6 +1441,13 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
           </>
         )}
       </div>
+
+      {/* Brillo/contraste en el celular sin pantalla completa: debajo del video, para no taparlo */}
+      {showBarraImagen && isMobile && !effectiveFullscreen && (
+        <div className="flex justify-center">
+          <BarraImagen onCerrar={() => setShowBarraImagen(false)} />
+        </div>
+      )}
 
       {/* ── Mobile settings bottom sheet ── */}
       {showSettingsSheet && !isCustomFullscreen && (
@@ -1529,80 +1529,19 @@ export default function VideoClipSelector({ src, title, videoUrl, partidoId, dep
             {zoom > 1.05 && <span className="ml-auto text-xs text-crystal-400/60 font-mono">{zoom.toFixed(1)}× zoom</span>}
           </div>
         )}
-        {(estado === "preview" || estado === "descargando") && inicioSeg !== null && finSeg !== null && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 divide-x divide-crystal-400/8 text-center border border-crystal-400/8 rounded-lg overflow-hidden">
-              {[{ label: "Inicio", val: fmt(inicioSeg) }, { label: "Fin", val: fmt(finSeg) }, { label: "Duración", val: fmt(duracionClip!), accent: true }].map(({ label, val, accent }) => (
-                <div key={label} className="py-2.5 px-2">
-                  <div className="text-xs text-mist-600 mb-0.5">{label}</div>
-                  <div className={`font-mono text-sm ${accent ? "text-crystal-400 font-semibold" : "text-white"}`}>{val}</div>
-                </div>
-              ))}
-            </div>
+        {estado === "preview" && inicioSeg !== null && finSeg !== null && !effectiveFullscreen && (
+          <div className="space-y-3">
             {autoDetenido && (
               <div className="flex items-center gap-1.5 text-xs text-crystal-400/70 bg-crystal-400/5 border border-crystal-400/8 rounded-lg px-3 py-2">
                 <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                El clip se cerró automáticamente al alcanzar la duración máxima de 2 minutos
+                La jugada se cerró automáticamente al llegar a los 2 minutos
               </div>
             )}
-            {seguimientoGrabado && (
-              <div className="flex items-center gap-1.5 text-xs text-crystal-400/70 bg-crystal-400/5 border border-crystal-400/8 rounded-lg px-3 py-2">
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
-                Tu seguimiento (zoom y movimiento) quedó guardado para el clip
-              </div>
-            )}
-            {(playbackSpeed !== 1 || brightness !== 100 || contrast !== 100) && (
-              <div className="flex flex-wrap gap-1.5 text-xs text-crystal-400/70 bg-crystal-400/5 border border-crystal-400/8 rounded-lg px-3 py-2">
-                {playbackSpeed !== 1 && <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>{playbackSpeed}×</span>}
-                {brightness !== 100 && <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1z"/></svg>Brillo {brightness}%</span>}
-                {contrast !== 100 && <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><path strokeLinecap="round" strokeWidth="2" d="M12 2a10 10 0 010 20V2z" fill="currentColor" stroke="none"/></svg>Contraste {contrast}%</span>}
-                <span className="text-mist-700 ml-1">— se aplicarán al clip</span>
-              </div>
-            )}
-            <div className="space-y-2.5">
-              <p className="text-xs font-semibold text-mist-600 uppercase tracking-wide flex items-center gap-1.5">Etiqueta tu jugada <span className="text-crystal-400 normal-case tracking-normal font-normal">(obligatorio)</span></p>
-              <div className="flex flex-wrap gap-2">
-                {ETIQUETAS.map((e) => (
-                  <button key={e} type="button" onClick={() => { setEtiqueta(e); if (e !== "Otro") setEtiquetaCustom(""); }} disabled={estado === "descargando"}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all disabled:opacity-40 ${etiqueta === e ? "bg-crystal-400/12 border-crystal-400 text-crystal-400" : "border-mist-500/15 text-mist-500 hover:border-mist-500/30 hover:text-snow"}`}
-                  >{e}</button>
-                ))}
-              </div>
-              {etiqueta === "Otro" && (
-                <input type="text" placeholder="Describe tu jugada..." value={etiquetaCustom} onChange={(e) => setEtiquetaCustom(e.target.value)} disabled={estado === "descargando"} autoFocus
-                  className="w-full bg-lake-950 border border-crystal-400/15 rounded-lg px-3 py-2 text-sm text-white placeholder-mist-700 focus:outline-none focus:ring-1 focus:ring-crystal-400/40 disabled:opacity-40" />
-              )}
-            </div>
-            {estado === "descargando" && fase && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-mist-600"><span>{labelFase[fase]}</span>{progreso > 0 && <span>{progreso}%</span>}</div>
-                <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden">
-                  <div className="bg-crystal-400 h-full rounded-full transition-all duration-300" style={{ width: progreso > 0 ? `${progreso}%` : "45%", animation: progreso === 0 ? "pulse 1.5s ease-in-out infinite" : "none" }} />
-                </div>
-              </div>
-            )}
-            {error && <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
-            {eligiendoFormato && estado === "preview" && (
-              <ElegirFormato
-                formatoInicial={formatoDescarga}
-                haySeguimiento={seguimientoGrabado}
-                onElegir={(f, conSeg) => handleDescargar(f, conSeg)}
-                onCancelar={() => setEligiendoFormato(false)}
-              />
-            )}
-            <div className="grid grid-cols-3 gap-2">
-              <button onClick={handleReintentar} disabled={estado === "descargando"} className="py-2.5 rounded-lg text-xs border border-mist-500/15 text-mist-600 hover:text-snow hover:border-mist-500/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Otro Clip</button>
-              <button onClick={handleGuardarDestacado} disabled={!puedeActuar() || estado === "descargando" || guardado}
-                className={`py-2.5 rounded-lg text-xs border transition-all disabled:cursor-not-allowed flex items-center justify-center gap-1 ${guardado ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5" : "border-mist-500/15 text-mist-500 hover:text-crystal-400 hover:border-crystal-400/30 disabled:opacity-40"}`}
-              >
-                {guardado ? (<><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Guardado</>) : "Guardar destacado"}
-              </button>
-              <button onClick={() => setEligiendoFormato((v) => !v)} disabled={!puedeActuar() || estado === "descargando"} className="py-2.5 rounded-lg text-xs border border-crystal-400/30 bg-crystal-400/8 text-crystal-400 hover:bg-crystal-400/15 hover:border-crystal-400/50 transition-all disabled:opacity-25 disabled:cursor-not-allowed flex items-center justify-center gap-1">
-                {estado === "descargando" ? (<svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>) : (<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>)}
-                {estado === "descargando" ? "..." : "Descargar"}
-              </button>
-            </div>
+            {formularioJugada(false)}
           </div>
+        )}
+        {estado === "preview" && effectiveFullscreen && (
+          <p className="text-xs text-mist-600 text-center">Completa los datos de la jugada en el video.</p>
         )}
       </div>
     </div>

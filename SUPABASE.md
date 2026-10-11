@@ -88,6 +88,14 @@ páginas `/jugada/[id]`), cumpliendo la regla de que ningún material del partid
 al plazo. La trazabilidad de quién descargó vive aparte en `descargas_clips`, que NO se
 borra (no guarda video, solo el registro).
 
+**`edicion` (jsonb, opcional — `supabase/2026-10_jugadas_edicion.sql`):** cómo se creó el
+clip, para regenerarlo igual: `{formato: "reel"|"completo", seguimiento: [{t,cx,cy,zoom}] |
+null, cx, velocidad, brillo, contraste}` (`t` en s desde el inicio de la jugada; `cx/cy`
+centro 0–1 del cuadro; `zoom` = alto original / alto visible, <1 en el reel = alejado con
+franjas). Toda jugada creada en el reproductor queda como destacada y su video se prepara
+en el navegador (`exportarClip`). La web funciona con o sin la columna (`lib/jugadas.ts`
+reintenta sin ella), pero sin ella las jugadas no recuerdan formato ni seguimiento.
+
 ### `complejos`
 Complejos clientes. `id`, `name_complex`, `owner_email` (uno o varios correos separados por
 coma). **RLS bloquea lectura anónima**; la resolución correo→complejo se hace server-side

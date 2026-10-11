@@ -2,6 +2,9 @@
 
 import { useRef, useState, useEffect } from "react";
 import Hls from "hls.js";
+import { useAjustesReproductor, setAjustes, filtroImagen } from "@/lib/ajustesReproductor";
+import { aplicarVista, vistaEn, haySeguimiento } from "@/lib/encuadre";
+import type { Edicion } from "@/lib/jugadas";
 
 function fmtSeg(seg: number) {
   const m = Math.floor(seg / 60);
@@ -18,9 +21,11 @@ interface Props {
   onClose?: () => void;
   compact?: boolean;
   className?: string;
+  /** Formato y seguimiento de la jugada: el reel se muestra vertical y siguiendo la jugada. */
+  edicion?: Edicion | null;
 }
 
-export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion, blobUrl, onClose, compact = false, className }: Props) {
+export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion, blobUrl, onClose, compact = false, className, edicion }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const seekBarRef = useRef<HTMLDivElement>(null);
@@ -38,7 +43,11 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
   const [buffering, setBuffering] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCustomFullscreen, setIsCustomFullscreen] = useState(false);
-  const [volume, setVolume] = useState(1);
+  // Volumen, brillo, contraste y velocidad compartidos con el reproductor del partido
+  const ajustes = useAjustesReproductor();
+  const volume = ajustes.volumen;
+  const setVolume = (v: number) => setAjustes({ volumen: v });
+  const frameRef = useRef<HTMLDivElement>(null);
   const [prevVolume, setPrevVolume] = useState(1);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 
@@ -47,6 +56,9 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
   const [mobileControlsOpaque, setMobileControlsOpaque] = useState(false);
 
   const src = blobUrl ?? videoUrl;
+  const esReel = edicion?.formato === "reel";
+  // Sin video ya preparado, el reel (o el zoom/seguimiento) se arma en vivo sobre el partido
+  const enVivo = !blobUrl && !!edicion && (esReel || haySeguimiento(edicion.seguimiento));
   const clipStart = blobUrl ? 0 : inicioSeg;
   const clipEnd = blobUrl ? duracion : finSeg;
   const pct = duracion > 0 ? Math.min(100, (relTime / duracion) * 100) : 0;
@@ -83,6 +95,31 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
     v.volume = volume;
     v.muted = volume === 0;
   }, [volume]);
+
+  useEffect(() => { if (videoRef.current) videoRef.current.playbackRate = ajustes.velocidad; }, [ajustes.velocidad, src]);
+
+  // Encuadre en vivo: en cada cuadro se posiciona el video según el seguimiento guardado.
+  useEffect(() => {
+    if (!enVivo || !edicion) return;
+    let id = 0;
+    const pintarUnaVez = () => {
+      const v = videoRef.current, frame = frameRef.current;
+      if (!v || !frame) return;
+      const t = v.currentTime - inicioSeg;
+      const vista = edicion.seguimiento?.length ? vistaEn(edicion.seguimiento, t) : { cx: edicion.cx ?? 0.5, cy: 0.5, zoom: 1 };
+      aplicarVista(v, frame, vista);
+    };
+    const pintar = () => { pintarUnaVez(); id = requestAnimationFrame(pintar); };
+    id = requestAnimationFrame(pintar);
+    // También al cargar/saltar (por si el navegador pausa los cuadros de animación)
+    const v = videoRef.current;
+    const eventos = ["loadedmetadata", "seeked", "timeupdate", "resize"];
+    eventos.forEach((ev) => v?.addEventListener(ev, pintarUnaVez));
+    return () => {
+      cancelAnimationFrame(id);
+      eventos.forEach((ev) => v?.removeEventListener(ev, pintarUnaVez));
+    };
+  }, [enVivo, edicion, inicioSeg]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -170,7 +207,8 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
         try { (screen.orientation as any)?.unlock?.(); } catch {}
       } else {
         setIsCustomFullscreen(true);
-        try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+        // El reel se ve en vertical: solo el formato completo pide girar
+        if (!esReel) { try { await (screen.orientation as any)?.lock?.("landscape"); } catch {} }
       }
       return;
     }
@@ -295,10 +333,21 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
       onTouchEnd={handleTouchEnd}
       onClick={() => { if (!isMobile) togglePlay(); }}
     >
+      {/* Cuadro del video. En vivo (reel/seguimiento) el <video> se posiciona dentro con
+          aplicarVista; si no, se muestra completo (object-contain). */}
+      <div
+        ref={frameRef}
+        className="overflow-hidden"
+        style={
+          enVivo && effectiveFullscreen
+            ? { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: `min(100%, calc(100dvh * ${esReel ? 9 / 16 : 16 / 9}))`, aspectRatio: esReel ? "9 / 16" : "16 / 9" }
+            : { position: "absolute", inset: 0 }
+        }
+      >
       <video
         ref={videoRef}
-        className={`object-contain ${(isFullscreen && !isCustomFullscreen) ? "" : "w-full h-full"}`}
-        style={(isFullscreen && !isCustomFullscreen) ? { width: "100%", height: "auto" } : undefined}
+        className={enVivo ? "absolute top-0 left-0 max-w-none" : "w-full h-full object-contain"}
+        style={{ transformOrigin: enVivo ? "0 0" : undefined, filter: filtroImagen(ajustes) }}
         playsInline
         preload="metadata"
         onLoadedMetadata={(e) => { (e.target as HTMLVideoElement).currentTime = clipStart; }}
@@ -323,6 +372,7 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
           else { setRelTime(Math.max(0, v.currentTime - clipStart)); }
         }}
       />
+      </div>
 
       {buffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

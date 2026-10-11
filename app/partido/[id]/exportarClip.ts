@@ -15,20 +15,19 @@ import {
   VideoSample, canEncodeVideo,
 } from "mediabunny";
 import { crearMarcaAgua, type FormatoClip } from "@/lib/marcaAgua";
+import { ventana, vistaEn, haySeguimiento, type Vista, type KeyframeVista } from "@/lib/encuadre";
 import { processClip, type FaseDescarga } from "./processClip";
 
-/** Encuadre en un instante: centro (0–1 del cuadro original) y zoom (alto original / alto visible). */
-export interface Vista { cx: number; cy: number; zoom: number }
-/** Encuadre registrado en el tiempo `t` de la playlist (segundos). */
-export interface KeyframeVista extends Vista { t: number }
+export type { Vista, KeyframeVista, FaseDescarga };
+export { haySeguimiento };
 
 export interface ExportOptions {
   videoUrl: string;
   inicioSeg: number;
   finSeg: number;
   formato: FormatoClip;
-  /** Movimientos grabados mientras se marcaba la jugada. Sin esto, encuadre fijo. */
-  seguimiento?: KeyframeVista[];
+  /** Movimientos grabados mientras se marcaba la jugada (t desde el inicio del clip). Sin esto, encuadre fijo. */
+  seguimiento?: KeyframeVista[] | null;
   /** Encuadre fijo cuando no hay seguimiento (por defecto, centrado y sin zoom). */
   vistaFija?: Vista;
   speed?: number;
@@ -97,46 +96,6 @@ function unir(partes: Uint8Array[]): Uint8Array {
   let off = 0;
   for (const p of partes) { out.set(p, off); off += p.length; }
   return out;
-}
-
-/** Rectángulo (px del original) que se ve con una vista dada en un formato dado. */
-export function rectFuente(formato: FormatoClip, srcW: number, srcH: number, v: Vista) {
-  const aspecto = formato === "reel" ? 9 / 16 : srcW / srcH;
-  let h = srcH / Math.max(1, v.zoom);
-  let w = h * aspecto;
-  if (w > srcW) { w = srcW; h = w / aspecto; }
-  const x = Math.max(0, Math.min(srcW - w, v.cx * srcW - w / 2));
-  const y = Math.max(0, Math.min(srcH - h, v.cy * srcH - h / 2));
-  return { x, y, w, h };
-}
-
-function interpolar(kf: KeyframeVista[], t: number): Vista {
-  if (t <= kf[0].t) return kf[0];
-  const n = kf.length;
-  if (t >= kf[n - 1].t) return kf[n - 1];
-  let lo = 0, hi = n - 1;
-  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (kf[m].t <= t) lo = m; else hi = m; }
-  const a = kf[lo], b = kf[hi];
-  const u = b.t > a.t ? (t - a.t) / (b.t - a.t) : 1;
-  return { cx: a.cx + (b.cx - a.cx) * u, cy: a.cy + (b.cy - a.cy) * u, zoom: a.zoom + (b.zoom - a.zoom) * u };
-}
-
-/** Promedia ±0,25 s alrededor de t: suaviza el pulso del dedo como una cámara estable. */
-function vistaSuave(kf: KeyframeVista[], t: number): Vista {
-  let cx = 0, cy = 0, zoom = 0;
-  const pasos = 7;
-  for (let i = 0; i < pasos; i++) {
-    const v = interpolar(kf, t + (i - (pasos - 1) / 2) * (0.5 / (pasos - 1)));
-    cx += v.cx; cy += v.cy; zoom += v.zoom;
-  }
-  return { cx: cx / pasos, cy: cy / pasos, zoom: zoom / pasos };
-}
-
-/** ¿El seguimiento tiene movimiento real (zoom o desplazamiento)? */
-export function haySeguimiento(kf: KeyframeVista[] | undefined): boolean {
-  if (!kf || kf.length === 0) return false;
-  const a = kf[0];
-  return kf.some((k) => k.zoom > 1.03 || Math.abs(k.cx - a.cx) > 0.01 || Math.abs(k.cy - a.cy) > 0.01);
 }
 
 export function soportaExportRapido(): boolean {
@@ -222,10 +181,16 @@ async function exportarWebCodecs(o: ExportOptions): Promise<Blob> {
       for await (const sample of new VideoSampleSink(vt).samples(aInterno(desde), aInterno(hasta))) {
         const t = aPlaylist(sample.timestamp);
         if (t < desde - 0.001 || t >= hasta) { sample.close(); continue; }
-        const vista = conSeguimiento ? vistaSuave(seguimiento!, t) : fija;
-        const r = rectFuente(formato, srcW, srcH, vista);
+        const vista = conSeguimiento ? vistaEn(seguimiento!, t - inicioSeg) : fija;
+        const win = ventana(W / H, srcW, srcH, vista);
+        const esc = W / win.w;
+        // Se dibuja el cuadro COMPLETO desplazado y escalado (el canvas recorta lo que
+        // sobra). No se usa drawImage con sub-rectángulo de origen: Safari lo ignora con
+        // VideoFrame y dibuja el cuadro entero aplastado.
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
         ctx.filter = filtro;
-        sample.draw(ctx, r.x, r.y, r.w, r.h, 0, 0, W, H);
+        ctx.drawImage(sample.toCanvasImageSource(), -win.x * esc, -win.y * esc, srcW * esc, srcH * esc);
         ctx.filter = "none";
         ctx.drawImage(marca, 0, 0);
         const ts = (t - inicioSeg) / speed;
@@ -266,21 +231,23 @@ async function exportarWebCodecs(o: ExportOptions): Promise<Blob> {
   }
 }
 
-/** Exporta el clip y devuelve una URL blob: (el llamador debe revocarla). */
-export async function exportarClip(o: ExportOptions): Promise<string> {
+/** Exporta el clip. Devuelve el archivo y una URL blob: (el llamador debe revocarla). */
+export async function exportarClip(o: ExportOptions): Promise<{ url: string; blob: Blob }> {
   if (o.finSeg - o.inicioSeg > 120) throw new Error("Los clips pueden durar máximo 2 minutos.");
   if (soportaExportRapido()) {
     try {
-      return URL.createObjectURL(await exportarWebCodecs(o));
+      const blob = await exportarWebCodecs(o);
+      return { url: URL.createObjectURL(blob), blob };
     } catch (e) {
       if (!(e instanceof Error && e.message === "NO_WEBCODECS")) throw e;
     }
   }
   // Respaldo (navegadores sin WebCodecs): ffmpeg.wasm, encuadre fijo, con marca de agua.
-  return processClip({
+  const url = await processClip({
     videoUrl: o.videoUrl, inicioSeg: o.inicioSeg, finSeg: o.finSeg,
     speed: o.speed, brightness: o.brightness, contrast: o.contrast,
     formato: o.formato, vistaFija: o.vistaFija,
     onFase: o.onFase, onProgreso: o.onProgreso,
   });
+  return { url, blob: await (await fetch(url)).blob() };
 }

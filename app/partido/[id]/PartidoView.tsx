@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import VideoClipSelector, { type ClipLocal } from "./VideoClipSelector";
-import { exportarClip } from "./exportarClip";
+import { useState, useEffect, useRef, useCallback } from "react";
+import VideoClipSelector, { type NuevaJugada } from "./VideoClipSelector";
+import { exportarClip, type FaseDescarga } from "./exportarClip";
 import ElegirFormato from "./ElegirFormato";
-import type { FormatoClip } from "@/lib/marcaAgua";
 import { supabase } from "@/lib/supabase";
 import { getSessionId } from "@/lib/session";
 import { registrarDescarga } from "@/lib/descargas";
+import { cargarJugadas, insertarJugada, type Edicion } from "@/lib/jugadas";
+import { guardarVideo, nombreVideo } from "@/lib/guardarVideo";
 import InlineClipPlayer from "@/app/components/InlineClipPlayer";
 
-/* â”€â”€ tag styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── tag styles ── */
 
 const TAG_STYLES: Record<string, string> = {
   Gol:           "bg-crystal-400/15 text-crystal-300 border-crystal-400/25",
@@ -31,8 +32,25 @@ function fmt(seg: number) {
   return `${m}:${s}`;
 }
 
+/** Jugada destacada en la barra lateral, con el estado de su video preparado. */
+interface JugadaUI {
+  /** Clave local estable (el id de la base llega después de guardar). */
+  key: string;
+  /** Id en la tabla `jugadas`; null mientras se guarda o si no se pudo guardar. */
+  id: string | null;
+  etiqueta: string;
+  inicioSeg: number;
+  finSeg: number;
+  duracion: number;
+  edicion?: Edicion | null;
+  proceso?: "cola" | "procesando" | "listo" | "error";
+  progreso?: number;
+  blobUrl?: string;
+  blob?: Blob;
+  error?: string;
+}
 
-/* â”€â”€ props â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── props ── */
 
 interface Props {
   videoUrl: string;
@@ -43,11 +61,17 @@ interface Props {
   numeroCancha?: number;
 }
 
-/* â”€â”€ component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── component ── */
 
 export default function PartidoView({ videoUrl, title, partidoId, deporte, complejo, numeroCancha }: Props) {
-  const [clips, setClips] = useState<ClipLocal[]>([]);
-  const [playingClipId, setPlayingClipId] = useState<string | null>(null);
+  const [clips, setClips] = useState<JugadaUI[]>([]);
+  const clipsRef = useRef<JugadaUI[]>([]);
+  useEffect(() => { clipsRef.current = clips; }, [clips]);
+  const [playingKey, setPlayingKey] = useState<string | null>(null);
+  const [eligiendoKey, setEligiendoKey] = useState<string | null>(null);
+  // Aviso flotante: progreso de la jugada en preparación o "lista"
+  const [aviso, setAviso] = useState<{ key: string; tipo: "preparando" | "lista" | "error" } | null>(null);
+  const [destacadaKey, setDestacadaKey] = useState<string | null>(null);
 
   // Registro de visita: una sola vez por sesión de visualización (no en pausa/replay)
   const visitaRegistrada = useRef(false);
@@ -77,166 +101,173 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
     }
   }
 
-  // Sidebar download state (one at a time)
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [eligiendoId, setEligiendoId] = useState<string | null>(null);
-  const [downloadPct, setDownloadPct] = useState(0);
-
   // Share copy feedback per clip
-  const [copiadoId, setCopiadoId] = useState<string | null>(null);
-  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [copiadoKey, setCopiadoKey] = useState<string | null>(null);
+  const [copiedLinkKey, setCopiedLinkKey] = useState<string | null>(null);
 
-  /* â”€â”€ load existing jugadas from DB on mount â”€â”€ */
+  /* ── jugadas guardadas del partido ── */
   useEffect(() => {
-    supabase
-      .from("jugadas")
-      .select("id, partido_id, etiqueta, inicio_seg, fin_seg, duracion")
-      .eq("partido_id", partidoId)
-      .order("creado_en", { ascending: false })
-      .then(({ data }) => {
-        if (!data) return;
-        setClips(
-          data.map((j) => ({
-            id: j.id as string,
-            partidoId: j.partido_id as string,
-            etiqueta: j.etiqueta as string,
-            inicioSeg: Number(j.inicio_seg),
-            finSeg: Number(j.fin_seg),
-            duracion: Number(j.duracion),
-            // blobUrl omitted â€” not yet downloaded
-          }))
-        );
-      });
+    cargarJugadas(partidoId).then((data) => {
+      setClips((prev) => [
+        // Las creadas en esta visita (aún sin guardar) se mantienen arriba
+        ...prev.filter((c) => !c.id),
+        ...data.map((j) => ({
+          key: j.id,
+          id: j.id,
+          etiqueta: j.etiqueta,
+          inicioSeg: Number(j.inicio_seg),
+          finSeg: Number(j.fin_seg),
+          duracion: Number(j.duracion),
+          edicion: j.edicion ?? null,
+        })),
+      ]);
+    });
   }, [partidoId]);
 
-  /* â”€â”€ handle clip from VideoClipSelector â”€â”€ */
+  // Liberar los videos preparados al salir de la página
+  useEffect(() => () => { clipsRef.current.forEach((c) => c.blobUrl && URL.revokeObjectURL(c.blobUrl)); }, []);
 
-  async function handleClipGuardado(clip: ClipLocal) {
-    // Avoid duplicate if same id already in list
-    setClips((prev) =>
-      prev.some((c) => c.id === clip.id) ? prev : [clip, ...prev]
-    );
+  const actualizar = useCallback((key: string, cambios: Partial<JugadaUI>) => {
+    // La cola lee clipsRef: se actualiza al tiro, sin esperar al render
+    clipsRef.current = clipsRef.current.map((c) => (c.key === key ? { ...c, ...cambios } : c));
+    setClips((prev) => prev.map((c) => (c.key === key ? { ...c, ...cambios } : c)));
+  }, []);
 
-    // Trazabilidad: registrar quién descargó (blobUrl) o guardó el clip
-    registrarDescarga({
-      partidoId: clip.partidoId,
-      complejo,
-      inicioSeg: clip.inicioSeg,
-      finSeg: clip.finSeg,
-      etiqueta: clip.etiqueta,
-      tipo: clip.blobUrl ? "descarga" : "destacado",
-      origen: "partido",
-    });
+  /* ── cola de preparación: un clip a la vez, en segundo plano ── */
+  const colaRef = useRef<string[]>([]);
+  const trabajandoRef = useRef(false);
 
-    // Only persist to DB when saved as "destacado" (no blobUrl)
-    if (!clip.blobUrl) {
+  const procesarCola = useCallback(async () => {
+    if (trabajandoRef.current) return;
+    trabajandoRef.current = true;
+    while (colaRef.current.length) {
+      const key = colaRef.current.shift()!;
+      const c = clipsRef.current.find((x) => x.key === key);
+      if (!c) continue;
+      const ed: Edicion = c.edicion ?? { formato: "reel", seguimiento: null };
+      actualizar(key, { proceso: "procesando", progreso: 0, error: undefined });
+      setAviso({ key, tipo: "preparando" });
+      // La bajada cuenta hasta 30% y el recorte el resto
+      let fase: FaseDescarga = "video";
       try {
-        const { data } = await supabase
-          .from("jugadas")
-          .insert({
-            partido_id: clip.partidoId,
-            etiqueta: clip.etiqueta,
-            inicio_seg: clip.inicioSeg,
-            fin_seg: clip.finSeg,
-            duracion: clip.duracion,
-          })
-          .select("id")
-          .single();
-
-        // Replace temp UUID with the real DB id
-        if (data?.id) {
-          setClips((prev) =>
-            prev.map((c) => (c.id === clip.id ? { ...c, id: data.id as string } : c))
-          );
-        }
-      } catch {
-        // DB table may not exist yet â€” clip stays in local state only
+        const { url, blob } = await exportarClip({
+          videoUrl, inicioSeg: c.inicioSeg, finSeg: c.finSeg,
+          formato: ed.formato,
+          seguimiento: ed.seguimiento,
+          vistaFija: { cx: ed.cx ?? 0.5, cy: 0.5, zoom: 1 },
+          speed: ed.velocidad ?? 1, brightness: ed.brillo ?? 100, contrast: ed.contraste ?? 100,
+          onFase: (f) => { fase = f; },
+          onProgreso: (p) => actualizar(key, { progreso: fase === "procesando" ? 30 + Math.round(p * 0.7) : Math.round(p * 0.3) }),
+        });
+        actualizar(key, { proceso: "listo", progreso: 100, blobUrl: url, blob });
+        setAviso({ key, tipo: "lista" });
+      } catch (err) {
+        actualizar(key, { proceso: "error", error: err instanceof Error ? err.message : "No se pudo preparar el video" });
+        setAviso({ key, tipo: "error" });
       }
     }
-  }
+    trabajandoRef.current = false;
+  }, [videoUrl, actualizar]);
 
-  /* â”€â”€ delete clip â”€â”€ */
+  const encolar = useCallback((key: string) => {
+    if (!colaRef.current.includes(key)) colaRef.current.push(key);
+    actualizar(key, { proceso: "cola", progreso: 0 });
+    // Esperar a que el estado incluya la jugada antes de procesar
+    setTimeout(() => procesarCola(), 0);
+  }, [actualizar, procesarCola]);
 
-/* â”€â”€ sidebar download â”€â”€ */
+  /* ── jugada creada en el reproductor ── */
+  async function handleCrearJugada(j: NuevaJugada) {
+    const key = crypto.randomUUID();
+    const nueva: JugadaUI = { key, id: null, ...j, proceso: "cola", progreso: 0 };
+    clipsRef.current = [nueva, ...clipsRef.current];
+    setClips((prev) => [nueva, ...prev]);
+    encolar(key);
 
-  async function handleSidebarDownload(clip: ClipLocal, formato: FormatoClip) {
-    if (downloadingId) return;
-    setEligiendoId(null);
-    setDownloadingId(clip.id);
-    setDownloadError(null);
-    setDownloadPct(0);
+    registrarDescarga({
+      partidoId, complejo, inicioSeg: j.inicioSeg, finSeg: j.finSeg,
+      etiqueta: j.etiqueta, tipo: "destacado", origen: "partido",
+    });
 
     try {
-      // Las jugadas guardadas no tienen seguimiento: encuadre fijo centrado.
-      const url = await exportarClip({
-        videoUrl,
-        inicioSeg: clip.inicioSeg,
-        finSeg: clip.finSeg,
-        formato,
-        onProgreso: (p) => setDownloadPct(p),
+      const id = await insertarJugada({
+        partido_id: partidoId,
+        etiqueta: j.etiqueta,
+        inicio_seg: j.inicioSeg,
+        fin_seg: j.finSeg,
+        duracion: j.duracion,
+        edicion: j.edicion,
       });
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `lacar-sports_${clip.etiqueta.replace(/\s+/g, "-").toLowerCase()}_${formato}.mp4`;
-      a.click();
-
-      registrarDescarga({
-        partidoId: clip.partidoId,
-        complejo,
-        inicioSeg: clip.inicioSeg,
-        finSeg: clip.finSeg,
-        etiqueta: clip.etiqueta,
-        tipo: "descarga",
-        origen: "partido",
-      });
-
-      // Keep blob URL alive for modal playback
-      setClips((prev) =>
-        prev.map((c) => (c.id === clip.id ? { ...c, blobUrl: url } : c))
-      );
-    } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : "Error al procesar");
-    } finally {
-      setDownloadingId(null);
+      if (id) actualizar(key, { id });
+    } catch {
+      // Sin conexión con la base: la jugada queda solo en esta visita
     }
   }
 
-  /* â”€â”€ sidebar copy link â”€â”€ */
-
-  function handleSidebarCopyLink(clip: ClipLocal) {
-    const url = `${window.location.origin}/jugada/${clip.id}`;
-    navigator.clipboard.writeText(url).catch(() => {});
-    setCopiedLinkId(clip.id);
-    setTimeout(() => setCopiedLinkId(null), 2000);
+  /* ── preparar / descargar desde la barra lateral ── */
+  function handlePreparar(c: JugadaUI, formato?: Edicion["formato"]) {
+    setEligiendoKey(null);
+    if (formato) actualizar(c.key, { edicion: { formato, seguimiento: null, cx: 0.5 } });
+    // Para jugadas antiguas (sin formato guardado) primero se elige el formato
+    else if (!c.edicion) { setEligiendoKey(c.key); return; }
+    setTimeout(() => encolar(c.key), 0);
   }
 
-  /* â”€â”€ sidebar share â”€â”€ */
-
-  function getSidebarShareUrl(clip: ClipLocal) {
-    if (typeof window === "undefined") return "";
-    return `${window.location.origin}/jugada/${clip.id}`;
+  function handleDescargar(c: JugadaUI) {
+    if (!c.blob || !c.blobUrl) return;
+    guardarVideo(c.blob, c.blobUrl, nombreVideo(c.etiqueta, c.edicion?.formato ?? "reel"));
+    registrarDescarga({
+      partidoId, jugadaId: c.id ?? undefined, complejo, inicioSeg: c.inicioSeg, finSeg: c.finSeg,
+      etiqueta: c.etiqueta, tipo: "descarga", origen: "partido",
+    });
   }
 
-  async function handleSidebarShare(clip: ClipLocal) {
-    const url = getSidebarShareUrl(clip);
+  /* ── aviso flotante ── */
+  const avisoClip = aviso ? clips.find((c) => c.key === aviso.key) : undefined;
+  useEffect(() => {
+    if (aviso?.tipo !== "lista" && aviso?.tipo !== "error") return;
+    const t = setTimeout(() => setAviso(null), 12000);
+    return () => clearTimeout(t);
+  }, [aviso]);
+
+  function verEnLista(key: string) {
+    setAviso(null);
+    setPlayingKey(key);
+    setDestacadaKey(key);
+    setTimeout(() => document.getElementById(`jugada-${key}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+    setTimeout(() => setDestacadaKey(null), 2500);
+  }
+
+  /* ── sidebar copy link / share ── */
+
+  function handleSidebarCopyLink(c: JugadaUI) {
+    if (!c.id) return;
+    navigator.clipboard.writeText(`${window.location.origin}/jugada/${c.id}`).catch(() => {});
+    setCopiedLinkKey(c.key);
+    setTimeout(() => setCopiedLinkKey(null), 2000);
+  }
+
+  async function handleSidebarShare(c: JugadaUI) {
+    if (!c.id) return;
+    const url = `${window.location.origin}/jugada/${c.id}`;
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
-          title: `Jugada: ${clip.etiqueta}`,
-          text: `Mirá esta jugada (${clip.etiqueta})`,
-          url,
-        });
+        await navigator.share({ title: `Jugada: ${c.etiqueta}`, text: `Mirá esta jugada (${c.etiqueta})`, url });
         return;
       } catch { /* cancelled */ }
     }
     navigator.clipboard.writeText(url).catch(() => {});
-    setCopiadoId(clip.id);
-    setTimeout(() => setCopiadoId(null), 2000);
+    setCopiadoKey(c.key);
+    setTimeout(() => setCopiadoKey(null), 2000);
   }
 
-  /* â”€â”€ render â”€â”€ */
+  const iconoDescarga = (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  );
+
+  /* ── render ── */
 
   return (
     <>
@@ -251,8 +282,8 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
           deporte={deporte}
           complejo={complejo}
           numeroCancha={numeroCancha}
-          clips={clips}
-          onClipGuardado={handleClipGuardado}
+          clips={clips.map((c) => ({ id: c.key, etiqueta: c.etiqueta, inicioSeg: c.inicioSeg, finSeg: c.finSeg }))}
+          onCrearJugada={handleCrearJugada}
           onPlayStart={handlePlayStart}
         />
 
@@ -272,12 +303,6 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
             )}
           </div>
 
-          {downloadError && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-              {downloadError}
-            </p>
-          )}
-
           {/* Empty state */}
           {clips.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-lake-800/40 rounded-xl border border-dashed border-crystal-400/10">
@@ -286,37 +311,43 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
-              <p className="text-xs text-mist-700 leading-relaxed max-w-[180px]">
-                Guarda una jugada como destacada y aparecerá aquí
+              <p className="text-xs text-mist-700 leading-relaxed max-w-[200px]">
+                Marca el inicio y el fin de una jugada en el video y aparecerá aquí
               </p>
             </div>
           )}
 
           {/* Clip list */}
           {clips.length > 0 && (
-            <div className="space-y-2 max-h-[620px] overflow-y-auto pr-0.5">
+            <div className="space-y-2 max-h-[720px] overflow-y-auto pr-0.5">
               {clips.map((clip, idx) => {
-                const isDownloading = downloadingId === clip.id;
-                const isCopied = copiadoId === clip.id;
-                const isCopiedLink = copiedLinkId === clip.id;
-                const isExpanded = playingClipId === clip.id;
+                const isCopied = copiadoKey === clip.key;
+                const isCopiedLink = copiedLinkKey === clip.key;
+                const isExpanded = playingKey === clip.key;
+                const esReel = clip.edicion?.formato === "reel";
 
                 return (
                   <div
-                    key={clip.id}
-                    className="bg-lake-800/60 border border-crystal-400/8 rounded-xl overflow-hidden hover:border-crystal-400/15 transition-colors"
+                    key={clip.key}
+                    id={`jugada-${clip.key}`}
+                    className={`bg-lake-800/60 border rounded-xl overflow-hidden transition-colors ${destacadaKey === clip.key ? "border-crystal-400/60" : "border-crystal-400/8 hover:border-crystal-400/15"}`}
                   >
                     {/* Header — click to toggle player */}
                     <button
-                      onClick={() => setPlayingClipId(isExpanded ? null : clip.id)}
+                      onClick={() => setPlayingKey(isExpanded ? null : clip.key)}
                       className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/[0.03] transition-colors"
                     >
                       <span className="text-mist-700 text-[10px] font-mono shrink-0">#{clips.length - idx}</span>
                       <span className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded-full border ${tagStyle(clip.etiqueta)}`}>
                         {clip.etiqueta}
                       </span>
-                      <span className="text-xs font-mono text-mist-600 flex-1 min-w-0 truncate">
-                        {fmt(clip.inicioSeg)} → {fmt(clip.finSeg)}
+                      {clip.edicion && (
+                        <span className="shrink-0 text-[10px] text-mist-600 border border-mist-500/15 rounded px-1">
+                          {esReel ? "9:16" : "16:9"}
+                        </span>
+                      )}
+                      <span className="text-xs font-mono text-mist-600 flex-1 min-w-0 truncate text-left">
+                        {fmt(clip.inicioSeg)}
                       </span>
                       <span className="text-xs font-mono text-mist-700 shrink-0">{fmt(clip.duracion)}</span>
                       <svg
@@ -327,8 +358,8 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                       </svg>
                     </button>
 
-                    {/* Expandable player */}
-                    <div className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? "max-h-[260px]" : "max-h-0"}`}>
+                    {/* Expandable player: el reel se ve vertical, con su seguimiento */}
+                    <div className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? (esReel ? "max-h-[440px]" : "max-h-[320px]") : "max-h-0"}`}>
                       {isExpanded && (
                         <InlineClipPlayer
                           videoUrl={videoUrl}
@@ -336,6 +367,8 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                           finSeg={clip.finSeg}
                           duracion={clip.duracion}
                           blobUrl={clip.blobUrl}
+                          edicion={clip.edicion}
+                          className={esReel ? "aspect-[9/16] w-full max-w-[230px] mx-auto" : undefined}
                           compact
                         />
                       )}
@@ -343,77 +376,69 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
 
                     {/* Actions — always visible */}
                     <div className="px-3 pb-2.5 pt-1.5 space-y-1.5">
-                      <button
-                        onClick={() => setEligiendoId((id) => (id === clip.id ? null : clip.id))}
-                        disabled={!!downloadingId}
-                        className="w-full flex items-center justify-center gap-1.5 text-xs text-mist-600 border border-mist-500/10 hover:border-crystal-400/30 hover:text-crystal-300 rounded-lg py-2 sm:py-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {isDownloading ? (
-                          <>
-                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                            </svg>
-                            Preparando... {downloadPct > 0 ? `${downloadPct}%` : ""}
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Descargar
-                          </>
-                        )}
-                      </button>
-                      {eligiendoId === clip.id && !downloadingId && (
+                      {(clip.proceso === "cola" || clip.proceso === "procesando") ? (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] text-mist-500">
+                            <span>{clip.proceso === "cola" ? "En espera…" : "Preparando video…"}</span>
+                            <span className="font-mono">{clip.progreso ?? 0}%</span>
+                          </div>
+                          <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden">
+                            <div className="bg-crystal-400 h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(4, clip.progreso ?? 0)}%` }} />
+                          </div>
+                        </div>
+                      ) : clip.proceso === "listo" ? (
+                        <button
+                          onClick={() => handleDescargar(clip)}
+                          className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold bg-crystal-400 text-lake-950 hover:bg-crystal-300 rounded-lg py-2 transition-colors"
+                        >
+                          {iconoDescarga}
+                          Descargar
+                        </button>
+                      ) : (
+                        <>
+                          {clip.proceso === "error" && (
+                            <p className="text-[11px] text-red-400">{clip.error}</p>
+                          )}
+                          <button
+                            onClick={() => handlePreparar(clip)}
+                            className="w-full flex items-center justify-center gap-1.5 text-xs text-mist-500 border border-mist-500/15 hover:border-crystal-400/30 hover:text-crystal-300 rounded-lg py-2 sm:py-1.5 transition-all"
+                          >
+                            {iconoDescarga}
+                            {clip.proceso === "error" ? "Reintentar" : "Preparar descarga"}
+                          </button>
+                        </>
+                      )}
+                      {eligiendoKey === clip.key && (
                         <ElegirFormato
-                          onElegir={(f) => handleSidebarDownload(clip, f)}
-                          onCancelar={() => setEligiendoId(null)}
+                          onElegir={(f) => handlePreparar(clip, f)}
+                          onCancelar={() => setEligiendoKey(null)}
                         />
                       )}
 
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          onClick={() => handleSidebarShare(clip)}
-                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
-                            isCopied
-                              ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
-                              : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
-                          }`}
-                        >
-                          {isCopied ? (
-                            <>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                              Copiado
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                              Compartir
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleSidebarCopyLink(clip)}
-                          className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
-                            isCopiedLink
-                              ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
-                              : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
-                          }`}
-                        >
-                          {isCopiedLink ? (
-                            <>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                              Copiado
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                              Copiar link
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      {clip.id && (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            onClick={() => handleSidebarShare(clip)}
+                            className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
+                              isCopied
+                                ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
+                                : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
+                            }`}
+                          >
+                            {isCopied ? "Copiado" : "Compartir link"}
+                          </button>
+                          <button
+                            onClick={() => handleSidebarCopyLink(clip)}
+                            className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
+                              isCopiedLink
+                                ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
+                                : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
+                            }`}
+                          >
+                            {isCopiedLink ? "Copiado" : "Copiar link"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -423,6 +448,46 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
         </aside>
       </div>
 
+      {/* Aviso flotante (también visible en pantalla completa): progreso y "lista" */}
+      {aviso && avisoClip && (
+        <div
+          className={`fixed left-1/2 -translate-x-1/2 z-[10001] ${aviso.tipo === "preparando" ? "w-[min(70vw,260px)]" : "w-[min(92vw,380px)]"}`}
+          // Debajo de la fila de botones superior del reproductor (Marcar inicio / ajustes)
+          style={{ top: "calc(env(safe-area-inset-top) + 4.25rem)" }}
+        >
+          <div className="flex items-center gap-3 bg-lake-800/95 backdrop-blur-sm border border-crystal-400/30 rounded-2xl pl-4 pr-2 py-2.5 shadow-2xl">
+            {aviso.tipo === "preparando" ? (
+              <>
+                <div className="w-4 h-4 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-snow truncate">Preparando «{avisoClip.etiqueta}»…</p>
+                  <div className="mt-1 w-full bg-white/10 rounded-full h-1 overflow-hidden">
+                    <div className="bg-crystal-400 h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(4, avisoClip.progreso ?? 0)}%` }} />
+                  </div>
+                </div>
+                <button onClick={() => setAviso(null)} className="text-[11px] text-mist-500 px-2 py-1">Ocultar</button>
+              </>
+            ) : aviso.tipo === "lista" ? (
+              <>
+                <svg className="w-5 h-5 text-crystal-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <p className="text-xs text-snow flex-1 min-w-0 truncate">«{avisoClip.etiqueta}» está lista</p>
+                <button onClick={() => verEnLista(aviso.key)} className="text-xs text-mist-400 px-2 py-1.5">Ver</button>
+                <button
+                  onClick={() => { handleDescargar(avisoClip); setAviso(null); }}
+                  className="text-xs font-semibold bg-crystal-400 text-lake-950 rounded-lg px-3 py-1.5"
+                >Descargar</button>
+                <button onClick={() => setAviso(null)} aria-label="Cerrar" className="text-mist-500 px-1.5 py-1">✕</button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-red-300 flex-1 min-w-0">No se pudo preparar «{avisoClip.etiqueta}»</p>
+                <button onClick={() => verEnLista(aviso.key)} className="text-xs text-mist-400 px-2 py-1.5">Ver</button>
+                <button onClick={() => setAviso(null)} aria-label="Cerrar" className="text-mist-500 px-2 py-1">✕</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

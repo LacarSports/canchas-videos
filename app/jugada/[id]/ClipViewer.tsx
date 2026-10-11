@@ -8,6 +8,10 @@ import ElegirFormato from "../../partido/[id]/ElegirFormato";
 import type { FormatoClip } from "@/lib/marcaAgua";
 import { supabase } from "@/lib/supabase";
 import { registrarDescarga } from "@/lib/descargas";
+import { guardarVideo, nombreVideo } from "@/lib/guardarVideo";
+import { haySeguimiento } from "@/lib/encuadre";
+import type { Edicion } from "@/lib/jugadas";
+import InlineClipPlayer from "@/app/components/InlineClipPlayer";
 import ClipPlayer from "./ClipPlayer";
 
 const TAG_STYLES: Record<string, string> = {
@@ -34,6 +38,8 @@ interface Props {
   jugadaId: string;
   partidoId: string;
   complejo?: string;
+  /** Formato y seguimiento con que se creó la jugada (si se guardó). */
+  edicion?: Edicion | null;
 }
 
 export default function ClipViewer({
@@ -45,12 +51,16 @@ export default function ClipViewer({
   jugadaId,
   partidoId,
   complejo,
+  edicion,
 }: Props) {
   const router = useRouter();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [preparado, setPreparado] = useState<{ url: string; blob: Blob; formato: FormatoClip } | null>(null);
+  const blobUrl = preparado?.formato === "completo" ? preparado.url : null;
+  const esReel = edicion?.formato === "reel";
+  const conEncuadre = !!edicion && (esReel || haySeguimiento(edicion.seguimiento));
   const [eligiendo, setEligiendo] = useState(false);
   const [pct, setPct] = useState(0);
 
@@ -70,36 +80,45 @@ export default function ClipViewer({
       return;
     }
 
-    // Primero se elige el formato (reel o completo)
-    if (!formato) { setEligiendo((v) => !v); return; }
+    // Jugadas antiguas (sin formato guardado): primero se elige reel o completo
+    const f = formato ?? edicion?.formato;
+    if (!f) { setEligiendo((v) => !v); return; }
 
     setEligiendo(false);
     setDownloading(true);
     setDownloadError(null);
     setPct(0);
     try {
-      const url = await exportarClip({ videoUrl, inicioSeg, finSeg, formato, onProgreso: setPct });
-      setBlobUrl(url);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `lacar-sports_${etiqueta.replace(/\s+/g, "-").toLowerCase()}_${formato}.mp4`;
-      a.click();
-
-      registrarDescarga({
-        partidoId,
-        jugadaId,
-        complejo,
-        inicioSeg,
-        finSeg,
-        etiqueta,
-        tipo: "descarga",
-        origen: "jugada",
+      const ed = formato ? null : edicion;
+      const { url, blob } = await exportarClip({
+        videoUrl, inicioSeg, finSeg, formato: f,
+        seguimiento: ed?.seguimiento,
+        vistaFija: { cx: ed?.cx ?? 0.5, cy: 0.5, zoom: 1 },
+        speed: ed?.velocidad ?? 1, brightness: ed?.brillo ?? 100, contrast: ed?.contraste ?? 100,
+        onProgreso: setPct,
       });
+      // Queda listo: el siguiente toque lo descarga (en el celular, menú de compartir)
+      setPreparado({ url, blob, formato: f });
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Error al procesar");
     } finally {
       setDownloading(false);
     }
+  }
+
+  function handleGuardar() {
+    if (!preparado) return;
+    guardarVideo(preparado.blob, preparado.url, nombreVideo(etiqueta, preparado.formato));
+    registrarDescarga({
+      partidoId,
+      jugadaId,
+      complejo,
+      inicioSeg,
+      finSeg,
+      etiqueta,
+      tipo: "descarga",
+      origen: "jugada",
+    });
   }
 
   function handleCopy() {
@@ -126,14 +145,25 @@ export default function ClipViewer({
 
   return (
     <div className="space-y-4">
-      {/* Video */}
-      <ClipPlayer
-        videoUrl={videoUrl}
-        inicioSeg={inicioSeg}
-        finSeg={finSeg}
-        duracion={duracion}
-        blobUrl={blobUrl ?? undefined}
-      />
+      {/* Video: el reel (o el zoom/seguimiento) se ve tal como se creó */}
+      {conEncuadre ? (
+        <InlineClipPlayer
+          videoUrl={videoUrl}
+          inicioSeg={inicioSeg}
+          finSeg={finSeg}
+          duracion={duracion}
+          edicion={edicion}
+          className={`rounded-xl ${esReel ? "aspect-[9/16] w-full max-w-[340px] mx-auto" : "aspect-video"}`}
+        />
+      ) : (
+        <ClipPlayer
+          videoUrl={videoUrl}
+          inicioSeg={inicioSeg}
+          finSeg={finSeg}
+          duracion={duracion}
+          blobUrl={blobUrl ?? undefined}
+        />
+      )}
 
       {/* Clip info */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -165,9 +195,11 @@ export default function ClipViewer({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {/* Download */}
         <button
-          onClick={() => handleDownload()}
+          onClick={() => (preparado ? handleGuardar() : handleDownload())}
           disabled={downloading}
-          className="flex items-center justify-center gap-1.5 text-sm font-medium py-2.5 rounded-xl border border-crystal-400/20 bg-crystal-400/8 hover:bg-crystal-400/15 text-crystal-400 hover:text-crystal-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`flex items-center justify-center gap-1.5 text-sm font-medium py-2.5 rounded-xl border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${preparado
+            ? "border-crystal-400 bg-crystal-400 text-lake-950 hover:bg-crystal-300"
+            : "border-crystal-400/20 bg-crystal-400/8 hover:bg-crystal-400/15 text-crystal-400 hover:text-crystal-300"}`}
         >
           {downloading ? (
             <>
@@ -182,7 +214,7 @@ export default function ClipViewer({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Descargar
+              {preparado ? "Descargar" : "Preparar descarga"}
             </>
           )}
         </button>
