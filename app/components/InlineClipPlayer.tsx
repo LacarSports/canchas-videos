@@ -5,6 +5,7 @@ import Hls from "hls.js";
 import { useAjustesReproductor, setAjustes, filtroImagen } from "@/lib/ajustesReproductor";
 import { aplicarVista, vistaEn, haySeguimiento } from "@/lib/encuadre";
 import type { Edicion } from "@/lib/jugadas";
+import MarcaAguaVivo from "@/app/components/MarcaAguaVivo";
 
 function fmtSeg(seg: number) {
   const m = Math.floor(seg / 60);
@@ -218,12 +219,49 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
     if (el.requestFullscreen) el.requestFullscreen().catch(e => console.error("Fullscreen error:", e));
   }
 
+  // Indicador "+5s / -5s" al tocar dos veces un lado (se acumula con más toques)
+  const [salto, setSalto] = useState<{ side: "left" | "right"; total: number } | null>(null);
+  const saltoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   function handleSkip(direction: "left" | "right") {
     const v = videoRef.current;
     if (!v) return;
     const amount = 5;
     if (direction === "left") v.currentTime = Math.max(clipStart, v.currentTime - amount);
     else v.currentTime = Math.min(clipEnd, v.currentTime + amount);
+    setSalto((prev) => ({ side: direction, total: prev?.side === direction ? prev.total + amount : amount }));
+    if (saltoTimerRef.current) clearTimeout(saltoTimerRef.current);
+    saltoTimerRef.current = setTimeout(() => setSalto(null), 800);
+  }
+
+  /**
+   * Toque en el video: dos toques rápidos en un lado avanzan/retroceden 5 s (como en el
+   * reproductor del partido); un toque solo muestra u oculta los controles, con una pequeña
+   * espera para que el segundo toque pueda cancelarlo.
+   */
+  function procesarTap(clientX: number) {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const side: "left" | "right" = clientX - rect.left < rect.width / 2 ? "left" : "right";
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && now - last.time < 280 && last.side === side) {
+      if (singleTapTimerRef.current) { clearTimeout(singleTapTimerRef.current); singleTapTimerRef.current = null; }
+      handleSkip(side);
+      lastTapRef.current = { time: now, side };
+      return;
+    }
+    lastTapRef.current = { time: now, side };
+    if (!isMobile) return;
+    if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+    const visibles = showMobileControls;
+    singleTapTimerRef.current = setTimeout(() => {
+      singleTapTimerRef.current = null;
+      lastTapRef.current = null;
+      if (visibles) closeMobileControls();
+      else openMobileControls();
+    }, 280);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -291,21 +329,7 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
       if (dx > 8 || dy > 8) return;
     }
 
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const side: "left" | "right" = touch.clientX - rect.left < rect.width / 2 ? "left" : "right";
-    const now = Date.now();
-    const last = lastTapRef.current;
-    if (last && now - last.time < 300 && last.side === side) {
-      handleSkip(side);
-      lastTapRef.current = null;
-      return;
-    }
-    lastTapRef.current = { time: now, side };
-    if (isMobile) {
-      if (showMobileControls) closeMobileControls();
-      else openMobileControls();
-    }
+    procesarTap(touch.clientX);
   }
 
   const effectiveFullscreen = isMobile ? isCustomFullscreen : isFullscreen;
@@ -368,11 +392,23 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
         onError={() => setBuffering(false)}
         onTimeUpdate={(e) => {
           const v = e.target as HTMLVideoElement;
-          if (v.currentTime >= clipEnd) { v.pause(); v.currentTime = clipStart; setRelTime(0); }
+          // Al terminar la jugada vuelve a empezar sola (en loop)
+          if (v.currentTime >= clipEnd) { v.currentTime = clipStart; setRelTime(0); if (v.paused) v.play().catch(() => {}); }
           else { setRelTime(Math.max(0, v.currentTime - clipStart)); }
         }}
+        onEnded={(e) => { const v = e.target as HTMLVideoElement; v.currentTime = clipStart; setRelTime(0); v.play().catch(() => {}); }}
       />
+      {!blobUrl && <MarcaAguaVivo formato={esReel ? "reel" : "completo"} aspecto={enVivo ? 16 / 9 : 2688 / 1520} />}
       </div>
+
+      {/* Avance/retroceso de 5 s con doble toque */}
+      {salto && (
+        <div className={`absolute inset-y-0 ${salto.side === "left" ? "left-0" : "right-0"} w-2/5 flex items-center justify-center pointer-events-none z-20`}>
+          <span className="text-white text-xs font-semibold bg-black/55 px-2.5 py-1 rounded-full">
+            {salto.side === "left" ? "−" : "+"}{salto.total}s
+          </span>
+        </div>
+      )}
 
       {buffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -470,7 +506,7 @@ export default function InlineClipPlayer({ videoUrl, inicioSeg, finSeg, duracion
             const target = e.target as HTMLElement;
             if (target.closest("button, input") || seekBarRef.current?.contains(target)) return;
             e.stopPropagation();
-            closeMobileControls();
+            procesarTap(e.changedTouches[0].clientX);
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-transparent to-black/80 pointer-events-none" />

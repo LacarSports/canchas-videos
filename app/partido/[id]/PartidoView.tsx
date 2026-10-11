@@ -59,11 +59,13 @@ interface Props {
   deporte?: string | null;
   complejo?: string;
   numeroCancha?: number;
+  /** Bloque horario del partido ("10:00 - 11:00"). */
+  hora?: string;
 }
 
 /* ── component ── */
 
-export default function PartidoView({ videoUrl, title, partidoId, deporte, complejo, numeroCancha }: Props) {
+export default function PartidoView({ videoUrl, title, partidoId, deporte, complejo, numeroCancha, hora }: Props) {
   const [clips, setClips] = useState<JugadaUI[]>([]);
   const clipsRef = useRef<JugadaUI[]>([]);
   useEffect(() => { clipsRef.current = clips; }, [clips]);
@@ -282,6 +284,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
           deporte={deporte}
           complejo={complejo}
           numeroCancha={numeroCancha}
+          hora={hora}
           clips={clips.map((c) => ({ id: c.key, etiqueta: c.etiqueta, inicioSeg: c.inicioSeg, finSeg: c.finSeg }))}
           onCrearJugada={handleCrearJugada}
           onPlayStart={handlePlayStart}

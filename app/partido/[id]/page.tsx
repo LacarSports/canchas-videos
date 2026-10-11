@@ -109,9 +109,9 @@ export default async function PartidoPage({
         {/* Video + sidebar (client) — ver un partido requiere sesión iniciada */}
         <AuthGate>
           {partido.privado ? (
-            <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} />
+            <PasswordGate partidoId={partido.id} videoUrl={videoUrl} title={title} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} hora={partido.hora} />
           ) : (
-            <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} />
+            <PartidoView videoUrl={videoUrl} title={title} partidoId={partido.id} deporte={partido.deporte} complejo={partido.complejo} numeroCancha={partido.numero_cancha} hora={partido.hora} />
           )}
         </AuthGate>
 

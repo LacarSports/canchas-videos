@@ -10,9 +10,11 @@ interface Props {
   deporte?: string | null;
   complejo?: string;
   numeroCancha?: number;
+  /** Bloque horario del partido ("10:00 - 11:00"): para mostrar la hora real del video. */
+  hora?: string;
 }
 
-export default function PasswordGate({ partidoId, videoUrl, title, deporte, complejo, numeroCancha }: Props) {
+export default function PasswordGate({ partidoId, videoUrl, title, deporte, complejo, numeroCancha, hora }: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,7 +44,7 @@ export default function PasswordGate({ partidoId, videoUrl, title, deporte, comp
   }
 
   if (unlocked) {
-    return <PartidoView videoUrl={videoUrl} title={title} partidoId={partidoId} deporte={deporte} complejo={complejo} numeroCancha={numeroCancha} />;
+    return <PartidoView videoUrl={videoUrl} title={title} partidoId={partidoId} deporte={deporte} complejo={complejo} numeroCancha={numeroCancha} hora={hora} />;
   }
 
   return (

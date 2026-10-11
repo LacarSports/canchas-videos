@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Hls from "hls.js";
-import { crearMarcaAgua, type FormatoClip } from "@/lib/marcaAgua";
+import type { FormatoClip } from "@/lib/marcaAgua";
+import MarcaAguaVivo from "@/app/components/MarcaAguaVivo";
 import { ventana, zoomMinimo, haySeguimiento, compactarSeguimiento, ZOOM_MAX, type Vista, type KeyframeVista } from "@/lib/encuadre";
 import { useAjustesReproductor, setAjustes, getAjustes, filtroImagen } from "@/lib/ajustesReproductor";
 import type { Edicion } from "@/lib/jugadas";
@@ -52,6 +53,19 @@ const MARKER_COLORS: Record<string, { bg: string; text: string }> = {
   "Buen Punto":     { bg: "bg-mist-400",     text: "text-mist-400"    },
 };
 
+/** "10:00 - 11:00" → segundos desde medianoche del inicio (null si no se entiende). */
+function inicioDelBloque(hora?: string): number | null {
+  const m = hora?.match(/(\d{1,2}):(\d{2})/);
+  return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 : null;
+}
+
+/** Hora del día "HH:MM:SS". */
+function fmtHora(seg: number) {
+  const s = Math.floor(seg) % 86400;
+  const p = (n: number) => n.toString().padStart(2, "0");
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
+
 function fmt(seg: number, decimals = false) {
   const min = Math.floor(seg / 60);
   const s = decimals
@@ -68,6 +82,8 @@ interface Props {
   deporte?: string | null;
   complejo?: string;
   numeroCancha?: number;
+  /** Bloque horario del partido ("10:00 - 11:00"): se muestra la hora real del momento del video. */
+  hora?: string;
   clips?: MarcaJugada[];
   onCrearJugada?: (jugada: NuevaJugada) => void;
   onPlayStart?: () => void;
@@ -92,8 +108,9 @@ function detectNavegador(): string {
   return "Otro";
 }
 
-export default function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCancha, clips, onCrearJugada, onPlayStart }: Props) {
+export default function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCancha, hora, clips, onCrearJugada, onPlayStart }: Props) {
   const ETIQUETAS = getEtiquetas(deporte);
+  const horaBase = inicioDelBloque(hora);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const seekBarRef = useRef<HTMLDivElement>(null);
@@ -137,7 +154,6 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
   const seguimientoRef = useRef<KeyframeVista[]>([]);
   const [seguimiento, setSeguimiento] = useState<KeyframeVista[]>([]);
   const estadoRef = useRef<Estado>("idle");
-  const [marcaReelUrl, setMarcaReelUrl] = useState<string | null>(null);
 
   // Gestos táctiles (pellizcar / arrastrar)
   const gestureRef = useRef<{ modo: "pan" | "pinch" | null; x: number; y: number; d0: number; z0: number }>({ modo: null, x: 0, y: 0, d0: 0, z0: 1 });
@@ -411,12 +427,6 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
     return () => { cancelAnimationFrame(id); clearTimeout(t); };
   }, [isCustomFullscreen, isLandscape, isFullscreen, srcAspect, applyView]);
 
-  // Vista previa de la marca de agua del reel sobre el cuadro 9:16 (lo que se descargará).
-  useEffect(() => {
-    if (!modoReel || marcaReelUrl) return;
-    crearMarcaAgua("reel", 540, 960).then((c) => setMarcaReelUrl(c.toDataURL("image/png"))).catch(() => {});
-  }, [modoReel, marcaReelUrl]);
-
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
     document.addEventListener("fullscreenchange", onChange);
@@ -647,6 +657,7 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
 
   function handleSeekBarMouseDown(e: React.MouseEvent) {
     e.preventDefault();
+    e.stopPropagation(); // no mover el encuadre del video al arrastrar la barra
     const wasPlaying = videoRef.current ? !videoRef.current.paused : false;
     isSeekingDrag.current = true;
     seekingRef.current = true;
@@ -998,17 +1009,26 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
             }
           }}
         />
-        {/* Vista previa de la marca de agua del reel: se ve igual que en el archivo */}
-        {modoReel && marcaReelUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={marcaReelUrl} alt="" className="absolute inset-0 w-full h-full pointer-events-none z-10" draggable={false} />
-        )}
+        {/* Marca de agua siempre visible, igual a la del archivo descargado: esquinas en
+            el reel vertical, logo abajo al centro en horizontal (desalienta grabar la pantalla) */}
+        <MarcaAguaVivo formato={modoReel ? "reel" : "completo"} aspecto={srcAspect} />
         </div>
 
         {buffering && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
             <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
               <div className="w-7 h-7 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          </div>
+        )}
+
+        {/* Hora real del momento del video (inicio del bloque + tiempo transcurrido),
+            visible junto con los controles. En el celular va abajo, sobre la barra. */}
+        {horaBase !== null && !isGrabando && !isMobile && (showControls || !isPlaying) && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[35] pointer-events-none" style={{ marginTop: isCustomFullscreen ? "env(safe-area-inset-top)" : undefined }}>
+            <div className="flex items-center gap-1.5 bg-black/55 backdrop-blur-sm rounded-full px-3 py-1 text-white text-xs font-mono tabular-nums">
+              <svg className="w-3 h-3 text-crystal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 2" /></svg>
+              {fmtHora(horaBase + currentTime)}
             </div>
           </div>
         )}
@@ -1111,6 +1131,7 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
             <div className="relative px-3 pb-2.5 pt-8 space-y-1">
               <div
                 ref={seekBarRef}
+                data-no-gesture
                 className="w-full h-4 flex items-center cursor-pointer relative group -my-1.5"
                 onMouseDown={handleSeekBarMouseDown}
                 onClick={(e) => e.stopPropagation()}
@@ -1356,8 +1377,15 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
             {/* BOTTOM: time + fullscreen + seekbar */}
             {!isGrabando && (
               <div className="absolute bottom-0 left-0 right-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-                <div className="flex items-center justify-between px-3 pb-1.5">
+                <div className="relative flex items-center justify-between px-3 pb-1.5">
                   <span className="text-white/75 text-xs font-mono tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
+                  {/* Hora real del momento: se actualiza mientras se arrastra la barra */}
+                  {horaBase !== null && (
+                    <span className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/50 rounded-full px-2.5 py-0.5 text-white text-xs font-mono tabular-nums pointer-events-none">
+                      <svg className="w-3 h-3 text-crystal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 2" /></svg>
+                      {fmtHora(horaBase + currentTime)}
+                    </span>
+                  )}
                   <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); resetMobileAutoHide(); }} className="w-11 h-11 flex items-center justify-center text-white/85 active:scale-95 transition-transform">
                     {isCustomFullscreen ? (
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" /></svg>
@@ -1370,6 +1398,7 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
                 </div>
                 <div
                   ref={seekBarRef}
+                  data-no-gesture
                   className="w-full h-8 flex items-center cursor-pointer px-3"
                   onTouchStart={mobileSeekBarTouchStart}
                   onTouchEnd={(e) => e.stopPropagation()}

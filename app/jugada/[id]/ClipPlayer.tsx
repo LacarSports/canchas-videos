@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import MarcaAguaVivo from "@/app/components/MarcaAguaVivo";
 import Hls from "hls.js";
 
 function fmtSeg(seg: number) {
@@ -330,15 +331,19 @@ export default function ClipPlayer({ videoUrl, inicioSeg, finSeg, duracion, blob
         onError={() => setBuffering(false)}
         onTimeUpdate={(e) => {
           const v = e.target as HTMLVideoElement;
+          // Al terminar la jugada vuelve a empezar sola (en loop)
           if (v.currentTime >= clipEnd) {
-            v.pause();
             v.currentTime = clipStart;
             setRelTime(0);
+            if (v.paused) v.play().catch(() => {});
           } else {
             setRelTime(Math.max(0, v.currentTime - clipStart));
           }
         }}
+        onEnded={(e) => { const v = e.target as HTMLVideoElement; v.currentTime = clipStart; setRelTime(0); v.play().catch(() => {}); }}
       />
+      {/* Marca de agua mientras se mira (el archivo descargado ya la trae) */}
+      {!blobUrl && <MarcaAguaVivo formato="completo" aspecto={2688 / 1520} />}
 
       {buffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
