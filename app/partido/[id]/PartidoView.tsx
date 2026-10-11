@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import VideoClipSelector, { type NuevaJugada } from "./VideoClipSelector";
 import { exportarClip, type FaseDescarga } from "./exportarClip";
 import ElegirFormato from "./ElegirFormato";
@@ -24,6 +24,14 @@ const TAG_STYLES: Record<string, string> = {
 
 function tagStyle(etiqueta: string) {
   return TAG_STYLES[etiqueta] ?? TAG_STYLES["Otro"];
+}
+
+/** Hora del día "HH:MM" en que empieza una jugada (inicio del bloque + segundo del video). */
+function horaDeJugada(hora: string | undefined, seg: number): string | null {
+  const m = hora?.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const total = Math.floor(Number(m[1]) * 3600 + Number(m[2]) * 60 + seg) % 86400;
+  return `${String(Math.floor(total / 3600)).padStart(2, "0")}:${String(Math.floor((total % 3600) / 60)).padStart(2, "0")}`;
 }
 
 function fmt(seg: number) {
@@ -78,7 +86,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   // Registro de visita: una sola vez por sesión de visualización (no en pausa/replay)
   const visitaRegistrada = useRef(false);
 
-  async function handlePlayStart() {
+  const handlePlayStart = useCallback(async () => {
     if (visitaRegistrada.current) return;
     visitaRegistrada.current = true;
     try {
@@ -101,7 +109,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
     } catch {
       // un fallo de registro no debe afectar la reproducción
     }
-  }
+  }, [partidoId, complejo]);
 
   // Share copy feedback per clip
   const [copiadoKey, setCopiadoKey] = useState<string | null>(null);
@@ -149,8 +157,10 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
       const ed: Edicion = c.edicion ?? { formato: "reel", seguimiento: null };
       actualizar(key, { proceso: "procesando", progreso: 0, error: undefined });
       setAviso({ key, tipo: "preparando" });
-      // La bajada cuenta hasta 30% y el recorte el resto
+      // La bajada cuenta hasta 30% y el recorte el resto. Se actualiza como mucho 4 veces
+      // por segundo: cada actualización redibuja la barra lateral.
       let fase: FaseDescarga = "video";
+      let ultimoAviso = 0;
       try {
         const { url, blob } = await exportarClip({
           videoUrl, inicioSeg: c.inicioSeg, finSeg: c.finSeg,
@@ -159,7 +169,12 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
           vistaFija: { cx: ed.cx ?? 0.5, cy: 0.5, zoom: 1 },
           speed: ed.velocidad ?? 1, brightness: ed.brillo ?? 100, contrast: ed.contraste ?? 100,
           onFase: (f) => { fase = f; },
-          onProgreso: (p) => actualizar(key, { progreso: fase === "procesando" ? 30 + Math.round(p * 0.7) : Math.round(p * 0.3) }),
+          onProgreso: (p) => {
+            const ahora = Date.now();
+            if (ahora - ultimoAviso < 250) return;
+            ultimoAviso = ahora;
+            actualizar(key, { progreso: fase === "procesando" ? 30 + Math.round(p * 0.7) : Math.round(p * 0.3) });
+          },
         });
         actualizar(key, { proceso: "listo", progreso: 100, blobUrl: url, blob });
         setAviso({ key, tipo: "lista" });
@@ -179,7 +194,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   }, [actualizar, procesarCola]);
 
   /* ── jugada creada en el reproductor ── */
-  async function handleCrearJugada(j: NuevaJugada) {
+  const handleCrearJugada = useCallback(async (j: NuevaJugada) => {
     const key = crypto.randomUUID();
     const nueva: JugadaUI = { key, id: null, ...j, proceso: "cola", progreso: 0 };
     clipsRef.current = [nueva, ...clipsRef.current];
@@ -204,7 +219,16 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
     } catch {
       // Sin conexión con la base: la jugada queda solo en esta visita
     }
-  }
+  }, [encolar, actualizar, partidoId, complejo]);
+
+  // Marcas de la barra de tiempo: solo cambian si cambian las jugadas (no con el progreso),
+  // así el reproductor no se vuelve a dibujar mientras se prepara un clip.
+  const firmaMarcas = clips.map((c) => `${c.key}|${c.etiqueta}|${c.inicioSeg}|${c.finSeg}`).join(",");
+  const marcas = useMemo(
+    () => clips.map((c) => ({ id: c.key, etiqueta: c.etiqueta, inicioSeg: c.inicioSeg, finSeg: c.finSeg })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [firmaMarcas],
+  );
 
   /* ── preparar / descargar desde la barra lateral ── */
   function handlePreparar(c: JugadaUI, formato?: Edicion["formato"]) {
@@ -234,9 +258,11 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
 
   function verEnLista(key: string) {
     setAviso(null);
+    // Si se está viendo en pantalla completa, salir para mostrar la jugada en la lista
+    window.dispatchEvent(new Event("lacar:salir-pantalla-completa"));
     setPlayingKey(key);
     setDestacadaKey(key);
-    setTimeout(() => document.getElementById(`jugada-${key}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+    setTimeout(() => document.getElementById(`jugada-${key}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 250);
     setTimeout(() => setDestacadaKey(null), 2500);
   }
 
@@ -285,7 +311,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
           complejo={complejo}
           numeroCancha={numeroCancha}
           hora={hora}
-          clips={clips.map((c) => ({ id: c.key, etiqueta: c.etiqueta, inicioSeg: c.inicioSeg, finSeg: c.finSeg }))}
+          clips={marcas}
           onCrearJugada={handleCrearJugada}
           onPlayStart={handlePlayStart}
         />
@@ -350,7 +376,7 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                         </span>
                       )}
                       <span className="text-xs font-mono text-mist-600 flex-1 min-w-0 truncate text-left">
-                        {fmt(clip.inicioSeg)}
+                        {horaDeJugada(hora, clip.inicioSeg) ?? fmt(clip.inicioSeg)}
                       </span>
                       <span className="text-xs font-mono text-mist-700 shrink-0">{fmt(clip.duracion)}</span>
                       <svg
@@ -365,6 +391,8 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                     <div className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? (esReel ? "max-h-[440px]" : "max-h-[320px]") : "max-h-0"}`}>
                       {isExpanded && (
                         <InlineClipPlayer
+                          // Al quedar listo el video se cambia de fuente: montar de nuevo, limpio
+                          key={clip.blobUrl ? "listo" : "vivo"}
                           videoUrl={videoUrl}
                           inicioSeg={clip.inicioSeg}
                           finSeg={clip.finSeg}

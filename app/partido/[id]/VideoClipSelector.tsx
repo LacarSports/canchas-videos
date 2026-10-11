@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Hls from "hls.js";
 import type { FormatoClip } from "@/lib/marcaAgua";
 import MarcaAguaVivo from "@/app/components/MarcaAguaVivo";
 import { ventana, zoomMinimo, haySeguimiento, compactarSeguimiento, ZOOM_MAX, type Vista, type KeyframeVista } from "@/lib/encuadre";
+import { avisarReproduccion } from "./exportarClip";
 import { useAjustesReproductor, setAjustes, getAjustes, filtroImagen } from "@/lib/ajustesReproductor";
 import type { Edicion } from "@/lib/jugadas";
 import FormularioJugada from "./FormularioJugada";
@@ -108,7 +109,11 @@ function detectNavegador(): string {
   return "Otro";
 }
 
-export default function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCancha, hora, clips, onCrearJugada, onPlayStart }: Props) {
+// memo: la página se vuelve a dibujar con el progreso de los clips en preparación;
+// el reproductor solo cuando cambian sus propias props.
+export default memo(VideoClipSelector);
+
+function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCancha, hora, clips, onCrearJugada, onPlayStart }: Props) {
   const ETIQUETAS = getEtiquetas(deporte);
   const horaBase = inicioDelBloque(hora);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -262,6 +267,16 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
   }, [volume]);
 
   useEffect(() => { estadoRef.current = estado; }, [estado]);
+
+  // "Ver" en el aviso de jugada lista: salir de pantalla completa para mostrar la lista
+  useEffect(() => {
+    const salir = () => {
+      setIsCustomFullscreen(false);
+      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    };
+    window.addEventListener("lacar:salir-pantalla-completa", salir);
+    return () => window.removeEventListener("lacar:salir-pantalla-completa", salir);
+  }, []);
 
   // Guarda el encuadre actual en el seguimiento mientras se graba la jugada.
   const registrarVista = useCallback(() => {
@@ -1001,10 +1016,12 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
             setIsPlaying(true); resetControlsTimer();
             if (isMobile && showMobileControls) resetMobileAutoHide();
             onPlayStart?.();
+            avisarReproduccion(true);
           }}
           onPause={() => {
             if (!isSeekingDrag.current) {
               setIsPlaying(false); setShowControls(true);
+              avisarReproduccion(false);
               if (isMobile && mobileAutoHideRef.current) { clearTimeout(mobileAutoHideRef.current); mobileAutoHideRef.current = null; }
             }
           }}
@@ -1381,7 +1398,7 @@ export default function VideoClipSelector({ src, title, partidoId, deporte, comp
                   <span className="text-white/75 text-xs font-mono tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
                   {/* Hora real del momento: se actualiza mientras se arrastra la barra */}
                   {horaBase !== null && (
-                    <span className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/50 rounded-full px-2.5 py-0.5 text-white text-xs font-mono tabular-nums pointer-events-none">
+                    <span className={`absolute left-1/2 -translate-x-1/2 ${isCustomFullscreen ? "" : "bottom-0"} flex items-center gap-1 bg-black/50 rounded-full px-2.5 py-0.5 text-white text-xs font-mono tabular-nums pointer-events-none`}>
                       <svg className="w-3 h-3 text-crystal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 2" /></svg>
                       {fmtHora(horaBase + currentTime)}
                     </span>
