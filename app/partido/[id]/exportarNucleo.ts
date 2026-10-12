@@ -56,24 +56,41 @@ type Segmento = { uri: string; start: number; dur: number; bloque: number };
 /**
  * El reproductor nativo (Safari, Chrome reciente) pide la playlist y los trozos SIN CORS y
  * el navegador guarda esa respuesta en caché sin el header Access-Control-Allow-Origin; un
- * fetch() posterior a la misma URL reutiliza esa copia y falla por CORS. Un parámetro extra
- * (que R2 ignora) da otra entrada de caché, pedida siempre con CORS.
+ * fetch() posterior a la misma URL reutiliza esa copia y falla por CORS. Con cache "no-store"
+ * se pide siempre de nuevo y con CORS, sin tocar la URL (un parámetro extra lo rechazan
+ * algunos servidores, como el de los videos de ejemplo de Mux).
  */
-function urlCors(url: string) {
-  return url + (url.includes("?") ? "&" : "?") + "cors=1";
+const SIN_CACHE: RequestInit = { cache: "no-store" };
+
+/** Resuelve una ruta relativa de la playlist contra la URL de la playlist. */
+function resolver(ruta: string, base: string) {
+  try { return new URL(ruta, base).href; } catch { return ruta; }
 }
 
-async function leerPlaylist(url: string): Promise<Segmento[]> {
-  const txt = await bajarConReintentos(urlCors(url), (r) => r.text());
-  const base = url.substring(0, url.lastIndexOf("/") + 1);
+async function leerPlaylist(url: string, profundidad = 0): Promise<Segmento[]> {
+  const txt = await bajarConReintentos(url, (r) => r.text());
+  const lineas = txt.split("\n").map((l) => l.trim());
+
+  // Lista "maestra" (varias calidades, sin trozos): se usa la de mayor calidad
+  if (lineas.some((l) => l.startsWith("#EXT-X-STREAM-INF")) && profundidad < 2) {
+    let mejor: { uri: string; bw: number } | null = null;
+    for (let i = 0; i < lineas.length; i++) {
+      if (!lineas[i].startsWith("#EXT-X-STREAM-INF")) continue;
+      const bw = Number(lineas[i].match(/BANDWIDTH=(\d+)/)?.[1] ?? 0);
+      const uri = lineas.slice(i + 1).find((l) => l && !l.startsWith("#"));
+      if (uri && (!mejor || bw > mejor.bw)) mejor = { uri: resolver(uri, url), bw };
+    }
+    if (!mejor) throw new Error("No se pudo leer el video");
+    return leerPlaylist(mejor.uri, profundidad + 1);
+  }
+
   const segs: Segmento[] = [];
   let dur = 0, t = 0, bloque = 0;
-  for (const linea of txt.split("\n")) {
-    const l = linea.trim();
+  for (const l of lineas) {
     if (l.startsWith("#EXTINF:")) dur = parseFloat(l.slice(8));
     else if (l.startsWith("#EXT-X-DISCONTINUITY")) bloque++;
     else if (l && !l.startsWith("#")) {
-      segs.push({ uri: l.startsWith("http") ? l : base + l, start: t, dur, bloque });
+      segs.push({ uri: resolver(l, url), start: t, dur, bloque });
       t += dur;
     }
   }
@@ -87,12 +104,19 @@ async function leerPlaylist(url: string): Promise<Segmento[]> {
 async function bajarConReintentos<T>(url: string, leer: (r: Response) => Promise<T>, intentos = 4): Promise<T> {
   let ultimoError: unknown;
   for (let i = 0; i < intentos; i++) {
+    let res: Response | null = null;
     try {
-      const res = await fetch(url);
+      res = await fetch(url, SIN_CACHE);
       if (res.ok) return await leer(res);
       ultimoError = new Error(`HTTP ${res.status}`);
-      if (res.status === 404) break;
     } catch (e) { ultimoError = e; }
+    // Error del servidor (no de la red): reintentar no sirve
+    if (res && res.status >= 400 && res.status < 500) {
+      console.error("Descarga rechazada", url, res.status);
+      throw new Error(res.status === 404
+        ? "Este tramo del video ya no está disponible (los videos se borran a los 7 días)."
+        : `El servidor del video rechazó la descarga (error ${res.status}).`);
+    }
     await new Promise((r) => setTimeout(r, 800 * (i + 1)));
   }
   console.error("Descarga fallida", url, ultimoError);
@@ -109,7 +133,7 @@ async function bajarTrozos(segs: Segmento[], onPct: (pct: number) => void): Prom
   const trabajador = async () => {
     while (siguiente < segs.length) {
       const i = siguiente++;
-      out[i] = await bajarConReintentos(urlCors(segs[i].uri), async (r) => new Uint8Array(await r.arrayBuffer()));
+      out[i] = await bajarConReintentos(segs[i].uri, async (r) => new Uint8Array(await r.arrayBuffer()));
       onPct(Math.round((++listos / segs.length) * 100));
     }
   };
