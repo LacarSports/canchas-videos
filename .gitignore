@@ -49,3 +49,6 @@ __pycache__/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Plantilla de configuración (solo claves públicas)
+!.env.example
