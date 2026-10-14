@@ -10,7 +10,7 @@ el trabajo técnico.
 2. Claude lo guarda en **tu propia copia de prueba** (una "rama") y la sube a internet.
 3. En unos **2 minutos** tienes un **enlace de prueba** para verlo en el celular o el computador.
    El sitio oficial no cambia.
-4. Cuando te guste, le pides a Claude que **pida la publicación**. La dueña lo revisa y lo
+4. Cuando te guste, le pides a Claude que **pida la publicación**. El dueño lo revisa y lo
    aprueba, y recién ahí sale en lacarsports.cl.
 
 > Las versiones de prueba usan la **misma base de datos real** que el sitio oficial.
@@ -20,8 +20,8 @@ el trabajo técnico.
 
 ## 1. Preparar tu Mac (una sola vez, ~15 minutos)
 
-1. **Cuenta de GitHub**: créala en <https://github.com> (gratis). Envíale tu usuario a la
-   dueña para que te invite al proyecto, y **acepta la invitación** que te llega por correo.
+1. **Cuenta de GitHub**: créala en <https://github.com> (gratis). Envíale tu usuario al
+   dueño para que te invite al proyecto, y **acepta la invitación** que te llega por correo.
 2. **Claude Code**: descarga la app de escritorio en <https://claude.com/download> e inicia
    sesión con tu cuenta.
 3. **Git**: abre la app **Terminal** (búscala con ⌘ + espacio), escribe `git --version` y
