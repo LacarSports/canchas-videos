@@ -69,19 +69,11 @@ async function dibujarMarca(ctx: CanvasRenderingContext2D, W: number, H: number,
   const y0 = formato === "reel" ? H * 0.11 : H * 0.04;
   const yTexto = y0 + alto / 2;
 
-  // Cápsula oscura translúcida detrás: se lee sobre cielo claro o cancha oscura sin tapar.
-  const padX = alto * 0.45, padY = alto * 0.22;
-  ctx.save();
-  ctx.fillStyle = "rgba(5, 15, 25, 0.32)";
-  ctx.beginPath();
-  ctx.roundRect(x0 - padX, y0 - padY, total + padX * 2, alto + padY * 2, (alto + padY * 2) / 2);
-  ctx.fill();
-  ctx.restore();
-
   ctx.save();
   ctx.globalAlpha = 0.85;
-  ctx.shadowColor = "rgba(0,0,0,0.45)";
-  ctx.shadowBlur = alto * 0.2;
+  // Sin fondo: una sombra marcada la separa de cielos o paredes claras.
+  ctx.shadowColor = "rgba(0,0,0,0.6)";
+  ctx.shadowBlur = alto * 0.25;
   ctx.drawImage(ls, x0, y0);
   ctx.fillStyle = "#ffffff";
   ctx.fillText("Lacar", x0 + ls.width + gap, yTexto);
