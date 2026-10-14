@@ -8,8 +8,8 @@ interface Props {
   etiquetaCustom: string;
   onEtiqueta: (e: string) => void;
   onEtiquetaCustom: (t: string) => void;
+  /** Formato decidido por cómo se miraba al marcar (vertical = reel, horizontal = completo). */
   formato: FormatoClip;
-  onFormato: (f: FormatoClip) => void;
   /** Si hubo zoom/movimiento al marcar: se ofrece usarlo o no. */
   haySeguimiento: boolean;
   conSeguimiento: boolean;
@@ -42,7 +42,14 @@ export default function FormularioJugada(p: Props) {
     <div className={p.enVideo ? "space-y-3" : "space-y-4"}>
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-snow">Nueva jugada</p>
-        <span className="text-xs font-mono text-crystal-400">{p.duracionTexto}</span>
+        <span className="flex items-center gap-2 text-xs text-mist-400">
+          {p.formato === "reel" ? (
+            <><span className="w-2 h-3 rounded-[2px] border-[1.5px] border-current" />Reel 9:16</>
+          ) : (
+            <><span className="w-3.5 h-2 rounded-[2px] border-[1.5px] border-current" />Completo</>
+          )}
+          <span className="font-mono text-crystal-400">{p.duracionTexto}</span>
+        </span>
       </div>
 
       <div className="space-y-2">
@@ -62,20 +69,6 @@ export default function FormularioJugada(p: Props) {
             className="w-full bg-lake-950 border border-crystal-400/15 rounded-lg px-3 py-2 text-sm text-white placeholder-mist-700 focus:outline-none focus:ring-1 focus:ring-crystal-400/40"
           />
         )}
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-[11px] font-semibold text-mist-500 uppercase tracking-wide">Formato</p>
-        <div className="flex gap-1 rounded-xl bg-black/30 p-1">
-          <button type="button" onClick={() => p.onFormato("reel")} className={segmento(p.formato === "reel")}>
-            <span className="w-2.5 h-4 rounded-[3px] border-[1.5px] border-current" />
-            Reel 9:16
-          </button>
-          <button type="button" onClick={() => p.onFormato("completo")} className={segmento(p.formato === "completo")}>
-            <span className="w-5 h-3 rounded-[3px] border-[1.5px] border-current" />
-            Completo
-          </button>
-        </div>
       </div>
 
       {p.haySeguimiento && (

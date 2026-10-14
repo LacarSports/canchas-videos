@@ -18,7 +18,7 @@ function imagenMarca(formato: FormatoClip, aspecto: number): Promise<string> {
 
 /**
  * Marca de agua sobre el video mientras se mira (la misma que llevan los clips
- * descargados): reel = esquinas; completo = logo abajo al centro. Así grabar la
+ * descargados): logo arriba al centro en ambos formatos. Así grabar la
  * pantalla no sirve para sacar el video sin marca. Va dentro del cuadro del video.
  */
 export default function MarcaAguaVivo({ formato, aspecto = 16 / 9 }: { formato: FormatoClip; aspecto?: number }) {

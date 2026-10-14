@@ -798,6 +798,9 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
     if (!v) return;
     setInicioSeg(v.currentTime);
     setFinSeg(null); setError(null); setEtiqueta(null); setEtiquetaCustom("");
+    // El formato lo decide cómo se está mirando al marcar: pantalla vertical (reel) → 9:16;
+    // horizontal → completo.
+    setFormatoSel(modoReel ? "reel" : "completo");
     // El encuadre actual se mantiene: desde aquí cada movimiento queda registrado.
     seguimientoRef.current = [{ t: v.currentTime, ...vistaRef.current }];
     estadoRef.current = "grabando";
@@ -815,7 +818,6 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
     registrarVista();
     seguimientoRef.current.push({ t: fin, ...vistaRef.current });
     setSeguimiento([...seguimientoRef.current]);
-    setFormatoSel(modoReel || isMobile ? "reel" : "completo");
     setConSeguimiento(true);
     estadoRef.current = "preview";
     stopDrag(); setEstado("preview");
@@ -903,7 +905,6 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
       onEtiqueta={(e) => { setEtiqueta(e); if (e !== "Otro") setEtiquetaCustom(""); }}
       onEtiquetaCustom={setEtiquetaCustom}
       formato={formatoSel}
-      onFormato={setFormatoSel}
       haySeguimiento={seguimientoGrabado}
       conSeguimiento={conSeguimiento}
       onConSeguimiento={setConSeguimiento}
@@ -1032,8 +1033,8 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
             }
           }}
         />
-        {/* Marca de agua siempre visible, igual a la del archivo descargado: esquinas en
-            el reel vertical, logo abajo al centro en horizontal (desalienta grabar la pantalla) */}
+        {/* Marca de agua siempre visible, igual a la del archivo descargado: logo arriba al
+            centro (desalienta grabar la pantalla) */}
         <MarcaAguaVivo formato={modoReel ? "reel" : "completo"} aspecto={srcAspect} />
         </div>
 
@@ -1050,9 +1051,9 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
         )}
 
         {/* Hora real del momento del video (inicio del bloque + tiempo transcurrido),
-            visible junto con los controles. En el celular va abajo, sobre la barra. */}
+            visible junto con los controles, bajo la marca de agua. En el celular va abajo, sobre la barra. */}
         {horaBase !== null && !isGrabando && !isMobile && (showControls || !isPlaying) && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[35] pointer-events-none" style={{ marginTop: isCustomFullscreen ? "env(safe-area-inset-top)" : undefined }}>
+          <div className="absolute top-[14%] left-1/2 -translate-x-1/2 z-[35] pointer-events-none" style={{ marginTop: isCustomFullscreen ? "env(safe-area-inset-top)" : undefined }}>
             <div className="flex items-center gap-1.5 bg-black/55 backdrop-blur-sm rounded-full px-3 py-1 text-white text-xs font-mono tabular-nums">
               <svg className="w-3 h-3 text-crystal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 2" /></svg>
               {fmtHora(horaBase + currentTime)}
