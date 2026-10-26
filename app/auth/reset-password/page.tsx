@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -49,43 +48,27 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="relative min-h-[100dvh] bg-lake-950 flex items-center justify-center px-4 overflow-hidden">
-      <div
-        className="absolute -top-48 -left-32 w-[500px] h-[500px] rounded-full pointer-events-none animate-water-drift"
-        style={{ background: "radial-gradient(circle, #29c4ad, transparent 70%)", filter: "blur(90px)" }}
-      />
+    <main className="relative min-h-[100dvh] -mt-[72px] pt-[72px] bg-surface flex items-center justify-center px-4 overflow-hidden">
 
       <div className="relative z-10 w-full max-w-sm">
-        <Link href="/" className="flex items-center gap-2.5 justify-center mb-8">
-          <Image
-            src="/logo-small.png"
-            alt="Lacar Sports"
-            width={38}
-            height={38}
-            className="drop-shadow-[0_0_12px_rgba(41,196,173,0.5)]"
-          />
-          <span className="text-xl font-bold text-snow tracking-tight">
-            Lacar <span className="text-crystal-400">Sports</span>
-          </span>
-        </Link>
 
-        <div className="bg-lake-800/60 border border-mist-500/10 rounded-2xl p-8 shadow-[0_32px_80px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+        <div className="bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-[0_16px_40px_rgba(11,29,38,0.08)]">
           {done ? (
             <div className="text-center space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-crystal-400/10 border border-crystal-400/25 mx-auto flex items-center justify-center">
-                <svg className="w-6 h-6 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-2xl bg-brand-soft mx-auto flex items-center justify-center">
+                <svg className="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-lg font-bold text-snow">Contraseña actualizada</h1>
-              <p className="text-sm text-mist-600">Ya puedes seguir usando la plataforma. Te llevamos al inicio…</p>
+              <h1 className="text-lg font-bold text-ink-950">Contraseña actualizada</h1>
+              <p className="text-sm text-ink-500">Ya puedes seguir usando la plataforma. Te llevamos al inicio…</p>
             </div>
           ) : hasSession === false ? (
             <div className="text-center space-y-3">
-              <h1 className="text-lg font-bold text-snow">Enlace inválido o expirado</h1>
-              <p className="text-sm text-mist-600">
+              <h1 className="text-lg font-bold text-ink-950">Enlace inválido o expirado</h1>
+              <p className="text-sm text-ink-500">
                 Solicita un nuevo enlace desde{" "}
-                <Link href="/login" className="text-crystal-400 hover:text-crystal-300 underline underline-offset-2">
+                <Link href="/login" className="text-brand-ink font-semibold underline underline-offset-2">
                   la página de inicio de sesión
                 </Link>
                 .
@@ -93,11 +76,11 @@ export default function ResetPasswordPage() {
             </div>
           ) : (
             <>
-              <h1 className="text-xl font-bold text-snow mb-1 tracking-tight">Nueva contraseña</h1>
-              <p className="text-sm text-mist-600 mb-6">Elige una contraseña de al menos 6 caracteres</p>
+              <h1 className="text-xl font-bold text-ink-950 mb-1 tracking-tight">Nueva contraseña</h1>
+              <p className="text-sm text-ink-500 mb-6">Elige una contraseña de al menos 6 caracteres</p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-mist-600 mb-2">
+                  <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
                     Nueva contraseña
                   </label>
                   <input
@@ -108,11 +91,11 @@ export default function ResetPasswordPage() {
                     required
                     minLength={6}
                     autoComplete="new-password"
-                    className="w-full bg-lake-950/60 border border-lake-700 focus:border-crystal-400/50 focus:ring-1 focus:ring-crystal-400/30 text-snow placeholder-mist-700 rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-200"
+                    className="w-full bg-white border border-line focus:border-brand focus:ring-2 focus:ring-brand/30 text-ink-950 placeholder-ink-300 rounded-xl px-4 py-3 text-base outline-none transition-[border-color,box-shadow] duration-150"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-mist-600 mb-2">
+                  <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
                     Repite la contraseña
                   </label>
                   <input
@@ -123,18 +106,18 @@ export default function ResetPasswordPage() {
                     required
                     minLength={6}
                     autoComplete="new-password"
-                    className="w-full bg-lake-950/60 border border-lake-700 focus:border-crystal-400/50 focus:ring-1 focus:ring-crystal-400/30 text-snow placeholder-mist-700 rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-200"
+                    className="w-full bg-white border border-line focus:border-brand focus:ring-2 focus:ring-brand/30 text-ink-950 placeholder-ink-300 rounded-xl px-4 py-3 text-base outline-none transition-[border-color,box-shadow] duration-150"
                   />
                 </div>
                 {error && (
-                  <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
                     {error}
                   </p>
                 )}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 text-lake-950 text-sm font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-40 text-white text-base font-bold transition-[background-color,transform] duration-150 active:scale-[0.97] flex items-center justify-center gap-2"
                 >
                   {loading && (
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
