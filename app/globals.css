@@ -41,7 +41,20 @@
   --color-snow: #e6f6f6;
   --color-snow-dim: #a8c8c8;
 
+  /* ── Tema claro de la web pública (base blanca + #2dc9b7) ── */
+  --color-brand: #2dc9b7;        /* color del logo: fondos, botones, banda */
+  --color-brand-hover: #26b8a7;
+  --color-brand-ink: #0e7f72;    /* turquesa oscuro para texto sobre blanco (contraste AA) */
+  --color-brand-soft: #e8f8f5;   /* fondos suaves de íconos y chips */
+  --color-ink-950: #0b1d26;      /* títulos */
+  --color-ink-700: #34464f;      /* texto */
+  --color-ink-500: #5d6e77;      /* texto secundario */
+  --color-ink-300: #9aaab2;      /* íconos, placeholders */
+  --color-line: #e3eaed;         /* bordes */
+  --color-surface: #f3f7f8;      /* fondo gris de secciones */
+
   /* ── Animations ── */
+  --animate-marquee: marquee 22s linear infinite;
   --animate-float: float 7s ease-in-out infinite;
   --animate-float-delayed: float 7s ease-in-out infinite;
   --animate-water-drift: water-drift 13s ease-in-out infinite;
@@ -52,6 +65,12 @@
 }
 
 /* ── Keyframes ── */
+
+/* Banda inclinada: el contenido va duplicado, así -50% vuelve al inicio sin salto */
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
 
 @keyframes float {
   0%, 100% { transform: translateY(0px); }

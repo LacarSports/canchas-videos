@@ -46,6 +46,7 @@ escrito distinto (tilde, mayúscula) es otro complejo.
 | `perfiles` | Trigger de Auth | El propio usuario | nunca | Nombre + aceptación de T&C |
 | `descargas_clips` | Jugadores | Solo servicio | nunca (legal) | Quién descargó qué clip |
 | `reportes` | API servidor | Tú | nunca | Reportes de problemas |
+| `resenas` | Jugadores con sesión | Web (solo aprobadas) | nunca | Reseñas de la página de inicio |
 
 Borrados automáticos: `supabase/2026-09_mantenimiento.sql` (pg_cron, ver Integrations →
 Cron). Los **videos** los borra R2 a los 7 días con una regla del bucket
@@ -190,6 +191,17 @@ Trazabilidad de clips: quién descargó/guardó qué. `user_id`, `email`, `parti
 'partido'|'jugada', `created_at`. RLS: authenticated inserta/lee solo sus propias filas;
 para investigar un clip difundido usar service role o el SQL Editor. Se inserta desde
 `lib/descargas.ts` (`registrarDescarga()`).
+
+### `resenas` (octubre 2026 — `supabase/2026-10_resenas.sql`)
+Reseñas que dejan los jugadores en la sección "Reseñas" del inicio
+(`app/components/Resenas.tsx`). `id`, `user_id` (default `auth.uid()`), `nombre`,
+`complejo` (texto libre elegido de la lista de complejos con partidos), `estrellas` (1–5),
+`comentario` (3–500 caracteres), `aprobada` (bool, default **false**), `creado_en`.
+UNIQUE(`user_id`): una reseña por cuenta. **Moderación:** toda reseña entra sin aprobar y
+no se ve hasta marcar `aprobada = true` a mano (Table Editor). RLS: cualquiera lee las
+aprobadas; cada usuario lee la suya; `authenticated` inserta solo su fila y solo las
+columnas `nombre, complejo, estrellas, comentario` (grant por columna), así no puede
+auto-aprobarse. Si la tabla no existe, la web muestra la sección vacía y avisa al enviar.
 
 ## Configuración del Dashboard (no SQL)
 
