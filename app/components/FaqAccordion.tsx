@@ -28,7 +28,7 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
             key={i}
             className="rounded-2xl border border-mist-500/12 bg-lake-900/60 backdrop-blur-sm overflow-hidden transition-colors duration-200"
             style={{
-              borderColor: isOpen ? "rgba(41,196,173,0.3)" : undefined,
+              borderColor: isOpen ? "rgba(45,201,183,0.3)" : undefined,
             }}
           >
             <h3>

@@ -52,7 +52,7 @@ export default function PartidoCard({ partido }: { partido: PartidoCardData }) {
   return (
     <Link
       href={`/partido/${partido.id}`}
-      className="group flex items-center gap-4 bg-lake-900/60 hover:bg-lake-800/80 rounded-xl border border-mist-500/10 hover:border-crystal-400/30 px-4 py-3.5 transition-all duration-200 hover:shadow-[0_0_20px_rgba(41,196,173,0.07)]"
+      className="group flex items-center gap-4 bg-lake-900/60 hover:bg-lake-800/80 rounded-xl border border-mist-500/10 hover:border-crystal-400/30 px-4 py-3.5 transition-all duration-200 hover:shadow-[0_0_20px_rgba(45,201,183,0.07)]"
     >
       {/* Icono play */}
       <IconoPlay />

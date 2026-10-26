@@ -19,14 +19,14 @@ export default function Footer() {
         className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg, transparent, rgba(41,196,173,0.4), rgba(77,174,196,0.3), transparent)",
+            "linear-gradient(90deg, transparent, rgba(45,201,183,0.4), rgba(77,174,196,0.3), transparent)",
         }}
       />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 80% 40% at 50% 100%, rgba(41,196,173,0.04), transparent)",
+            "radial-gradient(ellipse 80% 40% at 50% 100%, rgba(45,201,183,0.04), transparent)",
         }}
       />
       <div className="max-w-7xl mx-auto relative flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -37,7 +37,7 @@ export default function Footer() {
             alt="Lacar Sports"
             width={28}
             height={28}
-            className="drop-shadow-[0_0_8px_rgba(41,196,173,0.5)]"
+            className="drop-shadow-[0_0_8px_rgba(45,201,183,0.5)]"
           />
           <span className="text-sm text-mist-600">
             © 2026{" "}

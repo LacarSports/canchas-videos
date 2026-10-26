@@ -170,7 +170,7 @@ export default function Navbar() {
               alt="Lacar Sports"
               width={32}
               height={32}
-              className="drop-shadow-[0_0_8px_rgba(41,196,173,0.5)]"
+              className="drop-shadow-[0_0_8px_rgba(45,201,183,0.5)]"
               priority
             />
             <span className="text-[15px] font-bold tracking-tight text-snow">
@@ -220,7 +220,7 @@ export default function Navbar() {
             <NavItem
               href={cta.href}
               pathname={pathname}
-              className="inline-flex items-center gap-1.5 bg-crystal-400 hover:bg-crystal-300 text-lake-950 font-semibold text-[13px] px-4 py-2 rounded-full transition-all duration-200 active:scale-[0.97] shadow-[0_0_16px_rgba(41,196,173,0.35)]"
+              className="inline-flex items-center gap-1.5 bg-crystal-400 hover:bg-crystal-300 text-lake-950 font-semibold text-[13px] px-4 py-2 rounded-full transition-all duration-200 active:scale-[0.97] shadow-[0_0_16px_rgba(45,201,183,0.35)]"
             >
               {cta.label}
             </NavItem>

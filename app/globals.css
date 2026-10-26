@@ -15,10 +15,11 @@
   --color-lake-600: #154565;
 
   /* Crystal — turquesa del lago */
-  --color-crystal-300: #72edd9;
-  --color-crystal-400: #29c4ad;
-  --color-crystal-500: #1ea898;
-  --color-crystal-600: #15897a;
+  /* 400 = color oficial del logo (#2dc9b7) */
+  --color-crystal-300: #74e3d6;
+  --color-crystal-400: #2dc9b7;
+  --color-crystal-500: #22ad9d;
+  --color-crystal-600: #1a8c80;
 
   /* Mist — aguamarina clara */
   --color-mist-300: #c8ecec;
@@ -121,6 +122,14 @@ html {
   /* El navbar fijo mide ~72px; evita que las anclas (#buscador, #faq…)
      queden tapadas al navegar con hash. */
   scroll-padding-top: 88px;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 body {

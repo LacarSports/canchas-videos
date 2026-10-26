@@ -59,7 +59,7 @@ export default function WhatsAppButton({
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Escríbenos por WhatsApp"
-      className="group fixed bottom-6 right-6 z-40 flex items-center gap-2.5 bg-lake-900/85 backdrop-blur-xl border border-mist-500/12 hover:border-crystal-400/35 rounded-full pl-3.5 pr-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.45)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.45),0_0_20px_rgba(41,196,173,0.15)] active:scale-[0.97]"
+      className="group fixed bottom-6 right-6 z-40 flex items-center gap-2.5 bg-lake-900/85 backdrop-blur-xl border border-mist-500/12 hover:border-crystal-400/35 rounded-full pl-3.5 pr-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.45)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.45),0_0_20px_rgba(45,201,183,0.15)] active:scale-[0.97]"
       style={{
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? "auto" : "none",

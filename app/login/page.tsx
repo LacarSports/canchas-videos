@@ -140,7 +140,7 @@ function LoginInner() {
       {/* Water ambient blobs (mismo estilo que /auth/complejo) */}
       <div
         className="absolute -top-48 -left-32 w-[500px] h-[500px] rounded-full pointer-events-none animate-water-drift"
-        style={{ background: "radial-gradient(circle, #29c4ad, transparent 70%)", filter: "blur(90px)" }}
+        style={{ background: "radial-gradient(circle, #2dc9b7, transparent 70%)", filter: "blur(90px)" }}
       />
       <div
         className="absolute -bottom-40 -right-40 w-[420px] h-[420px] rounded-full pointer-events-none animate-water-drift-slow"
@@ -155,7 +155,7 @@ function LoginInner() {
             alt="Lacar Sports"
             width={38}
             height={38}
-            className="drop-shadow-[0_0_12px_rgba(41,196,173,0.5)]"
+            className="drop-shadow-[0_0_12px_rgba(45,201,183,0.5)]"
           />
           <span className="text-xl font-bold text-snow tracking-tight">
             Lacar <span className="text-crystal-400">Sports</span>
@@ -263,7 +263,7 @@ function LoginInner() {
                   type="checkbox"
                   checked={aceptaTerminos}
                   onChange={(e) => setAceptaTerminos(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#29c4ad]"
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#2dc9b7]"
                 />
                 <span className="text-xs text-mist-500 leading-relaxed">
                   Acepto los{" "}
