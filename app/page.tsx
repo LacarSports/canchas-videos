@@ -10,7 +10,8 @@ import Footer from "./components/Footer";
 import SectionHeader from "./components/SectionHeader";
 import MarqueeBand from "./components/MarqueeBand";
 import Resenas from "./components/Resenas";
-import { COMPLEJOS_ACTIVOS } from "@/lib/site";
+import CountUp from "./components/CountUp";
+import { COMPLEJOS_ACTIVOS, HOME_STATS } from "@/lib/site";
 
 interface Partido {
   id: string;
@@ -215,14 +216,22 @@ export default async function HomePage({
           {/* Datos clave: lo que el jugador pregunta antes de buscar */}
           <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-8">
             {[
-              { dato: "7 días", texto: "para ver y descargar tu partido" },
-              { dato: "2 min", texto: "máximo por cada jugada" },
-              { dato: "9:16", texto: "vertical para historias, o 16:9" },
-              { dato: "1 cuenta", texto: "para ver el partido completo" },
+              { numero: <CountUp value={7} duration={900} />, unidad: "días", texto: "para ver y descargar tu partido" },
+              { numero: <CountUp value={2} duration={700} />, unidad: "min", texto: "máximo por cada jugada" },
+              {
+                numero: <><CountUp value={9} duration={900} />:<CountUp value={16} duration={1100} /></>,
+                unidad: "",
+                texto: "vertical para historias, o 16:9",
+              },
+              { numero: <CountUp value={1} duration={500} />, unidad: "cuenta", texto: "para ver el partido completo" },
             ].map((d) => (
-              <li key={d.dato} className="rounded-2xl bg-white border border-line px-4 py-4">
-                <p className="text-2xl font-black text-ink-950 tracking-tight tabular-nums">{d.dato}</p>
-                <p className="text-[13px] text-ink-500 leading-snug mt-0.5">{d.texto}</p>
+              <li key={d.texto} className="relative overflow-hidden rounded-2xl bg-white border border-line px-4 py-4">
+                <span className="absolute inset-x-0 top-0 h-1 bg-brand" aria-hidden="true" />
+                <p className="flex items-baseline gap-1.5 leading-none">
+                  <span className="text-4xl font-black text-brand tracking-tight">{d.numero}</span>
+                  {d.unidad && <span className="text-lg font-bold text-ink-950">{d.unidad}</span>}
+                </p>
+                <p className="text-[13px] text-ink-500 leading-snug mt-2">{d.texto}</p>
               </li>
             ))}
           </ul>
@@ -287,6 +296,18 @@ export default async function HomePage({
       {/* ══════════════════════════════════════════════ */}
       <section id="complejos" className="relative bg-surface px-5 sm:px-6 py-14 sm:py-20">
         <div className="max-w-6xl mx-auto">
+          {/* Cifras de Lacar (ver HOME_STATS: hoy son de prueba) */}
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-12 sm:mb-14">
+            {HOME_STATS.map((st) => (
+              <li key={st.label} className="rounded-3xl bg-ink-950 px-6 py-5 sm:py-6 flex sm:flex-col items-baseline sm:items-start gap-x-3">
+                <p className="text-[40px] sm:text-5xl font-black text-brand tracking-tight leading-none">
+                  +<CountUp value={st.value} duration={1600} />
+                </p>
+                <p className="text-white/80 text-[15px] font-semibold sm:mt-2">{st.label}</p>
+              </li>
+            ))}
+          </ul>
+
           <Reveal className="mb-8">
             <SectionHeader
               eyebrow="Dónde grabamos"
