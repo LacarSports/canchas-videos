@@ -214,7 +214,7 @@ export default async function HomePage({
           )}
 
           {/* Datos clave: lo que el jugador pregunta antes de buscar */}
-          <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-8">
+          <ul className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-7 mt-10 sm:mt-12">
             {[
               { numero: <CountUp value={7} duration={900} />, unidad: "días", texto: "para ver y descargar tu partido" },
               { numero: <CountUp value={2} duration={700} />, unidad: "min", texto: "máximo por cada jugada" },
@@ -225,13 +225,12 @@ export default async function HomePage({
               },
               { numero: <CountUp value={1} duration={500} />, unidad: "cuenta", texto: "para ver el partido completo" },
             ].map((d) => (
-              <li key={d.texto} className="relative overflow-hidden rounded-2xl bg-white border border-line px-4 py-4">
-                <span className="absolute inset-x-0 top-0 h-1 bg-brand" aria-hidden="true" />
+              <li key={d.texto} className="border-l-2 border-brand/40 pl-4">
                 <p className="flex items-baseline gap-1.5 leading-none">
-                  <span className="text-4xl font-black text-brand tracking-tight">{d.numero}</span>
-                  {d.unidad && <span className="text-lg font-bold text-ink-950">{d.unidad}</span>}
+                  <span className="cifra text-[44px] sm:text-[56px]">{d.numero}</span>
+                  {d.unidad && <span className="text-base sm:text-lg font-semibold text-ink-700">{d.unidad}</span>}
                 </p>
-                <p className="text-[13px] text-ink-500 leading-snug mt-2">{d.texto}</p>
+                <p className="text-[13px] sm:text-sm text-ink-500 leading-snug mt-2 max-w-[22ch]">{d.texto}</p>
               </li>
             ))}
           </ul>
@@ -297,13 +296,14 @@ export default async function HomePage({
       <section id="complejos" className="relative bg-surface px-5 sm:px-6 py-14 sm:py-20">
         <div className="max-w-6xl mx-auto">
           {/* Cifras de Lacar (ver HOME_STATS: hoy son de prueba) */}
-          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-12 sm:mb-14">
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-y-6 sm:gap-x-10 mb-14 sm:mb-16">
             {HOME_STATS.map((st) => (
-              <li key={st.label} className="rounded-3xl bg-ink-950 px-6 py-5 sm:py-6 flex sm:flex-col items-baseline sm:items-start gap-x-3">
-                <p className="text-[40px] sm:text-5xl font-black text-brand tracking-tight leading-none">
-                  +<CountUp value={st.value} duration={1600} />
+              <li key={st.label} className="border-l-2 border-brand/40 pl-5">
+                <p className="cifra text-[52px] sm:text-[64px]">
+                  <span className="text-[0.6em] align-[0.35em] mr-0.5">+</span>
+                  <CountUp value={st.value} duration={1600} />
                 </p>
-                <p className="text-white/80 text-[15px] font-semibold sm:mt-2">{st.label}</p>
+                <p className="text-ink-700 text-[15px] sm:text-base font-semibold mt-2">{st.label}</p>
               </li>
             ))}
           </ul>

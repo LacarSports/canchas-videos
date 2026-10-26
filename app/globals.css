@@ -171,3 +171,16 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Cifras grandes de la portada: solo el número, sin tarjeta. Degradé
+   vertical de la marca recortado al texto y tracking apretado. */
+.cifra {
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: transparent;
+  background: linear-gradient(180deg, #3fe0cc 0%, var(--color-brand) 45%, var(--color-brand-ink) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
