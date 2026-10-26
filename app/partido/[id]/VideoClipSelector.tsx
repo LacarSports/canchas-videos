@@ -1572,24 +1572,24 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
       )}
 
       {/* ── Control panel ── */}
-      <div ref={controlPanelRef} className="bg-lake-800/60 rounded-xl border border-crystal-400/8 p-5 space-y-4">
+      <div ref={controlPanelRef} className="bg-white rounded-2xl border border-line p-4 sm:p-5 space-y-4">
         {estado === "idle" && (
-          <p className="text-xs text-mist-600 text-center leading-relaxed">
+          <p className="text-sm text-ink-500 text-center leading-relaxed">
             Reproduce el video y presiona el botón en el video cuando quieras marcar el inicio de tu jugada. Los clips pueden durar hasta 2 minutos.
           </p>
         )}
         {isGrabando && inicioSeg !== null && (
-          <div className="flex items-center gap-2.5 px-4 py-2.5 bg-crystal-400/5 border border-crystal-400/12 rounded-lg">
-            <span className="w-2 h-2 rounded-full bg-crystal-400 animate-pulse shrink-0" />
-            <span className="text-crystal-400 text-sm">Desde <span className="font-mono">{fmt(inicioSeg, true)}</span></span>
-            <span className="text-xs text-mist-600">· máx 2 min</span>
-            {zoom > 1.05 && <span className="ml-auto text-xs text-crystal-400/60 font-mono">{zoom.toFixed(1)}× zoom</span>}
+          <div className="flex items-center gap-2.5 px-4 py-3 bg-brand-soft rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+            <span className="text-brand-ink text-sm font-semibold">Desde <span className="font-mono">{fmt(inicioSeg, true)}</span></span>
+            <span className="text-xs text-ink-500">· máx 2 min</span>
+            {zoom > 1.05 && <span className="ml-auto text-xs text-brand-ink font-mono">{zoom.toFixed(1)}× zoom</span>}
           </div>
         )}
         {estado === "preview" && inicioSeg !== null && finSeg !== null && !effectiveFullscreen && (
           <div className="space-y-3">
             {autoDetenido && (
-              <div className="flex items-center gap-1.5 text-xs text-crystal-400/70 bg-crystal-400/5 border border-crystal-400/8 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-1.5 text-xs text-brand-ink bg-brand-soft rounded-xl px-3 py-2">
                 <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 La jugada se cerró automáticamente al llegar a los 2 minutos
               </div>
@@ -1598,7 +1598,7 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
           </div>
         )}
         {estado === "preview" && effectiveFullscreen && (
-          <p className="text-xs text-mist-600 text-center">Completa los datos de la jugada en el video.</p>
+          <p className="text-sm text-ink-500 text-center">Completa los datos de la jugada en el video.</p>
         )}
       </div>
     </div>
