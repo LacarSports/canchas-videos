@@ -16,8 +16,8 @@ const DATOS = [
 
 /** Píxeles por segundo del avance automático en celular. */
 const VELOCIDAD = 45;
-/** Tras soltar el dedo, espera esto antes de volver a avanzar solo. */
-const PAUSA_MS = 2500;
+/** Segundos que tarda en volver a la velocidad normal tras soltar el dedo. */
+const SUAVIDAD = 0.7;
 
 function Tarjeta({ d, copia = false }: { d: (typeof DATOS)[number]; copia?: boolean }) {
   return (
@@ -36,83 +36,111 @@ function Tarjeta({ d, copia = false }: { d: (typeof DATOS)[number]; copia?: bool
 
 /**
  * Datos clave del servicio. En celular: fila horizontal que avanza sola hacia
- * la izquierda en bucle y que se puede arrastrar con el dedo (se pausa mientras
- * la tocas). En escritorio: grilla de 4, quieta.
+ * la izquierda en bucle y que se puede arrastrar con el dedo. En escritorio:
+ * grilla de 4, quieta.
+ *
+ * El movimiento es un translate3d calculado en cada cuadro (en la GPU, con
+ * decimales), no scrollLeft: así no da saltos de a 1px en iPhone. Al soltar,
+ * la fila conserva el impulso del dedo y vuelve de a poco a su velocidad.
  */
 export default function DatosClave() {
-  const ref = useRef<HTMLUListElement>(null);
+  const marco = useRef<HTMLDivElement>(null);
+  const pista = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const caja = marco.current;
+    const el = pista.current;
+    if (!caja || !el) return;
     const quieto = window.matchMedia("(min-width: 1024px), (prefers-reduced-motion: reduce)");
 
     let raf = 0;
     let ultimo = 0;
-    let pos = el.scrollLeft;
-    let pausadoHasta = 0;
-    let tocando = false;
-    // Distancia exacta entre una tarjeta y su copia: el largo de una vuelta.
+    let x = 0; // cuánto se ha corrido la fila hacia la izquierda
+    let v = VELOCIDAD; // velocidad actual en px/s
+    let arrastre: { id: number; desde: number; x0: number; t: number; px: number } | null = null;
+
+    // Las tarjetas están dos veces; una vuelta es la distancia entre una y su copia.
     const vuelta = () => {
-      const items = el.children;
       const n = DATOS.length;
-      return (items[n] as HTMLElement).offsetLeft - (items[0] as HTMLElement).offsetLeft;
+      return (el.children[n] as HTMLElement).offsetLeft - (el.children[0] as HTMLElement).offsetLeft;
+    };
+    const pintar = () => {
+      const w = vuelta();
+      x = ((x % w) + w) % w;
+      el.style.transform = `translate3d(${-x}px,0,0)`;
     };
 
     const paso = (t: number) => {
       raf = requestAnimationFrame(paso);
-      const dt = ultimo ? Math.min(t - ultimo, 50) : 0;
+      const dt = ultimo ? Math.min(t - ultimo, 50) / 1000 : 0;
       ultimo = t;
-      if (quieto.matches || tocando || t < pausadoHasta) {
-        pos = el.scrollLeft;
+      if (quieto.matches) {
+        el.style.transform = "";
         return;
       }
-      // Las tarjetas están dos veces: al completar una vuelta, se vuelve atrás sin salto.
-      // Si alguien la movió por otro medio (rueda, teclado), seguimos desde ahí.
-      if (Math.abs(el.scrollLeft - pos) > 2) pos = el.scrollLeft;
-      const v = vuelta();
-      pos += (VELOCIDAD * dt) / 1000;
-      if (pos >= v) pos -= v;
-      el.scrollLeft = pos;
+      if (arrastre) return;
+      // Se acerca de forma suave a la velocidad normal (sin tirones al retomar).
+      v += (VELOCIDAD - v) * (1 - Math.exp(-dt / SUAVIDAD * 3));
+      x += v * dt;
+      pintar();
     };
 
-    const alTocar = () => { tocando = true; };
-    const alSoltar = () => {
-      tocando = false;
-      pausadoHasta = performance.now() + PAUSA_MS;
+    const abajo = (e: PointerEvent) => {
+      if (quieto.matches || (e.pointerType === "mouse" && e.button !== 0)) return;
+      arrastre = { id: e.pointerId, desde: e.clientX, x0: x, t: e.timeStamp, px: e.clientX };
+      v = 0;
     };
-    // Si el usuario arrastra más allá de una vuelta, también la devolvemos atrás.
-    const alDesplazar = () => {
-      const v = vuelta();
-      if (tocando && el.scrollLeft >= v) el.scrollLeft -= v;
+    const mover = (e: PointerEvent) => {
+      if (!arrastre || e.pointerId !== arrastre.id) return;
+      if (!caja.hasPointerCapture(e.pointerId) && Math.abs(e.clientX - arrastre.desde) > 6) {
+        caja.setPointerCapture(e.pointerId);
+      }
+      const dt = (e.timeStamp - arrastre.t) / 1000;
+      if (dt > 0) {
+        // Velocidad del dedo, suavizada para que el impulso final no sea errático.
+        const inst = -(e.clientX - arrastre.px) / dt;
+        v = v * 0.6 + inst * 0.4;
+      }
+      arrastre.t = e.timeStamp;
+      arrastre.px = e.clientX;
+      x = arrastre.x0 - (e.clientX - arrastre.desde);
+      pintar();
+    };
+    const arriba = (e: PointerEvent) => {
+      if (!arrastre || e.pointerId !== arrastre.id) return;
+      // Si el dedo quedó quieto antes de soltar, no hay impulso.
+      if (e.timeStamp - arrastre.t > 80) v = 0;
+      v = Math.max(-2500, Math.min(2500, v));
+      arrastre = null;
     };
 
-    el.addEventListener("pointerdown", alTocar);
-    el.addEventListener("touchstart", alTocar, { passive: true });
-    el.addEventListener("pointerup", alSoltar);
-    el.addEventListener("pointercancel", alSoltar);
-    el.addEventListener("touchend", alSoltar);
-    el.addEventListener("scroll", alDesplazar, { passive: true });
+    caja.addEventListener("pointerdown", abajo);
+    caja.addEventListener("pointermove", mover);
+    caja.addEventListener("pointerup", arriba);
+    caja.addEventListener("pointercancel", arriba);
     raf = requestAnimationFrame(paso);
 
     return () => {
       cancelAnimationFrame(raf);
-      el.removeEventListener("pointerdown", alTocar);
-      el.removeEventListener("touchstart", alTocar);
-      el.removeEventListener("pointerup", alSoltar);
-      el.removeEventListener("pointercancel", alSoltar);
-      el.removeEventListener("touchend", alSoltar);
-      el.removeEventListener("scroll", alDesplazar);
+      caja.removeEventListener("pointerdown", abajo);
+      caja.removeEventListener("pointermove", mover);
+      caja.removeEventListener("pointerup", arriba);
+      caja.removeEventListener("pointercancel", arriba);
     };
   }, []);
 
   return (
-    <ul
-      ref={ref}
-      className="flex lg:grid lg:grid-cols-4 gap-3 lg:gap-4 mt-8 sm:mt-12 -mx-5 sm:-mx-6 lg:mx-0 px-5 sm:px-6 lg:px-0 pt-1 pb-5 overflow-x-auto lg:overflow-visible overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    <div
+      ref={marco}
+      className="mt-8 sm:mt-12 -mx-5 sm:-mx-6 lg:mx-0 overflow-hidden lg:overflow-visible touch-pan-y select-none lg:select-auto cursor-grab active:cursor-grabbing lg:cursor-auto"
     >
-      {DATOS.map((d) => <Tarjeta key={d.texto} d={d} />)}
-      {DATOS.map((d) => <Tarjeta key={`copia-${d.texto}`} d={d} copia />)}
-    </ul>
+      <ul
+        ref={pista}
+        className="flex lg:grid lg:grid-cols-4 gap-3 lg:gap-4 w-max lg:w-auto px-5 sm:px-6 lg:px-0 pt-1 pb-5 will-change-transform lg:will-change-auto"
+      >
+        {DATOS.map((d) => <Tarjeta key={d.texto} d={d} />)}
+        {DATOS.map((d) => <Tarjeta key={`copia-${d.texto}`} d={d} copia />)}
+      </ul>
+    </div>
   );
 }

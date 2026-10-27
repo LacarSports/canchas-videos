@@ -172,17 +172,14 @@ body {
   }
 }
 
-/* Cifras grandes de la portada: solo el número, sin tarjeta. Celeste
-   agua cercano a #1cfff1, sin tonos oscuros, con un brillo leve. */
+/* Cifras grandes de la portada: solo el número, sin tarjeta, en el
+   turquesa de la marca (color plano: sin degradé ni filtros, que además
+   son caros de pintar mientras la fila de datos se mueve). */
 .cifra {
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
-  color: transparent;
-  background: linear-gradient(180deg, #1cfff1 0%, #14eadf 55%, #0fd3c9 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: drop-shadow(0 0 8px rgb(28 255 241 / 0.25));
+  color: var(--color-brand);
 }
 .cifra-unidad { letter-spacing: -0.01em; line-height: 1.25; padding-bottom: 0.1em; }
