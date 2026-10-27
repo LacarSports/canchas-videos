@@ -175,7 +175,7 @@ export default async function HomePage({
       {/* ══════════════════════════════════════════════ */}
       {/* BUSCADOR                                       */}
       {/* ══════════════════════════════════════════════ */}
-      <section id="buscador" className="relative z-10 bg-surface px-5 sm:px-6 pt-16 pb-14 sm:pt-20 sm:pb-20">
+      <section id="buscador" className="relative z-10 bg-surface px-5 sm:px-6 pt-16 pb-5 sm:pt-20 sm:pb-16">
         <div className="max-w-6xl mx-auto relative">
           <div className="mb-6">
             <SectionHeader
@@ -222,7 +222,7 @@ export default async function HomePage({
       {/* ══════════════════════════════════════════════ */}
       {/* CÓMO FUNCIONA                                  */}
       {/* ══════════════════════════════════════════════ */}
-      <section id="como-funciona" className="relative bg-white px-5 sm:px-6 py-14 sm:py-20">
+      <section id="como-funciona" className="relative bg-white px-5 sm:px-6 pt-8 pb-14 sm:py-20">
         <div className="max-w-6xl mx-auto">
           <Reveal className="mb-8">
             <SectionHeader

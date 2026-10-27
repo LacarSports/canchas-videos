@@ -15,7 +15,7 @@ const DATOS = [
 ];
 
 /** Píxeles por segundo del avance automático en celular. */
-const VELOCIDAD = 28;
+const VELOCIDAD = 45;
 /** Tras soltar el dedo, espera esto antes de volver a avanzar solo. */
 const PAUSA_MS = 2500;
 
@@ -109,7 +109,7 @@ export default function DatosClave() {
   return (
     <ul
       ref={ref}
-      className="flex lg:grid lg:grid-cols-4 gap-3 lg:gap-4 mt-10 sm:mt-12 -mx-5 sm:-mx-6 lg:mx-0 px-5 sm:px-6 lg:px-0 pt-1 pb-6 overflow-x-auto lg:overflow-visible overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex lg:grid lg:grid-cols-4 gap-3 lg:gap-4 mt-8 sm:mt-12 -mx-5 sm:-mx-6 lg:mx-0 px-5 sm:px-6 lg:px-0 pt-1 pb-5 overflow-x-auto lg:overflow-visible overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {DATOS.map((d) => <Tarjeta key={d.texto} d={d} />)}
       {DATOS.map((d) => <Tarjeta key={`copia-${d.texto}`} d={d} copia />)}
