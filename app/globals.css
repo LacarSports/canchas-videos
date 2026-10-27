@@ -172,17 +172,17 @@ body {
   }
 }
 
-/* Cifras grandes de la portada: solo el número, sin tarjeta. Turquesa
-   brillante (más vivo que la marca, sin tonos oscuros) con un brillo suave. */
+/* Cifras grandes de la portada: solo el número, sin tarjeta. Celeste
+   agua cercano a #1cfff1, sin tonos oscuros, con un brillo leve. */
 .cifra {
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   color: transparent;
-  background: linear-gradient(180deg, #6ff7e6 0%, #1fe3cb 50%, #00d1b8 100%);
+  background: linear-gradient(180deg, #1cfff1 0%, #14eadf 55%, #0fd3c9 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  filter: drop-shadow(0 0 14px rgb(31 227 203 / 0.45));
+  filter: drop-shadow(0 0 8px rgb(28 255 241 / 0.25));
 }
 .cifra-unidad { letter-spacing: -0.01em; line-height: 1.25; padding-bottom: 0.1em; }
