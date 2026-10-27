@@ -228,7 +228,7 @@ export default async function HomePage({
               <li key={d.texto} className="border-l-2 border-brand/40 pl-4">
                 <p className="flex items-baseline gap-1.5 leading-none">
                   <span className="cifra text-[44px] sm:text-[56px]">{d.numero}</span>
-                  {d.unidad && <span className="text-base sm:text-lg font-semibold text-ink-700">{d.unidad}</span>}
+                  {d.unidad && <span className="cifra cifra-unidad text-lg sm:text-xl">{d.unidad}</span>}
                 </p>
                 <p className="text-[13px] sm:text-sm text-ink-500 leading-snug mt-2 max-w-[22ch]">{d.texto}</p>
               </li>
@@ -303,7 +303,7 @@ export default async function HomePage({
                   <span className="text-[0.6em] align-[0.35em] mr-0.5">+</span>
                   <CountUp value={st.value} duration={1600} />
                 </p>
-                <p className="text-ink-700 text-[15px] sm:text-base font-semibold mt-2">{st.label}</p>
+                <p className="cifra cifra-unidad text-base sm:text-lg mt-2">{st.label}</p>
               </li>
             ))}
           </ul>

@@ -172,15 +172,17 @@ body {
   }
 }
 
-/* Cifras grandes de la portada: solo el número, sin tarjeta. Degradé
-   vertical de la marca recortado al texto y tracking apretado. */
+/* Cifras grandes de la portada: solo el número, sin tarjeta. Turquesa
+   brillante (más vivo que la marca, sin tonos oscuros) con un brillo suave. */
 .cifra {
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   color: transparent;
-  background: linear-gradient(180deg, #3fe0cc 0%, var(--color-brand) 45%, var(--color-brand-ink) 100%);
+  background: linear-gradient(180deg, #6ff7e6 0%, #1fe3cb 50%, #00d1b8 100%);
   -webkit-background-clip: text;
   background-clip: text;
+  filter: drop-shadow(0 0 14px rgb(31 227 203 / 0.45));
 }
+.cifra-unidad { letter-spacing: -0.01em; }
