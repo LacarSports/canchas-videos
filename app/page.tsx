@@ -11,6 +11,7 @@ import SectionHeader from "./components/SectionHeader";
 import MarqueeBand from "./components/MarqueeBand";
 import Resenas from "./components/Resenas";
 import CountUp from "./components/CountUp";
+import DatosClave from "./components/DatosClave";
 import { COMPLEJOS_ACTIVOS, HOME_STATS } from "@/lib/site";
 
 interface Partido {
@@ -214,26 +215,7 @@ export default async function HomePage({
           )}
 
           {/* Datos clave: lo que el jugador pregunta antes de buscar */}
-          <ul className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-7 mt-10 sm:mt-12">
-            {[
-              { numero: <CountUp value={7} duration={900} />, unidad: "días", texto: "para ver y descargar tu partido" },
-              { numero: <CountUp value={2} duration={700} />, unidad: "min", texto: "máximo por cada jugada" },
-              {
-                numero: <><CountUp value={9} duration={900} />:<CountUp value={16} duration={1100} /></>,
-                unidad: "",
-                texto: "vertical para historias, o 16:9",
-              },
-              { numero: <CountUp value={1} duration={500} />, unidad: "cuenta", texto: "para ver el partido completo" },
-            ].map((d) => (
-              <li key={d.texto} className="border-l-2 border-brand/40 pl-4">
-                <p className="flex items-baseline gap-1.5 leading-none">
-                  <span className="cifra text-[44px] sm:text-[56px]">{d.numero}</span>
-                  {d.unidad && <span className="cifra cifra-unidad text-lg sm:text-xl">{d.unidad}</span>}
-                </p>
-                <p className="text-[13px] sm:text-sm text-ink-500 leading-snug mt-2 max-w-[22ch]">{d.texto}</p>
-              </li>
-            ))}
-          </ul>
+          <DatosClave />
         </div>
       </section>
 
