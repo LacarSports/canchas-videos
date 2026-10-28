@@ -215,7 +215,10 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
 
   // Pantalla completa en el celular: vertical = modo reel (cuadro 9:16, lo mismo que
   // tendrá el reel descargado); celular girado = partido completo horizontal.
-  const modoReel = isMobile && isCustomFullscreen && !isLandscape;
+  // Formato elegido arriba del video: 16:9 (por defecto) o 9:16. En 9:16 el cuadro visible
+  // es el recuadro vertical que se graba, dentro y fuera de pantalla completa.
+  const [formatoVista, setFormatoVista] = useState<FormatoClip>("completo");
+  const modoReel = formatoVista === "reel";
 
   // Reportar problema (jugador)
   const [showReportSheet, setShowReportSheet] = useState(false);
@@ -455,7 +458,7 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
     const id = requestAnimationFrame(() => applyView());
     const t = setTimeout(applyView, 120); // por si el layout tarda (barra de Safari, rotación)
     return () => { cancelAnimationFrame(id); clearTimeout(t); };
-  }, [isCustomFullscreen, isLandscape, isFullscreen, srcAspect, applyView]);
+  }, [isCustomFullscreen, isLandscape, isFullscreen, srcAspect, modoReel, applyView]);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
@@ -963,8 +966,51 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
     </>
   );
 
+  function cambiarFormato(f: FormatoClip) {
+    if (f === formatoVista || estado !== "idle") return;
+    vistaRef.current = { cx: 0.5, cy: 0.5, zoom: 1 };
+    setZoom(1);
+    setFormatoVista(f);
+  }
+
   return (
     <div className="space-y-3">
+      {/* Formato del clip: cómo se va a grabar la jugada */}
+      <div className="flex items-center gap-3">
+        <div role="radiogroup" aria-label="Formato del clip" className="inline-flex gap-1 rounded-2xl bg-white border border-line p-1 shadow-[0_4px_14px_-8px_rgba(11,29,38,0.18)]">
+          {([
+            { f: "completo" as const, nombre: "16:9", detalle: "Horizontal", icono: "w-5 h-3" },
+            { f: "reel" as const, nombre: "9:16", detalle: "Vertical", icono: "w-3 h-5" },
+          ]).map((o) => {
+            const activo = formatoVista === o.f;
+            return (
+              <button
+                key={o.f}
+                type="button"
+                role="radio"
+                aria-checked={activo}
+                disabled={estado !== "idle" && !activo}
+                onClick={() => cambiarFormato(o.f)}
+                className={`flex items-center gap-2.5 rounded-xl pl-3 pr-3.5 py-2 transition-[background-color,color,transform] duration-150 active:scale-[0.97] disabled:opacity-40 ${
+                  activo ? "bg-brand text-white shadow-[0_6px_16px_-6px_rgba(45,201,183,0.7)]" : "text-ink-700 hover:bg-surface"
+                }`}
+              >
+                <span className="w-5 h-5 flex items-center justify-center" aria-hidden="true">
+                  <span className={`${o.icono} rounded-[3px] border-2 border-current`} />
+                </span>
+                <span className="text-left leading-none">
+                  <span className="block text-sm font-bold tabular-nums">{o.nombre}</span>
+                  <span className={`block text-[11px] mt-0.5 ${activo ? "text-white/80" : "text-ink-500"}`}>{o.detalle}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-ink-500 leading-snug min-w-0">
+          {modoReel ? "Para historias y reels. Arrastra el video para encuadrar." : "Horizontal, el partido completo a lo ancho."}
+        </p>
+      </div>
+
       <div
         ref={containerRef}
         tabIndex={0}
@@ -995,8 +1041,11 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
           ref={frameRef}
           className="overflow-hidden"
           style={
-            modoReel
-              ? { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(100dvw, calc(100dvh * 9 / 16))", aspectRatio: "9 / 16" }
+            modoReel && (isCustomFullscreen || isFullscreen)
+              ? { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(100%, calc(100dvh * 9 / 16))", aspectRatio: "9 / 16" }
+              : modoReel
+                // Fuera de pantalla completa: alto generoso para que el recuadro no quede chico
+                ? { position: "relative", margin: "0 auto", height: "min(78svh, 720px)", maxWidth: "100%", aspectRatio: "9 / 16" }
               : isCustomFullscreen || isFullscreen
                 ? { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: `min(100%, calc(100dvh * ${srcAspect}))`, aspectRatio: `${srcAspect}` }
                 : { position: "relative", width: "100%", aspectRatio: `${srcAspect}` }
@@ -1136,9 +1185,9 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
             {estado === "idle" && (showControls || !isPlaying) && (
               <button
                 onClick={handleIniciarGrabacion}
-                className="pointer-events-auto flex items-center gap-2 bg-crystal-400/15 hover:bg-crystal-400/25 backdrop-blur-sm border border-crystal-400/50 text-crystal-400 font-medium px-6 py-3 rounded-full text-sm transition-all"
+                className="pointer-events-auto flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-6 py-3 rounded-full text-sm shadow-[0_10px_24px_-8px_rgba(45,201,183,0.8)] transition-[background-color,transform] duration-150 active:scale-[0.97]"
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-crystal-400 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
                 Marcar inicio
               </button>
             )}
@@ -1147,9 +1196,9 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
                 <ContadorGrabacion seg={grabado} max={MAX_CLIP_SEG} zoom={zoom} />
                 <button
                   onClick={() => handleDetenerGrabacion()}
-                  className="pointer-events-auto flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/25 text-white font-medium px-6 py-3 rounded-full text-sm transition-all"
+                  className="pointer-events-auto flex items-center gap-2 bg-white hover:bg-surface text-ink-950 font-bold px-6 py-3 rounded-full text-sm shadow-[0_10px_24px_-8px_rgba(0,0,0,0.5)] transition-[background-color,transform] duration-150 active:scale-[0.97]"
                 >
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                  <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
                   Marcar fin
                 </button>
               </>
@@ -1345,19 +1394,19 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
             <div className="absolute top-3 left-3 z-10">
               {estado === "idle" && !isGrabando && (
                 <button
-                  className="pointer-events-auto flex items-center gap-1.5 bg-crystal-400/20 backdrop-blur-sm border border-crystal-400/45 text-crystal-400 font-medium px-3 py-2 rounded-full text-sm active:scale-95 transition-transform"
+                  className="pointer-events-auto flex items-center gap-1.5 bg-brand text-white font-bold px-3.5 py-2 rounded-full text-sm shadow-[0_8px_20px_-8px_rgba(45,201,183,0.8)] active:scale-[0.97] transition-transform"
                   onClick={(e) => { e.stopPropagation(); handleIniciarGrabacion(); closeMobileControls(); }}
                 >
-                  <span className="w-2 h-2 rounded-full bg-crystal-400 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                   Marcar inicio
                 </button>
               )}
               {isGrabando && inicioSeg !== null && (
                 <button
-                  className="pointer-events-auto flex items-center gap-1.5 bg-black/55 backdrop-blur-sm border border-white/25 text-white font-medium px-3 py-2 rounded-full text-sm active:scale-95 transition-transform"
+                  className="pointer-events-auto flex items-center gap-1.5 bg-white text-ink-950 font-bold px-3.5 py-2 rounded-full text-sm shadow-[0_8px_20px_-8px_rgba(0,0,0,0.5)] active:scale-[0.97] transition-transform"
                   onClick={(e) => { e.stopPropagation(); handleDetenerGrabacion(); }}
                 >
-                  <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                  <svg className="w-3 h-3 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
                   <span>Marcar fin</span>
                 </button>
               )}
