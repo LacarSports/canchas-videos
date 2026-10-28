@@ -27,24 +27,8 @@ interface Props {
  * Datos de la jugada recién marcada. Al crearla queda en "Jugadas destacadas" y el
  * clip se prepara en segundo plano mientras se sigue viendo el partido.
  */
-/** Colores según dónde se muestra: encima del video (oscuro) o en el panel blanco de abajo. */
+/** Colores: el mismo estilo claro en el panel de abajo y encima del video. */
 const TEMAS = {
-  oscuro: {
-    titulo: "text-snow",
-    secundario: "text-mist-400",
-    etiqueta: "text-mist-500",
-    acento: "text-crystal-400",
-    chipOn: "bg-crystal-400/12 border-crystal-400 text-crystal-400",
-    chipOff: "border-mist-500/20 text-mist-400 hover:border-mist-500/40 hover:text-snow",
-    segOn: "bg-crystal-400/20 text-crystal-300",
-    segOff: "text-mist-500",
-    segFondo: "bg-black/30",
-    input: "bg-lake-950 border-crystal-400/15 text-white placeholder-mist-700 focus:ring-crystal-400/40",
-    error: "text-red-400 bg-red-500/10 border-red-500/20",
-    descartar: "border-mist-500/15 text-mist-500 hover:text-snow",
-    crear: "bg-crystal-400 text-lake-950 hover:bg-crystal-300",
-    nota: "text-mist-600",
-  },
   claro: {
     titulo: "text-ink-950",
     secundario: "text-ink-500",
@@ -64,7 +48,7 @@ const TEMAS = {
 } as const;
 
 export default function FormularioJugada(p: Props) {
-  const t = TEMAS[p.enVideo ? "oscuro" : "claro"];
+  const t = TEMAS.claro;
 
   const chip = (activo: boolean) =>
     `px-3.5 py-2 rounded-full text-[13px] font-medium border transition-[background-color,border-color,transform] duration-150 active:scale-[0.96] ${activo ? t.chipOn : t.chipOff}`;

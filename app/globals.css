@@ -183,3 +183,11 @@ body {
   color: var(--color-brand);
 }
 .cifra-unidad { letter-spacing: -0.01em; line-height: 1.25; padding-bottom: 0.1em; }
+
+/* Aviso flotante del partido (preparando / lista): entra desde arriba, corto. */
+@keyframes aviso-entrada {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.aviso-entrada { animation: aviso-entrada 220ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (prefers-reduced-motion: reduce) { .aviso-entrada { animation: none; } }
