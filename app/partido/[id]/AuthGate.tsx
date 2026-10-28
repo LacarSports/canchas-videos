@@ -52,7 +52,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             href={`/login?next=${next}`}
             className="block w-full py-3.5 rounded-xl border border-line text-ink-700 hover:border-ink-300 text-base font-semibold transition-[border-color,transform] duration-150 active:scale-[0.97]"
           >
-            Ya tengo cuenta — Iniciar sesión
+            Ya tengo cuenta, iniciar sesión
           </Link>
         </div>
         <p className="text-[11px] text-ink-500 leading-relaxed">

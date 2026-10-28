@@ -281,7 +281,8 @@ function Filters() {
   // "Ver partido": buscando el partido elegido para abrirlo directo
   const [abriendo, setAbriendo] = useState(false);
 
-  // Restore from sessionStorage when URL has no search params (e.g. navigating back from a partido)
+  // Al volver (p. ej. desde un partido) se rellenan los filtros guardados, sin buscar solo:
+  // el partido se abre únicamente con el botón "Ver partido".
   useEffect(() => {
     if (sp.get("complejo")) return;
     try {
@@ -293,16 +294,6 @@ function Filters() {
       if (s.cancha)    setCanchaSel(s.cancha);
       if (s.fechaRaw)  { setFechaRaw(s.fechaRaw); setFechaDisplay(s.fechaDisplay || formatFechaLabel(s.fechaRaw, last8)); }
       if (s.hora)      setHora(s.hora);
-      // Auto-trigger search so results appear without pressing the button again
-      if (s.complejo && s.cancha && s.fechaRaw && s.hora) {
-        const params = new URLSearchParams();
-        params.set("complejo", s.complejo);
-        if (s.deporte) params.set("deporte", s.deporte);
-        params.set("cancha", s.cancha);
-        params.set("fecha", s.fechaRaw);
-        params.set("hora", s.hora);
-        startBuscar(() => router.push(`/?${params.toString()}`, { scroll: false }));
-      }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

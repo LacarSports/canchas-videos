@@ -21,14 +21,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://lacarsports.cl"),
   title: "Lacar Sports",
-  description: "Revive tu partido — busca, etiqueta y descarga tus mejores jugadas",
+  description: "Revive tu partido: busca, etiqueta y descarga tus mejores jugadas",
   icons: {
     icon: "/favicon.ico",
     apple: "/logo.png",
   },
   openGraph: {
     title: "Lacar Sports",
-    description: "Revive tu partido — busca, etiqueta y descarga tus mejores jugadas",
+    description: "Revive tu partido: busca, etiqueta y descarga tus mejores jugadas",
     images: ["/logo.png"],
     type: "website",
   },

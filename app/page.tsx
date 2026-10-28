@@ -10,9 +10,8 @@ import Footer from "./components/Footer";
 import SectionHeader from "./components/SectionHeader";
 import MarqueeBand from "./components/MarqueeBand";
 import Resenas from "./components/Resenas";
-import CountUp from "./components/CountUp";
 import DatosClave from "./components/DatosClave";
-import { COMPLEJOS_ACTIVOS, HOME_STATS } from "@/lib/site";
+import { COMPLEJOS_ACTIVOS } from "@/lib/site";
 
 interface Partido {
   id: string;
@@ -277,19 +276,6 @@ export default async function HomePage({
       {/* ══════════════════════════════════════════════ */}
       <section id="complejos" className="relative bg-surface px-5 sm:px-6 py-14 sm:py-20">
         <div className="max-w-6xl mx-auto">
-          {/* Cifras de Lacar (ver HOME_STATS: hoy son de prueba) */}
-          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-y-6 sm:gap-x-10 mb-14 sm:mb-16">
-            {HOME_STATS.map((st) => (
-              <li key={st.label} className="border-l-2 border-brand/40 pl-5">
-                <p className="cifra text-[52px] sm:text-[64px]">
-                  <span className="text-[0.6em] align-[0.35em] mr-0.5">+</span>
-                  <CountUp value={st.value} duration={1600} />
-                </p>
-                <p className="cifra cifra-unidad text-base sm:text-lg mt-2">{st.label}</p>
-              </li>
-            ))}
-          </ul>
-
           <Reveal className="mb-8">
             <SectionHeader
               eyebrow="Dónde grabamos"

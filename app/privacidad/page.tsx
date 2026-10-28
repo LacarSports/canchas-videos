@@ -249,8 +249,8 @@ export default function PrivacidadPage() {
             <>
               <p>
                 De conformidad con las garantías reconocidas por la legislación nacional, el
-                Usuario —o cualquier deportista captado incidentalmente en los registros
-                audiovisuales— ostenta el derecho inalienable de{" "}
+                Usuario (o cualquier deportista captado incidentalmente en los registros
+                audiovisuales) ostenta el derecho inalienable de{" "}
                 <strong className="text-snow">
                   Acceso, Rectificación, Cancelación y Oposición (Derechos ARCO)
                 </strong>{" "}

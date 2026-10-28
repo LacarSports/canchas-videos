@@ -52,7 +52,7 @@ export default async function PartidoPage({
   if (error || !partido) notFound();
 
   const videoUrl = buildVideoUrl(partido.archivo_url);
-  const title = `${partido.complejo} — Cancha ${partido.numero_cancha}`;
+  const title = `${partido.complejo}, Cancha ${partido.numero_cancha}`;
 
   return (
     <main className="min-h-[100dvh] -mt-[72px] pt-[72px] bg-surface">
