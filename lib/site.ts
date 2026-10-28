@@ -37,6 +37,6 @@ export const COMPLEJOS_ACTIVOS = [
 // ── Cifras de Lacar (franja sobre "Complejos con Lacar") ──
 export const HOME_STATS = [
   { value: 1, label: "complejo" },
-  { value: 50, label: "jugadas" },
-  { value: 12345, label: "impresiones" },
+  { value: 50, label: "jugadas grabadas" },
+  { value: 12345, label: "impresiones en redes" },
 ] as const;
