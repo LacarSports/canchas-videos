@@ -505,8 +505,6 @@ function Filters() {
   const cargandoAlgo = !!complejoSel && (cargando.deporte || cargando.cancha || cargando.fecha || (!!fechaRaw && cargando.hora));
 
   /* ── hint for missing field ── */
-  // Etapa inicial: todavía no hay ningún partido grabado para ver
-  const sinPartidos = !cargando.complejo && complejoOpts.length === 0;
 
   const missingHint = !canBuscar && complejoSel
     ? `Elige ${!canchaSel ? "cancha" : !fechaRaw ? "fecha" : "hora"} para buscar`
@@ -631,10 +629,7 @@ function Filters() {
             Cargando opciones…
           </span>
         )}
-        {sinPartidos && (
-          <span className="text-xs text-ink-500">Aún no hay partidos disponibles. Vuelve pronto.</span>
-        )}
-        {!buscando && !abriendo && !cargandoAlgo && !sinPartidos && missingHint && (
+        {!buscando && !abriendo && !cargandoAlgo && missingHint && (
           <span className="text-xs text-ink-500">{missingHint}</span>
         )}
 
