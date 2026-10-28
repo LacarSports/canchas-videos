@@ -80,12 +80,14 @@ interface ComboFieldProps {
   onClose: () => void;
   /** Faltó completarla al tocar "Ver partido": se tiñe de rojo suave. */
   error?: boolean;
+  /** Todavía se están trayendo los complejos de la base. */
+  loading?: boolean;
 }
 
 /* Casilla que faltó completar: rojo suave, sin gritar. */
 const ERROR_CASILLA = "bg-red-50 border-red-300 ring-2 ring-red-200/70";
 
-function ComboField({ id, label, placeholder, value, onChange, options, onSelect, isOpen, onOpen, onClose, error }: ComboFieldProps) {
+function ComboField({ id, label, placeholder, value, onChange, options, onSelect, isOpen, onOpen, onClose, error, loading }: ComboFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [filterQuery, setFilterQuery] = useState("");
 
@@ -145,7 +147,7 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
             </div>
           ) : (
             <div className="px-4 py-3.5 text-sm text-ink-500 text-center">
-              {options.length === 0 ? "Cargando..." : "Sin resultados"}
+              {options.length > 0 ? "Sin resultados" : loading ? "Cargando…" : "Aún no hay partidos disponibles"}
             </div>
           )}
         </div>
@@ -298,9 +300,9 @@ function Filters() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch all complejo options once
+  // Complejos con partidos disponibles (los videos duran 7 días: mismas fechas que el filtro)
   useEffect(() => {
-    supabase.from("partidos").select("complejo").order("complejo").then(({ data }) => {
+    supabase.from("partidos").select("complejo").in("fecha", last8).order("complejo").then(({ data }) => {
       marcarCarga("complejo", false);
       if (!data) return;
       const seen = new Map<string, string>();
@@ -311,7 +313,7 @@ function Filters() {
       }
       setComplejoOpts([...seen.values()].sort((a, b) => a.localeCompare(b, "es")));
     });
-  }, [marcarCarga]);
+  }, [marcarCarga, last8]);
 
   // Fetch deporte options when complejo changes
   useEffect(() => {
@@ -503,6 +505,9 @@ function Filters() {
   const cargandoAlgo = !!complejoSel && (cargando.deporte || cargando.cancha || cargando.fecha || (!!fechaRaw && cargando.hora));
 
   /* ── hint for missing field ── */
+  // Etapa inicial: todavía no hay ningún partido grabado para ver
+  const sinPartidos = !cargando.complejo && complejoOpts.length === 0;
+
   const missingHint = !canBuscar && complejoSel
     ? `Elige ${!canchaSel ? "cancha" : !fechaRaw ? "fecha" : "hora"} para buscar`
     : null;
@@ -526,6 +531,7 @@ function Filters() {
           options={complejoOpts}
           onSelect={handleSelectComplejo}
           error={marcada("complejo")}
+          loading={cargando.complejo}
           isOpen={openField === "complejo"}
           onOpen={() => setOpenField("complejo")}
           onClose={() => setOpenField(null)}
@@ -625,7 +631,10 @@ function Filters() {
             Cargando opciones…
           </span>
         )}
-        {!buscando && !abriendo && !cargandoAlgo && missingHint && (
+        {sinPartidos && (
+          <span className="text-xs text-ink-500">Aún no hay partidos disponibles. Vuelve pronto.</span>
+        )}
+        {!buscando && !abriendo && !cargandoAlgo && !sinPartidos && missingHint && (
           <span className="text-xs text-ink-500">{missingHint}</span>
         )}
 
