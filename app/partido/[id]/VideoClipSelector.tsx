@@ -1651,9 +1651,18 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
       {/* ── Control panel ── */}
       <div ref={controlPanelRef} className="bg-white rounded-2xl border border-line p-4 sm:p-5 space-y-4">
         {estado === "idle" && (
-          <p className="text-sm text-ink-500 text-center leading-relaxed">
-            Reproduce el video y presiona el botón en el video cuando quieras marcar el inicio de tu jugada. Los clips pueden durar hasta 2 minutos.
-          </p>
+          <ol className="space-y-2.5 text-sm text-ink-700 leading-snug">
+            {[
+              <>Toca <b className="font-bold text-brand-ink">Marcar inicio</b> en el video cuando empiece tu jugada: desde ahí se graba.</>,
+              <>Mientras graba, puedes hacer zoom y mover la toma para seguir la jugada{isMobile ? " (pellizca y arrastra con el dedo)" : " (rueda del mouse y arrastrar)"}.</>,
+              <>Toca <b className="font-bold text-ink-950">Marcar fin</b> para terminar. Cada jugada puede durar hasta 2 minutos.</>,
+            ].map((texto, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="shrink-0 w-6 h-6 rounded-full bg-brand-soft text-brand-ink text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                <span className="pt-0.5">{texto}</span>
+              </li>
+            ))}
+          </ol>
         )}
         {isGrabando && inicioSeg !== null && (
           <div className="px-4 py-3 bg-brand-soft rounded-xl space-y-2">
