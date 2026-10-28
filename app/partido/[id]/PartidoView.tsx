@@ -119,7 +119,6 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   }, [partidoId, complejo]);
 
   // Share copy feedback per clip
-  const [copiadoKey, setCopiadoKey] = useState<string | null>(null);
   const [copiedLinkKey, setCopiedLinkKey] = useState<string | null>(null);
 
   /* ── jugadas guardadas del partido ── */
@@ -301,15 +300,16 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   async function handleSidebarShare(c: JugadaUI) {
     if (!c.id) return;
     const url = `${window.location.origin}/jugada/${c.id}`;
+    const texto = `Mirá esta jugada (${c.etiqueta})`;
+    // Menú nativo de compartir (celular, Safari, Edge). Si la persona lo cierra, no pasa nada.
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await navigator.share({ title: `Jugada: ${c.etiqueta}`, text: `Mirá esta jugada (${c.etiqueta})`, url });
-        return;
-      } catch { /* cancelled */ }
+        await navigator.share({ title: `Jugada: ${c.etiqueta}`, text: texto, url });
+      } catch { /* cancelado */ }
+      return;
     }
-    navigator.clipboard.writeText(url).catch(() => {});
-    setCopiadoKey(c.key);
-    setTimeout(() => setCopiadoKey(null), 2000);
+    // Sin menú nativo (algunos navegadores de computador): se comparte por WhatsApp.
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${texto} ${url}`)}`, "_blank", "noopener");
   }
 
   const iconoDescarga = (
@@ -373,7 +373,6 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
           {clips.length > 0 && (
             <div className="space-y-2 max-h-[720px] overflow-y-auto pr-0.5">
               {clips.map((clip, idx) => {
-                const isCopied = copiadoKey === clip.key;
                 const isCopiedLink = copiedLinkKey === clip.key;
                 const isExpanded = playingKey === clip.key;
                 const esReel = clip.edicion?.formato === "reel";
@@ -488,11 +487,9 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                           <>
                             <button
                               onClick={() => handleSidebarShare(clip)}
-                              className={`flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium border transition-[border-color,transform] duration-150 active:scale-[0.97] py-2 rounded-xl ${
-                                isCopied ? "border-brand/50 text-brand-ink bg-brand-soft" : "border-line text-ink-700 hover:border-ink-300"
-                              }`}
+                              className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium border border-line text-ink-700 hover:border-ink-300 transition-[border-color,transform] duration-150 active:scale-[0.97] py-2 rounded-xl"
                             >
-                              {isCopied ? "Copiado" : "Compartir link"}
+                              Compartir link
                             </button>
                             <button
                               onClick={() => handleSidebarCopyLink(clip)}
