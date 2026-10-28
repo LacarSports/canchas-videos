@@ -36,7 +36,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         </div>
         <div>
           <h2 className="text-lg font-semibold text-ink-950">Crea tu cuenta para ver el partido</h2>
-          <p className="text-sm text-ink-500 mt-1.5 leading-relaxed">
+          <p className="text-sm text-ink-500 mt-1.5 leading-relaxed text-justify [text-align-last:center] hyphens-auto">
             Solo te tomará un momento y no tendrás que volver a hacerlo. Con tu cuenta puedes ver
             el partido completo, marcar tus jugadas y descargar tus clips.
           </p>
@@ -55,7 +55,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             Ya tengo cuenta, iniciar sesión
           </Link>
         </div>
-        <p className="text-[11px] text-ink-500 leading-relaxed">
+        <p className="text-[11px] text-ink-500 leading-relaxed text-justify [text-align-last:center] hyphens-auto">
           Pedimos una cuenta para proteger a quienes aparecen en los videos, conforme a nuestros{" "}
           <a href="/terminos" target="_blank" className="text-brand-ink font-semibold underline underline-offset-2">
             Términos y Condiciones

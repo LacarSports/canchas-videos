@@ -241,7 +241,7 @@ function LoginInner() {
                   onChange={(e) => setAceptaTerminos(e.target.checked)}
                   className="mt-0.5 w-4 h-4 shrink-0 accent-[#2dc9b7]"
                 />
-                <span className="text-xs text-ink-500 leading-relaxed">
+                <span className="text-xs text-ink-500 leading-relaxed text-justify hyphens-auto">
                   Acepto los{" "}
                   <a href="/terminos" target="_blank" className={linkCls}>
                     Términos y Condiciones
@@ -311,7 +311,7 @@ function LoginInner() {
 
           {/* Nota legal para Google (el registro con Google no pasa por la casilla) */}
           {modo === "login" && (
-            <p className="text-[11px] text-ink-500 text-center mt-4 leading-relaxed">
+            <p className="text-[11px] text-ink-500 mt-4 leading-relaxed text-justify [text-align-last:center] hyphens-auto">
               Al continuar aceptas los{" "}
               <a href="/terminos" target="_blank" className={linkCls}>
                 Términos y Condiciones
