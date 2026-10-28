@@ -7,8 +7,8 @@ export const metadata: Metadata = {
     "Términos y Condiciones de Uso de la plataforma audiovisual deportiva LacarSports, conforme a las Leyes N° 19.628 y N° 21.719 de la República de Chile.",
 };
 
-const ul = "list-disc pl-5 space-y-1.5 marker:text-crystal-400/60";
-const mail = "text-crystal-400 hover:text-crystal-300 underline underline-offset-2";
+const ul = "list-disc pl-5 space-y-1.5 marker:text-brand";
+const mail = "text-brand-ink hover:text-ink-950 font-semibold underline underline-offset-2";
 
 export default function TerminosPage() {
   return (
@@ -111,19 +111,19 @@ export default function TerminosPage() {
               </p>
               <ul className={ul}>
                 <li>
-                  <strong className="text-snow">El Interés Legítimo comercial y recreativo:</strong>{" "}
+                  <strong className="text-ink-950 font-semibold">El Interés Legítimo comercial y recreativo:</strong>{" "}
                   Destinado a proveer un servicio de entretención y análisis deportivo en recintos
                   deportivos comerciales debidamente señalizados, donde el Usuario tiene la
                   expectativa razonable de ser filmado en el marco del juego.
                 </li>
                 <li>
-                  <strong className="text-snow">El Consentimiento Expreso:</strong> Otorgado
+                  <strong className="text-ink-950 font-semibold">El Consentimiento Expreso:</strong> Otorgado
                   formalmente por el Usuario al momento de registrarse en la Plataforma para
                   buscar, reproducir o interactuar con el Contenido.
                 </li>
               </ul>
               <p>
-                3.2 <strong className="text-snow">Mecanismo de Exclusión Inmediata (Derechos ARCO):</strong>{" "}
+                3.2 <strong className="text-ink-950 font-semibold">Mecanismo de Exclusión Inmediata (Derechos ARCO):</strong>{" "}
                 La Plataforma garantiza el derecho permanente de Acceso, Rectificación, Cancelación
                 y Oposición. Cualquier Usuario o tercero que no desee que su imagen permanezca
                 alojada en el Portal podrá solicitar la baja inmediata remitiendo un correo
@@ -133,7 +133,7 @@ export default function TerminosPage() {
                 solicitud.
               </p>
               <p>
-                3.3 <strong className="text-snow">Prohibición de Datos Sensibles:</strong> Está
+                3.3 <strong className="text-ink-950 font-semibold">Prohibición de Datos Sensibles:</strong> Está
                 estrictamente prohibido cargar, comentar o asociar datos sensibles al perfil
                 (ideologías, religión, aspectos de salud física o mental ajenos al deporte). Las
                 imágenes se procesan de forma automatizada y con fines exclusivamente recreativos.
@@ -214,12 +214,12 @@ export default function TerminosPage() {
                 archivo privado en el dispositivo personal del Usuario.
               </p>
               <p>
-                6.2 <strong className="text-snow">Limitación de Uso Comercial:</strong> Queda
+                6.2 <strong className="text-ink-950 font-semibold">Limitación de Uso Comercial:</strong> Queda
                 prohibido vender, licenciar o lucrar con el material descargado. El Usuario solo
                 podrá conservar el fragmento para fines personales y domésticos.
               </p>
               <p>
-                6.3 <strong className="text-snow">Estatuto de Responsabilidad por Difusión:</strong>{" "}
+                6.3 <strong className="text-ink-950 font-semibold">Estatuto de Responsabilidad por Difusión:</strong>{" "}
                 La transmisión del partido completo se realiza de manera segura y cerrada por
                 streaming dentro del Portal. Si el Usuario decide exportar, descargar un clip de
                 video o difundir enlaces en redes sociales o plataformas externas (como Instagram,

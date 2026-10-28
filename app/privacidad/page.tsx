@@ -7,9 +7,9 @@ export const metadata: Metadata = {
     "Política de Privacidad y Tratamiento de Datos Personales de LacarSports, conforme a las Leyes N° 19.628 y N° 21.719 de la República de Chile.",
 };
 
-const ul = "list-disc pl-5 space-y-1.5 marker:text-crystal-400/60";
-const ol = "list-decimal pl-5 space-y-1.5 marker:text-crystal-400/60";
-const mail = "text-crystal-400 hover:text-crystal-300 underline underline-offset-2";
+const ul = "list-disc pl-5 space-y-1.5 marker:text-brand";
+const ol = "list-decimal pl-5 space-y-1.5 marker:text-brand";
+const mail = "text-brand-ink hover:text-ink-950 font-semibold underline underline-offset-2";
 
 export default function PrivacidadPage() {
   return (
@@ -41,8 +41,8 @@ export default function PrivacidadPage() {
                 Todas las operaciones de recopilación, almacenamiento, sistematización y
                 procesamiento de datos se ejecutan en estricta observancia de la normativa vigente
                 en la República de Chile, con especial sujeción a la{" "}
-                <strong className="text-snow">Ley N° 19.628</strong> sobre Protección de la Vida
-                Privada y a la <strong className="text-snow">Ley N° 21.719</strong> que regula el
+                <strong className="text-ink-950 font-semibold">Ley N° 19.628</strong> sobre Protección de la Vida
+                Privada y a la <strong className="text-ink-950 font-semibold">Ley N° 21.719</strong> que regula el
                 tratamiento de datos personales y crea la Agencia de Protección de Datos
                 Personales.
               </p>
@@ -60,31 +60,31 @@ export default function PrivacidadPage() {
               </p>
               <ul className={ul}>
                 <li>
-                  <strong className="text-snow">Identificadores de identidad:</strong> Nombre
+                  <strong className="text-ink-950 font-semibold">Identificadores de identidad:</strong> Nombre
                   completo, apellidos, alias o identificadores del perfil digital, RUT o número de
                   documento nacional de identidad, así como las imágenes capturadas en los
                   archivos de video o resúmenes de jugadas.
                 </li>
                 <li>
-                  <strong className="text-snow">Datos de contacto:</strong> Dirección de correo
+                  <strong className="text-ink-950 font-semibold">Datos de contacto:</strong> Dirección de correo
                   electrónico principal, números de telefonía móvil y referencias geográficas
                   informativas.
                 </li>
                 <li>
-                  <strong className="text-snow">Antecedentes de naturaleza técnica:</strong>{" "}
+                  <strong className="text-ink-950 font-semibold">Antecedentes de naturaleza técnica:</strong>{" "}
                   Dirección de Protocolo de Internet (IP), credenciales de autenticación, datos de
                   navegación en el Portal, tipo y versión del explorador web, huso horario local,
                   sistema operativo del terminal y tecnologías empleadas para acceder a la
                   plataforma.
                 </li>
                 <li>
-                  <strong className="text-snow">Información del perfil:</strong> Nombre de
+                  <strong className="text-ink-950 font-semibold">Información del perfil:</strong> Nombre de
                   registro de la cuenta, claves de seguridad encriptadas, intereses deportivos
                   declarados, configuraciones de personalización, comentarios y aportes en
                   formularios internos.
                 </li>
                 <li>
-                  <strong className="text-snow">Estadísticas de uso:</strong> Datos relativos al
+                  <strong className="text-ink-950 font-semibold">Estadísticas de uso:</strong> Datos relativos al
                   comportamiento de navegación del Usuario dentro del Sitio, tiempo de
                   visualización y patrones de interacción con las herramientas de la interfaz.
                 </li>
@@ -113,7 +113,7 @@ export default function PrivacidadPage() {
                 captura audiovisual.
               </p>
               <p>
-                <strong className="text-snow">El &ldquo;Botón de Oposición Deportiva&rdquo;:</strong>{" "}
+                <strong className="text-ink-950 font-semibold">El &ldquo;Botón de Oposición Deportiva&rdquo;:</strong>{" "}
                 Si por cualquier causa personal un participante o tercero no desea figurar en las
                 retransmisiones del Sitio, podrá exigir de forma directa la remoción preventiva
                 del partido enviando un correo a{" "}
@@ -220,7 +220,7 @@ export default function PrivacidadPage() {
               </p>
               <ul className={ul}>
                 <li>
-                  <strong className="text-snow">Registros de las Grabaciones de AudioVideo:</strong>{" "}
+                  <strong className="text-ink-950 font-semibold">Registros de las Grabaciones de AudioVideo:</strong>{" "}
                   En observancia del principio de minimización de datos, los archivos de video de
                   los partidos completos grabados de manera automatizada en las canchas de los
                   complejos deportivos permanecerán disponibles en el Portal por un plazo máximo
@@ -232,7 +232,7 @@ export default function PrivacidadPage() {
                   los servidores de la Organización.
                 </li>
                 <li>
-                  <strong className="text-snow">Información del Perfil de Usuario:</strong> Los
+                  <strong className="text-ink-950 font-semibold">Información del Perfil de Usuario:</strong> Los
                   antecedentes de registro de la cuenta se mantendrán vigentes mientras el Usuario
                   no solicite su baja formal. No obstante, si una cuenta permanece inactiva (sin
                   inicios de sesión registrados) por un espacio continuo de doce (12) meses, se
@@ -251,7 +251,7 @@ export default function PrivacidadPage() {
                 De conformidad con las garantías reconocidas por la legislación nacional, el
                 Usuario (o cualquier deportista captado incidentalmente en los registros
                 audiovisuales) ostenta el derecho inalienable de{" "}
-                <strong className="text-snow">
+                <strong className="text-ink-950 font-semibold">
                   Acceso, Rectificación, Cancelación y Oposición (Derechos ARCO)
                 </strong>{" "}
                 sobre sus datos personales.
