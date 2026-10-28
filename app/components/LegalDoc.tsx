@@ -56,7 +56,7 @@ export default function LegalDoc({
         </article>
       </div>
 
-      <Footer />
+      <Footer tarjetasLegales={false} />
     </main>
   );
 }
