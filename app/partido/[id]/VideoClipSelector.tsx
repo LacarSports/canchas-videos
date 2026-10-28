@@ -1014,7 +1014,10 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
       <div
         ref={containerRef}
         tabIndex={0}
-        className={`relative overflow-hidden bg-black select-none outline-none ${isCustomFullscreen ? "" : "rounded-xl"}`}
+        className={`relative overflow-hidden bg-black select-none outline-none ${isCustomFullscreen ? "" : "rounded-xl"} ${
+          // 9:16 fuera de pantalla completa: el contenedor toma el ancho del recuadro, sin franjas negras
+          modoReel && !isCustomFullscreen && !isFullscreen ? "w-fit max-w-full mx-auto" : ""
+        }`}
         style={{
           cursor: zoom > 1 || modoReel ? (isDragging ? "grabbing" : "grab") : "pointer",
           // Pantalla completa o con zoom: los dedos mueven el encuadre. Sin zoom en la
