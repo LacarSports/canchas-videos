@@ -1654,7 +1654,7 @@ function VideoClipSelector({ src, title, partidoId, deporte, complejo, numeroCan
           <ol className="space-y-2.5 text-sm text-ink-700 leading-snug">
             {[
               <>Toca <b className="font-bold text-brand-ink">Marcar inicio</b> en el video cuando empiece tu jugada: desde ahí se graba.</>,
-              <>Mientras graba, puedes hacer zoom y mover la toma para seguir la jugada{isMobile ? " (pellizca y arrastra con el dedo)" : " (rueda del mouse y arrastrar)"}.</>,
+              <>Mientras graba, puedes hacer zoom y mover la toma para seguir la jugada{isMobile ? " (pellizca y arrastra con el dedo)" : " (zoom con la rueda del mouse o con dos dedos en el mousepad; mueve la toma arrastrando)"}.</>,
               <>Toca <b className="font-bold text-ink-950">Marcar fin</b> para terminar. Cada jugada puede durar hasta 2 minutos.</>,
             ].map((texto, i) => (
               <li key={i} className="flex gap-3">
