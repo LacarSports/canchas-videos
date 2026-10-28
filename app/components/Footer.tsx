@@ -11,8 +11,61 @@ const SOCIALS = [
   },
 ];
 
-export default function Footer() {
+const LEGALES = [
+  {
+    href: "/terminos",
+    titulo: "Términos y Condiciones",
+    texto: "Reglas de uso del servicio y de tus videos.",
+    icono: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zm7 0v5h5" />,
+  },
+  {
+    href: "/privacidad",
+    titulo: "Política de Privacidad",
+    texto: "Qué datos guardamos y cómo los cuidamos.",
+    icono: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3zm-3 9l2 2 4-4" />,
+  },
+];
+
+/** Dos tarjetas a Términos y Privacidad, justo antes del pie de página. */
+function TarjetasLegales() {
   return (
+    <section aria-label="Información legal" className="bg-white px-5 sm:px-6 pb-10 sm:pb-14">
+      <div className="max-w-6xl mx-auto grid sm:grid-cols-2 gap-3 sm:gap-4">
+        {LEGALES.map((l) => (
+          <a
+            key={l.href}
+            href={l.href}
+            className="group flex items-center gap-4 rounded-2xl bg-white border border-line/70 px-5 py-4 shadow-[0_10px_30px_-14px_rgba(11,29,38,0.22)] transition-[border-color,transform] duration-150 hover:border-brand/50 active:scale-[0.98]"
+          >
+            <span className="shrink-0 w-11 h-11 rounded-xl bg-brand-soft text-brand-ink flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                {l.icono}
+              </svg>
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[15px] font-bold text-ink-950">{l.titulo}</span>
+              <span className="block text-[13px] text-ink-500 leading-snug mt-0.5">{l.texto}</span>
+            </span>
+            <svg
+              className="shrink-0 w-5 h-5 text-brand transition-transform duration-200 group-hover:translate-x-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default function Footer({ tarjetasLegales = true }: { tarjetasLegales?: boolean }) {
+  return (
+    <>
+    {tarjetasLegales && <TarjetasLegales />}
     <footer className="relative bg-white border-t border-line px-6 pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
       <div className="max-w-7xl mx-auto relative flex flex-col sm:flex-row items-center justify-between gap-6">
         {/* Logo + copy */}
@@ -59,5 +112,6 @@ export default function Footer() {
         </div>
       </div>
     </footer>
+    </>
   );
 }
