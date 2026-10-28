@@ -35,10 +35,8 @@ export const COMPLEJOS_ACTIVOS = [
 ] as const;
 
 // ── Cifras de Lacar (franja sobre "Complejos con Lacar") ──
-// ⚠️ NÚMEROS FICTICIOS de prueba, pedidos para ver el diseño. Reemplazar por
-// datos reales antes de publicar en lacarsports.cl.
 export const HOME_STATS = [
-  { value: 23, label: "complejos" },
-  { value: 584, label: "jugadas grabadas" },
-  { value: 593038, label: "impresiones en redes" },
+  { value: 1, label: "complejo" },
+  { value: 50, label: "jugadas" },
+  { value: 12345, label: "impresiones" },
 ] as const;
