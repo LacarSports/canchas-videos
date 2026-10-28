@@ -26,9 +26,9 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
         return (
           <div
             key={i}
-            className="rounded-2xl border border-mist-500/12 bg-lake-900/60 backdrop-blur-sm overflow-hidden transition-colors duration-200"
+            className="rounded-2xl border border-line bg-white overflow-hidden transition-colors duration-200"
             style={{
-              borderColor: isOpen ? "rgba(41,196,173,0.3)" : undefined,
+              borderColor: isOpen ? "rgba(45,201,183,0.6)" : undefined,
             }}
           >
             <h3>
@@ -38,11 +38,11 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
                 aria-expanded={isOpen}
                 aria-controls={panelId}
                 onClick={() => setOpen(isOpen ? null : i)}
-                className="w-full min-h-[56px] flex items-center justify-between gap-4 text-left px-5 py-4 text-snow font-medium text-[15px] hover:bg-white/[0.03] transition-colors duration-200"
+                className="w-full min-h-[56px] flex items-center justify-between gap-4 text-left px-5 py-4 text-ink-950 font-semibold text-[15px] transition-colors duration-200"
               >
                 <span>{item.q}</span>
                 <span
-                  className="shrink-0 w-7 h-7 rounded-full bg-crystal-400/12 border border-crystal-400/25 flex items-center justify-center text-crystal-400 transition-transform duration-300"
+                  className="shrink-0 w-7 h-7 rounded-full bg-brand-soft flex items-center justify-center text-brand-ink transition-transform duration-200"
                   style={{ transform: isOpen ? "rotate(45deg)" : "rotate(0deg)" }}
                   aria-hidden="true"
                 >
@@ -63,7 +63,7 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
               }}
             >
               <div className="overflow-hidden">
-                <p className="px-5 pb-5 text-mist-500 text-sm leading-relaxed">
+                <p className="px-5 pb-5 text-ink-500 text-sm leading-relaxed">
                   {item.a}
                 </p>
               </div>

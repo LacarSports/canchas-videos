@@ -24,10 +24,10 @@ export default function ShareMatchButton({ partidoId }: { partidoId: string }) {
   return (
     <button
       onClick={handleShare}
-      className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium border transition-all ${
+      className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold border transition-[border-color,transform] duration-150 active:scale-[0.97] ${
         copied
-          ? "bg-crystal-400/15 border-crystal-400/30 text-crystal-300"
-          : "bg-white/5 border-white/10 text-mist-400 hover:text-snow hover:border-white/20 hover:bg-white/8"
+          ? "bg-brand-soft border-brand/40 text-brand-ink"
+          : "bg-white border-line text-ink-700 hover:border-ink-300"
       }`}
     >
       {copied ? (

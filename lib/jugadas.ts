@@ -48,3 +48,40 @@ export async function insertarJugada(j: Omit<JugadaRow, "id">): Promise<string |
   const r2 = await supabase.from("jugadas").insert(base).select("id").single();
   return (r2.data?.id as string) ?? null;
 }
+
+/*
+ * Borrar jugadas. La tabla no guarda quién creó cada jugada, así que:
+ * - Las que se crearon en este navegador se intentan borrar de la base (si la
+ *   política RLS de `jugadas` no permite borrar, la llamada simplemente no hace nada).
+ * - Siempre se ocultan en este navegador, para que no vuelvan a aparecer al recargar.
+ */
+const CLAVE_MIAS = "lacar_jugadas_mias";
+const claveOcultas = (partidoId: string) => `lacar_jugadas_ocultas_${partidoId}`;
+
+function leerLista(clave: string): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(clave) ?? "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarLista(clave: string, lista: string[]) {
+  try { localStorage.setItem(clave, JSON.stringify(lista.slice(-200))); } catch { /* sin almacenamiento */ }
+}
+
+export function marcarComoMia(id: string) {
+  guardarLista(CLAVE_MIAS, [...leerLista(CLAVE_MIAS), id]);
+}
+
+export function jugadasOcultas(partidoId: string): string[] {
+  return leerLista(claveOcultas(partidoId));
+}
+
+export async function borrarJugada(partidoId: string, id: string) {
+  guardarLista(claveOcultas(partidoId), [...jugadasOcultas(partidoId), id]);
+  if (leerLista(CLAVE_MIAS).includes(id)) {
+    await supabase.from("jugadas").delete().eq("id", id);
+  }
+}

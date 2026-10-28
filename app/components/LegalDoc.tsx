@@ -27,7 +27,7 @@ export default function LegalDoc({
         {/* Glow sutil arriba */}
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(41,196,173,0.07), transparent)" }}
+          style={{ background: "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(45,201,183,0.07), transparent)" }}
         />
 
         <article className="max-w-3xl mx-auto relative">
@@ -36,7 +36,7 @@ export default function LegalDoc({
           <p className="text-mist-700 text-xs mt-3">Última actualización: {updated}</p>
           <div
             className="w-12 h-0.5 mt-4 mb-8 rounded-full"
-            style={{ background: "linear-gradient(90deg, #29c4ad, transparent)" }}
+            style={{ background: "linear-gradient(90deg, #2dc9b7, transparent)" }}
           />
 
           {intro && (

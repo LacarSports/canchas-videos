@@ -1,17 +1,15 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Modo = "login" | "registro" | "recuperar";
 
 const inputCls =
-  "w-full bg-lake-950/60 border border-lake-700 focus:border-crystal-400/50 focus:ring-1 focus:ring-crystal-400/30 text-snow placeholder-mist-700 rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-200";
-const labelCls = "block text-xs font-semibold uppercase tracking-widest text-mist-600 mb-2";
-const linkCls = "text-crystal-400 hover:text-crystal-300 underline underline-offset-2";
+  "w-full bg-white border border-line focus:border-brand focus:ring-2 focus:ring-brand/30 text-ink-950 placeholder-ink-300 rounded-xl px-4 py-3 text-base outline-none transition-[border-color,box-shadow] duration-150";
+const labelCls = "block text-[13px] font-semibold text-ink-700 mb-1.5";
+const linkCls = "text-brand-ink font-semibold underline underline-offset-2";
 
 function sanitizeNext(raw: string | null): string {
   // Solo rutas internas: evita open-redirects tipo ?next=https://malicioso.com
@@ -129,48 +127,26 @@ function LoginInner() {
 
   if (checking) {
     return (
-      <div className="min-h-[100dvh] bg-lake-950 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-[100dvh] -mt-[72px] pt-[72px] bg-surface flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="relative min-h-[100dvh] bg-lake-950 flex items-center justify-center px-4 py-12 overflow-hidden">
-      {/* Water ambient blobs (mismo estilo que /auth/complejo) */}
-      <div
-        className="absolute -top-48 -left-32 w-[500px] h-[500px] rounded-full pointer-events-none animate-water-drift"
-        style={{ background: "radial-gradient(circle, #29c4ad, transparent 70%)", filter: "blur(90px)" }}
-      />
-      <div
-        className="absolute -bottom-40 -right-40 w-[420px] h-[420px] rounded-full pointer-events-none animate-water-drift-slow"
-        style={{ background: "radial-gradient(circle, #4daec4, transparent 70%)", filter: "blur(80px)", animationDelay: "-7s" }}
-      />
+    <main className="relative min-h-[100dvh] -mt-[72px] pt-[72px] bg-surface flex items-center justify-center px-4 py-12 overflow-hidden">
 
       <div className="relative z-10 w-full max-w-sm">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 justify-center mb-8">
-          <Image
-            src="/logo-small.png"
-            alt="Lacar Sports"
-            width={38}
-            height={38}
-            className="drop-shadow-[0_0_12px_rgba(41,196,173,0.5)]"
-          />
-          <span className="text-xl font-bold text-snow tracking-tight">
-            Lacar <span className="text-crystal-400">Sports</span>
-          </span>
-        </Link>
 
-        <div className="bg-lake-800/60 border border-mist-500/10 rounded-2xl p-8 shadow-[0_32px_80px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
+        <div className="bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-[0_16px_40px_rgba(11,29,38,0.08)]">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-xl font-bold text-snow mb-1 tracking-tight">
+            <h1 className="text-xl font-bold text-ink-950 mb-1 tracking-tight">
               {modo === "login" && "Inicia sesión"}
               {modo === "registro" && "Crea tu cuenta"}
               {modo === "recuperar" && "Recuperar contraseña"}
             </h1>
-            <p className="text-sm text-mist-600">
+            <p className="text-sm text-ink-500">
               {modo === "login" && "Entra para ver tus partidos y descargar tus jugadas"}
               {modo === "registro" && "Solo te tomará un momento, y no tendrás que volver a hacerlo"}
               {modo === "recuperar" && "Te enviaremos un enlace a tu correo"}
@@ -183,7 +159,7 @@ function LoginInner() {
               <button
                 type="button"
                 onClick={handleGoogle}
-                className="w-full flex items-center justify-center gap-2.5 bg-snow hover:bg-white text-lake-950 font-semibold py-2.5 rounded-xl text-sm transition-all active:scale-[0.98] mb-4"
+                className="w-full flex items-center justify-center gap-2.5 bg-white border border-line hover:border-ink-300 text-ink-950 font-semibold py-3.5 rounded-xl text-base transition-[border-color,transform] duration-150 active:scale-[0.97] mb-4"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z" />
@@ -195,9 +171,9 @@ function LoginInner() {
               </button>
 
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1 h-px bg-mist-500/15" />
-                <span className="text-[11px] text-mist-700 uppercase tracking-widest">o con tu correo</span>
-                <div className="flex-1 h-px bg-mist-500/15" />
+                <div className="flex-1 h-px bg-line" />
+                <span className="text-[11px] text-ink-500 uppercase tracking-widest">o con tu correo</span>
+                <div className="flex-1 h-px bg-line" />
               </div>
             </>
           )}
@@ -248,7 +224,7 @@ function LoginInner() {
                   <button
                     type="button"
                     onClick={() => cambiarModo("recuperar")}
-                    className="text-xs text-mist-600 hover:text-crystal-400 mt-2 transition-colors"
+                    className="text-[13px] text-ink-500 hover:text-brand-ink mt-2 transition-colors"
                   >
                     ¿Olvidaste tu contraseña?
                   </button>
@@ -263,9 +239,9 @@ function LoginInner() {
                   type="checkbox"
                   checked={aceptaTerminos}
                   onChange={(e) => setAceptaTerminos(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#29c4ad]"
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#2dc9b7]"
                 />
-                <span className="text-xs text-mist-500 leading-relaxed">
+                <span className="text-xs text-ink-500 leading-relaxed">
                   Acepto los{" "}
                   <a href="/terminos" target="_blank" className={linkCls}>
                     Términos y Condiciones
@@ -281,12 +257,12 @@ function LoginInner() {
             )}
 
             {error && (
-              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
                 {error}
               </p>
             )}
             {info && (
-              <p className="text-xs text-crystal-300 bg-crystal-400/8 border border-crystal-400/20 rounded-lg px-3 py-2">
+              <p className="text-sm text-brand-ink bg-brand-soft rounded-xl px-3 py-2.5">
                 {info}
               </p>
             )}
@@ -294,7 +270,7 @@ function LoginInner() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-crystal-400 hover:bg-crystal-300 disabled:opacity-40 text-lake-950 text-sm font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-40 text-white text-base font-bold transition-[background-color,transform] duration-150 active:scale-[0.97] flex items-center justify-center gap-2"
             >
               {loading && (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -309,11 +285,11 @@ function LoginInner() {
           </form>
 
           {/* Cambio de modo */}
-          <p className="text-sm text-mist-600 text-center mt-5">
+          <p className="text-sm text-ink-500 text-center mt-5">
             {modo === "login" && (
               <>
                 ¿No tienes cuenta?{" "}
-                <button type="button" onClick={() => cambiarModo("registro")} className="text-crystal-400 hover:text-crystal-300 font-semibold transition-colors">
+                <button type="button" onClick={() => cambiarModo("registro")} className="text-brand-ink font-bold">
                   Créala aquí
                 </button>
               </>
@@ -321,13 +297,13 @@ function LoginInner() {
             {modo === "registro" && (
               <>
                 ¿Ya tienes cuenta?{" "}
-                <button type="button" onClick={() => cambiarModo("login")} className="text-crystal-400 hover:text-crystal-300 font-semibold transition-colors">
+                <button type="button" onClick={() => cambiarModo("login")} className="text-brand-ink font-bold">
                   Inicia sesión
                 </button>
               </>
             )}
             {modo === "recuperar" && (
-              <button type="button" onClick={() => cambiarModo("login")} className="text-crystal-400 hover:text-crystal-300 font-semibold transition-colors">
+              <button type="button" onClick={() => cambiarModo("login")} className="text-brand-ink font-bold">
                 Volver a iniciar sesión
               </button>
             )}
@@ -335,7 +311,7 @@ function LoginInner() {
 
           {/* Nota legal para Google (el registro con Google no pasa por la casilla) */}
           {modo === "login" && (
-            <p className="text-[11px] text-mist-700 text-center mt-4 leading-relaxed">
+            <p className="text-[11px] text-ink-500 text-center mt-4 leading-relaxed">
               Al continuar aceptas los{" "}
               <a href="/terminos" target="_blank" className={linkCls}>
                 Términos y Condiciones
@@ -357,8 +333,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[100dvh] bg-lake-950 flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-[100dvh] -mt-[72px] pt-[72px] bg-surface flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >

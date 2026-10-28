@@ -4,10 +4,15 @@ import SearchFilters from "./components/SearchFilters";
 import PartidoCard from "./components/PartidoCard";
 import ResultsContainer from "./components/ResultsContainer";
 import WhatsAppButton from "./components/WhatsAppButton";
+import Link from "next/link";
 import Reveal from "./components/Reveal";
-import HeroParallax from "./components/HeroParallax";
 import Footer from "./components/Footer";
-import { HOME_TESTIMONIALS } from "@/lib/site";
+import SectionHeader from "./components/SectionHeader";
+import MarqueeBand from "./components/MarqueeBand";
+import Resenas from "./components/Resenas";
+import CountUp from "./components/CountUp";
+import DatosClave from "./components/DatosClave";
+import { COMPLEJOS_ACTIVOS, HOME_STATS } from "@/lib/site";
 
 interface Partido {
   id: string;
@@ -63,246 +68,122 @@ export default async function HomePage({
   }
 
   return (
-    <main className="min-h-[100dvh] bg-lake-950">
+    <main className="min-h-[100dvh] -mt-[72px] pt-[72px] bg-white text-ink-950">
 
       {/* ══════════════════════════════════════════════ */}
-      {/* HERO — split screen asimétrico                */}
+      {/* HERO                                           */}
       {/* ══════════════════════════════════════════════ */}
-      <section className="relative min-h-[100dvh] flex items-center">
-
-        {/* Foto de fondo */}
-        <Image
-          src="/hero.jpg"
-          alt=""
-          fill
-          priority
-          className="object-cover object-center"
-          sizes="100vw"
+      <section className="relative overflow-hidden bg-white">
+        {/* Luz suave de marca detrás del producto */}
+        <div
+          className="absolute -top-32 right-[-20%] w-[520px] h-[520px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(45,201,183,0.16), transparent 65%)" }}
         />
 
-        {/* Capas de overlay — legibilidad + mood */}
-        <div className="absolute inset-0 bg-lake-950/70 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-lake-950/95 via-lake-950/60 to-lake-950/20 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-lake-950/80 via-transparent to-lake-950/30 pointer-events-none" />
-
-        {/* Blobs de color — con parallax sutil al mouse (desktop). Clipeados
-            en su propio contenedor para no afectar el touch en iOS. */}
-        <HeroParallax strength={8} className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div
-            className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full animate-water-drift"
-            style={{ background: "radial-gradient(circle, rgba(41,196,173,0.22), transparent 70%)", filter: "blur(80px)" }}
-          />
-          <div
-            className="absolute top-1/3 right-0 w-[500px] h-[500px] rounded-full animate-water-drift-slow"
-            style={{ background: "radial-gradient(circle, rgba(77,174,196,0.15), transparent 70%)", filter: "blur(72px)", animationDelay: "-8s" }}
-          />
-          <div
-            className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(41,196,173,0.08), transparent 70%)", filter: "blur(60px)" }}
-          />
-        </HeroParallax>
-
-        {/* Content grid */}
-        <div className="relative z-10 max-w-7xl mx-auto px-6 w-full py-28 grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-16 items-center">
-
-          {/* ── Left — copy ── */}
-          <div>
-            <h1
-              className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tighter leading-[0.95] mb-6 animate-slide-up"
-              style={{ animationDelay: "0.08s" }}
+        <div className="relative max-w-6xl mx-auto px-5 sm:px-6 pt-6 pb-14 sm:pt-12 sm:pb-20 grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-8 lg:gap-12 items-center">
+          {/* Texto */}
+          <div className="animate-slide-up">
+            <a
+              href="#complejos"
+              className="inline-flex items-center gap-2 bg-brand-soft text-brand-ink text-[13px] font-semibold pl-2.5 pr-3 py-1.5 rounded-full mb-5 active:scale-[0.97] transition-transform duration-150"
             >
-              <span className="text-white" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9), 0 0px 40px rgba(0,0,0,0.5)" }}>Tu partido,</span>
-              <br />
-              <span
-                className="text-crystal-400"
-                style={{ textShadow: "0 0 50px rgba(41,196,173,0.6), 0 2px 20px rgba(0,0,0,0.9)" }}
-              >
-                tu momento.
+              <span className="relative flex w-2 h-2">
+                <span className="absolute inset-0 rounded-full bg-brand animate-ping opacity-60" />
+                <span className="relative w-2 h-2 rounded-full bg-brand" />
               </span>
+              Ya grabando en {COMPLEJOS_ACTIVOS[0].nombre}
+            </a>
+
+            <h1 className="text-[44px] sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] text-ink-950">
+              Tu partido,
+              <br />
+              <span className="text-brand">tu momento.</span>
             </h1>
 
-            {/* Descripción con fondo glassmorphism para legibilidad */}
-            <p
-              className="text-base text-white/90 mb-10 leading-relaxed max-w-[44ch] animate-slide-up px-4 py-3 rounded-xl backdrop-blur-md"
-              style={{
-                animationDelay: "0.16s",
-                background: "rgba(9,21,32,0.55)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              Busca tu partido por complejo, cancha y fecha. Revívelo completo,
-              etiqueta las jugadas y descarga los clips que quieras.
+            <p className="text-[17px] sm:text-lg text-ink-500 mt-4 leading-relaxed max-w-[38ch]">
+              La cámara de tu cancha grabó el partido. Encuéntralo, marca tu jugada
+              y descárgala en tu celular.
             </p>
 
-            <div
-              className="flex flex-wrap items-center gap-4 animate-slide-up"
-              style={{ animationDelay: "0.24s" }}
-            >
-              {/* Botón glass — no compite con la foto */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-7">
               <a
                 href="#buscador"
-                className="inline-flex items-center gap-2 font-bold px-7 py-3.5 rounded-xl text-sm text-white transition-all duration-200 active:scale-[0.98] backdrop-blur-md"
-                style={{
-                  background: "rgba(41,196,173,0.85)",
-                  boxShadow: "0 0 32px rgba(41,196,173,0.45), 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)",
-                  border: "1px solid rgba(41,196,173,0.6)",
-                }}
+                className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold text-base px-7 py-4 rounded-2xl transition-[background-color,transform] duration-150 active:scale-[0.97] shadow-[0_10px_24px_rgba(45,201,183,0.35)]"
               >
                 Buscar mi partido
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
+              </a>
+              <a
+                href="#como-funciona"
+                className="inline-flex items-center justify-center text-ink-700 hover:text-ink-950 font-semibold text-base px-6 py-4 rounded-2xl border border-line hover:border-ink-300 transition-[border-color,transform] duration-150 active:scale-[0.97]"
+              >
+                Cómo funciona
               </a>
             </div>
           </div>
 
-          {/* ── Right — floating card mockup (con parallax al mouse) ── */}
-          <div className="hidden lg:flex justify-center items-center">
-            <HeroParallax strength={18}>
-              <a
-                href="#buscador"
-                aria-label="Buscar mi partido"
-                className="group relative animate-float block cursor-pointer"
-              >
-                {/* Glow halo */}
-                <div
-                  className="absolute -inset-8 rounded-3xl pointer-events-none"
-                  style={{ background: "radial-gradient(circle, rgba(41,196,173,0.22), transparent 70%)", filter: "blur(28px)" }}
+          {/* Producto: así se ve un partido en Lacar */}
+          <div className="relative animate-slide-up" style={{ animationDelay: "0.1s" }}>
+            <div className="relative rounded-[28px] overflow-hidden bg-ink-950 shadow-[0_24px_60px_rgba(11,29,38,0.22)] ring-1 ring-black/5">
+              <div className="relative aspect-video">
+                <Image
+                  src="/thumbnail.png"
+                  alt="Partido grabado por una cámara de Lacar"
+                  fill
+                  priority
+                  className="object-cover"
+                  sizes="(min-width: 1024px) 520px, 100vw"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20" />
 
-                {/* Card */}
-                <div className="relative bg-lake-900/80 border border-crystal-400/20 group-hover:border-crystal-400/45 rounded-2xl overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl w-[340px] transition-colors duration-300">
+                <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-black/55 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  Cancha 2 · 20:00
+                </span>
 
-                  {/* Video area */}
-                  <div className="aspect-video relative overflow-hidden flex items-center justify-center">
+                {/* Botón del editor, igual al real */}
+                <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 bg-brand text-white text-xs font-bold px-3 py-2 rounded-xl shadow-lg">
+                  <span className="w-2 h-2 rounded-full bg-white" />
+                  Marcar inicio
+                </span>
+                <span className="absolute bottom-3.5 right-3 text-[11px] font-mono text-white/90 bg-black/50 px-2 py-0.5 rounded-md tabular-nums">
+                  38:12
+                </span>
+              </div>
+            </div>
 
-                    {/* Thumbnail real del partido */}
-                    <Image
-                      src="/thumbnail.png"
-                      alt="Partido de fútbol"
-                      fill
-                      className="object-cover object-center"
-                      sizes="340px"
-                      priority
-                    />
-
-                    {/* Overlay: oscurece levemente para que los badges sean legibles */}
-                    <div className="absolute inset-0 bg-lake-950/40" />
-                    {/* Viñeta inferior para el fade hacia la card info */}
-                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-lake-900/90 to-transparent" />
-
-                    {/* Play */}
-                    <div className="relative z-10 w-14 h-14 rounded-full bg-black/40 border border-white/30 flex items-center justify-center backdrop-blur-sm shadow-[0_0_24px_rgba(0,0,0,0.5)]">
-                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </div>
-
-                    {/* Grabando badge */}
-                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-lake-950/70 border border-crystal-400/30 text-crystal-300 text-[11px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-crystal-400 animate-pulse" />
-                      Grabando
-                    </div>
-
-                    {/* Duración */}
-                    <span className="absolute bottom-2.5 right-2.5 z-10 text-[11px] font-mono text-white/80 bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                      60:01
-                    </span>
-                  </div>
-
-                  {/* Card info */}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="min-w-0">
-                        <p className="text-snow font-semibold text-sm truncate">Complejo Lacar Norte</p>
-                        <p className="text-mist-700 text-xs mt-0.5">Santiago</p>
-                      </div>
-                      <span className="shrink-0 bg-crystal-400/10 text-crystal-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-crystal-400/20">
-                        Cancha 3
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-mist-700">
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5 text-mist-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        Hoy · 20:00
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5 text-mist-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        60 min
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mini card flotante decorativa */}
-                <div
-                  className="absolute -bottom-6 -right-8 bg-lake-800/80 border border-mist-500/10 rounded-xl px-4 py-3 backdrop-blur-sm shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-float"
-                  style={{ animationDelay: "-3.5s" }}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-crystal-400/15 border border-crystal-400/25 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-snow text-xs font-semibold">Gol guardado</p>
-                      <p className="text-mist-600 text-[10px]">Clip de 12 seg</p>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            </HeroParallax>
+            {/* Aviso flotante: jugada lista */}
+            <div className="absolute -bottom-5 right-3 sm:-right-4 flex items-center gap-2.5 bg-white rounded-2xl pl-2.5 pr-4 py-2.5 shadow-[0_12px_30px_rgba(11,29,38,0.16)] border border-line animate-float">
+              <span className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </span>
+              <span>
+                <span className="block text-ink-950 text-[13px] font-bold leading-tight">Jugada descargada</span>
+                <span className="block text-ink-500 text-[11px]">Formato vertical · 0:14</span>
+              </span>
+            </div>
           </div>
         </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-mist-700 animate-bounce">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
       </section>
+
+      <MarqueeBand />
 
       {/* ══════════════════════════════════════════════ */}
       {/* BUSCADOR                                       */}
       {/* ══════════════════════════════════════════════ */}
-      <section id="buscador" className="relative z-10 py-20 px-6" style={{ background: "linear-gradient(160deg, #091520 0%, #0c1e33 55%, #091520 100%)" }}>
-        {/* Decorativos clipeados independientemente para no afectar dropdowns */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Patrón de puntos */}
-          <div className="absolute inset-0 opacity-[0.035]" style={{
-            backgroundImage: "radial-gradient(circle, #7ec8c8 1px, transparent 1px)",
-            backgroundSize: "28px 28px",
-          }} />
-          {/* Glows dinámicos */}
-          <div className="absolute top-0 left-0 w-[500px] h-[500px]" style={{ background: "radial-gradient(circle, rgba(41,196,173,0.07), transparent 70%)" }} />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px]" style={{ background: "radial-gradient(circle, rgba(77,174,196,0.05), transparent 70%)" }} />
-        </div>
-        <div className="max-w-7xl mx-auto relative">
-
-          {/* Section header */}
-          <Reveal className="mb-10">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-crystal-400/15 border border-crystal-400/25 flex items-center justify-center">
-                <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-crystal-400">Búsqueda</p>
-            </div>
-            <h2 className="text-3xl font-bold text-snow tracking-tight mb-1">
-              Encuentra tu partido
-            </h2>
-            <div className="w-12 h-0.5 mt-3 mb-4 rounded-full" style={{ background: "linear-gradient(90deg, #29c4ad, transparent)" }} />
-            <p className="text-mist-500 text-sm">
-              Filtra por complejo, número de cancha y fecha.
-            </p>
-          </Reveal>
+      <section id="buscador" className="relative z-10 bg-surface px-5 sm:px-6 pt-16 pb-5 sm:pt-20 sm:pb-16">
+        <div className="max-w-6xl mx-auto relative">
+          <div className="mb-6">
+            <SectionHeader
+              eyebrow="Busca tu partido"
+              title="Encuentra tu partido"
+              description="Elige el complejo, la cancha, el día y la hora en que jugaste."
+            />
+          </div>
 
           <SearchFilters />
 
@@ -320,177 +201,210 @@ export default async function HomePage({
             </ResultsContainer>
           ) : (
             /* Empty state */
-            <div className="mt-16 flex flex-col items-center text-center py-12">
-              <div className="w-16 h-16 rounded-2xl bg-crystal-400/8 border border-crystal-400/15 flex items-center justify-center mb-5">
-                <svg className="w-7 h-7 text-crystal-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="mt-6 rounded-3xl bg-white border border-line flex flex-col items-center text-center px-6 py-10">
+              <div className="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-brand-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.847v6.306a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </div>
-              <p className="text-base font-medium text-mist-500 mb-1">
-                No se encontraron partidos
-              </p>
-              <p className="text-sm text-mist-700">
-                Intenta ajustar los filtros de búsqueda
+              <p className="text-base font-semibold text-ink-950 mb-1">No encontramos ese partido</p>
+              <p className="text-sm text-ink-500 max-w-[36ch]">
+                Revisa la hora y la cancha. Los partidos quedan disponibles durante 7 días.
               </p>
             </div>
           )}
+
+          {/* Datos clave: lo que el jugador pregunta antes de buscar */}
+          <DatosClave />
         </div>
       </section>
-
 
       {/* ══════════════════════════════════════════════ */}
       {/* CÓMO FUNCIONA                                  */}
       {/* ══════════════════════════════════════════════ */}
-      <section id="como-funciona" className="relative py-20 px-6 overflow-hidden" style={{ background: "linear-gradient(160deg, #091520 0%, #0e2035 50%, #091520 100%)" }}>
-        {/* Patrón diagonal */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.025]" style={{
-          backgroundImage: "linear-gradient(45deg, rgba(41,196,173,1) 1px, transparent 1px), linear-gradient(-45deg, rgba(41,196,173,1) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }} />
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(41,196,173,0.05), transparent)" }} />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] pointer-events-none" style={{ background: "radial-gradient(circle, rgba(77,174,196,0.06), transparent 70%)" }} />
-        <div className="max-w-5xl mx-auto relative">
-
-          <Reveal className="mb-14">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/25 flex items-center justify-center">
-                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Proceso</p>
-            </div>
-            <h2 className="text-3xl font-bold text-snow tracking-tight mb-1">
-              Cómo funciona
-            </h2>
-            <div className="w-12 h-0.5 mt-3 mb-4 rounded-full" style={{ background: "linear-gradient(90deg, #fbbf24, transparent)" }} />
-            <p className="text-mist-500 text-sm max-w-md">
-              En tres pasos revives y guardas los mejores momentos de tu partido.
-            </p>
+      <section id="como-funciona" className="relative bg-white px-5 sm:px-6 pt-8 pb-14 sm:py-20">
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="mb-8">
+            <SectionHeader
+              eyebrow="Cómo funciona"
+              title="Tu jugada en tres pasos"
+              description="No tienes que hacer nada antes de jugar. La cámara graba sola."
+            />
           </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <ol className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             {[
               {
-                num: "01",
-                icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
                 titulo: "Busca tu partido",
-                descripcion: "Filtra por complejo, cancha y fecha. Encontramos el video de tu partido en segundos.",
-                glow: "rgba(41,196,173,0.12)",
-                borderColor: "rgba(41,196,173,0.22)",
-                iconBg: "rgba(41,196,173,0.12)",
-                iconColor: "text-crystal-400",
-                numColor: "rgba(41,196,173,0.12)",
-                label: "text-crystal-400",
+                descripcion: "Elige complejo, cancha, día y hora, y entra con tu cuenta.",
+                icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
               },
               {
-                num: "02",
-                icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.847v6.306a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />,
-                titulo: "Elige el momento",
-                descripcion: "Reproduce el video completo y marca el inicio y fin de la jugada que quieres guardar.",
-                glow: "rgba(77,174,196,0.12)",
-                borderColor: "rgba(77,174,196,0.22)",
-                iconBg: "rgba(77,174,196,0.12)",
-                iconColor: "text-glacial-400",
-                numColor: "rgba(77,174,196,0.12)",
-                label: "text-glacial-400",
+                titulo: "Marca tu jugada",
+                descripcion: "Mira el partido y aprieta el botón al inicio y al final de la jugada.",
+                icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.847v6.306a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />,
               },
               {
-                num: "03",
-                icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />,
-                titulo: "Descarga tu clip",
-                descripcion: "El clip se procesa directo en tu navegador y se descarga listo para compartir.",
-                glow: "rgba(251,191,36,0.10)",
-                borderColor: "rgba(251,191,36,0.22)",
-                iconBg: "rgba(251,191,36,0.10)",
-                iconColor: "text-amber-400",
-                numColor: "rgba(251,191,36,0.10)",
-                label: "text-amber-400",
+                titulo: "Descárgala y compártela",
+                descripcion: "El clip queda en tu celular, listo para el grupo o tus redes.",
+                icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />,
               },
             ].map((paso, i) => (
-              <Reveal key={paso.num} delay={i * 120} className="h-full">
-                <div
-                  className="relative h-full rounded-2xl p-7 overflow-hidden transition-transform duration-300 hover:-translate-y-1"
-                  style={{
-                    background: `linear-gradient(160deg, ${paso.glow} 0%, rgba(9,21,32,0.8) 100%)`,
-                    border: `1px solid ${paso.borderColor}`,
-                  }}
-                >
-                  {/* Radial glow corner */}
-                  <div className="absolute -top-4 -right-4 w-32 h-32 pointer-events-none rounded-full" style={{ background: `radial-gradient(circle, ${paso.glow.replace('0.12','0.25').replace('0.10','0.20')}, transparent 70%)`, filter: "blur(16px)" }} />
-                  {/* Big number background */}
-                  <div
-                    className="absolute -top-2 -right-2 text-[90px] font-black leading-none select-none pointer-events-none"
-                    style={{ color: paso.numColor, fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {paso.num}
-                  </div>
-                  {/* Icon */}
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: paso.iconBg, border: `1px solid ${paso.borderColor}` }}>
-                    <svg className={`w-5 h-5 ${paso.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <Reveal key={paso.titulo} delay={i * 70} className="h-full">
+                <li className="relative h-full flex md:flex-col gap-4 rounded-3xl bg-surface p-5 md:p-6 overflow-hidden">
+                  <span className="absolute right-5 top-3 text-6xl font-black leading-none text-ink-950/[0.06] tabular-nums select-none pointer-events-none" aria-hidden="true">
+                    {i + 1}
+                  </span>
+                  <span className="relative shrink-0 w-12 h-12 rounded-2xl bg-brand text-white flex items-center justify-center shadow-[0_8px_18px_rgba(45,201,183,0.35)]">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       {paso.icon}
                     </svg>
+                  </span>
+                  <div className="relative">
+                    <p className="text-xs font-bold text-brand-ink uppercase tracking-wider">Paso {i + 1}</p>
+                    <h3 className="text-ink-950 font-bold text-lg mt-0.5">{paso.titulo}</h3>
+                    <p className="text-ink-500 text-[15px] leading-relaxed mt-1">{paso.descripcion}</p>
                   </div>
-                  <h3 className="text-snow font-bold text-base mb-2">{paso.titulo}</h3>
-                  <p className="text-mist-500 text-sm leading-relaxed">{paso.descripcion}</p>
-                </div>
+                </li>
               </Reveal>
             ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* DÓNDE GRABAMOS                                 */}
+      {/* ══════════════════════════════════════════════ */}
+      <section id="complejos" className="relative bg-surface px-5 sm:px-6 py-14 sm:py-20">
+        <div className="max-w-6xl mx-auto">
+          {/* Cifras de Lacar (ver HOME_STATS: hoy son de prueba) */}
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-y-6 sm:gap-x-10 mb-14 sm:mb-16">
+            {HOME_STATS.map((st) => (
+              <li key={st.label} className="border-l-2 border-brand/40 pl-5">
+                <p className="cifra text-[52px] sm:text-[64px]">
+                  <span className="text-[0.6em] align-[0.35em] mr-0.5">+</span>
+                  <CountUp value={st.value} duration={1600} />
+                </p>
+                <p className="cifra cifra-unidad text-base sm:text-lg mt-2">{st.label}</p>
+              </li>
+            ))}
+          </ul>
+
+          <Reveal className="mb-8">
+            <SectionHeader
+              eyebrow="Dónde grabamos"
+              title="Complejos con Lacar"
+              description="Si juegas aquí, tu partido ya se está grabando."
+            />
+          </Reveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {COMPLEJOS_ACTIVOS.map((c) => (
+              <Reveal key={c.nombre}>
+                <article className="rounded-3xl bg-white border border-line overflow-hidden">
+                  <div className="relative aspect-[2.27/1] bg-[#22304a]">
+                    <Image src={c.logo} alt={`Logo de ${c.nombre}`} fill className="object-contain" sizes="(min-width: 768px) 560px, 100vw" />
+                    <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-white/95 text-ink-950 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+                      Cámaras activas
+                    </span>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-ink-950 font-bold text-xl">{c.nombre}</h3>
+                      <span className="bg-brand-soft text-brand-ink text-xs font-bold px-2.5 py-1 rounded-full">{c.deporte}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5 mt-4">
+                      <a
+                        href={c.reservaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm px-4 py-3 rounded-xl transition-[background-color,transform] duration-150 active:scale-[0.97]"
+                      >
+                        Reservar cancha
+                      </a>
+                      <a
+                        href={`https://www.instagram.com/${c.instagram}/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 text-ink-950 font-semibold text-sm px-4 py-3 rounded-xl border border-line hover:border-ink-300 transition-[border-color,transform] duration-150 active:scale-[0.97]"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                        </svg>
+                        @{c.instagram}
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              </Reveal>
+            ))}
+
+            {/* Invitación: tu complejo aún no tiene Lacar */}
+            <Reveal>
+              <div className="h-full rounded-3xl border-2 border-dashed border-ink-300/50 p-6 flex flex-col justify-center">
+                <p className="text-ink-950 font-bold text-xl">¿Juegas en otro complejo?</p>
+                <p className="text-ink-500 text-[15px] mt-1.5 leading-relaxed max-w-[40ch]">
+                  Pronto vamos a estar en más canchas. Si eres dueño o conoces al administrador,
+                  muéstrale cómo funciona.
+                </p>
+                <Link
+                  href="/complejos"
+                  className="self-start inline-flex items-center gap-1.5 mt-5 text-brand-ink font-bold text-[15px] active:scale-[0.97] transition-transform duration-150"
+                >
+                  Lacar para complejos
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════ */}
-      {/* SOCIAL PROOF — stats + testimonios             */}
+      {/* RESEÑAS                                        */}
       {/* ══════════════════════════════════════════════ */}
-      <section className="relative py-20 px-6 overflow-hidden" style={{ background: "linear-gradient(160deg, #091520 0%, #0c1e33 55%, #091520 100%)" }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(41,196,173,0.06), transparent)" }} />
-        <div className="max-w-5xl mx-auto relative">
+      <section id="resenas" className="relative bg-white px-5 sm:px-6 py-14 sm:py-20 overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-8">
+            <SectionHeader
+              eyebrow="Reseñas"
+              title="Lo que dicen los jugadores"
+              description="Opiniones de jugadores que ya descargaron sus jugadas."
+            />
+          </div>
+          <Resenas />
+        </div>
+      </section>
 
-          <Reveal className="mb-12">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-crystal-400/15 border border-crystal-400/25 flex items-center justify-center">
-                <svg className="w-4 h-4 text-crystal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 10-2.5-1.34M5 11a3 3 0 102.5-1.34" />
-                </svg>
-              </div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-crystal-400">Comunidad</p>
-            </div>
-            <h2 className="text-3xl font-bold text-snow tracking-tight mb-1">
-              Jugadores reviviendo sus partidos
+      {/* ══════════════════════════════════════════════ */}
+      {/* DUEÑOS DE COMPLEJOS                            */}
+      {/* ══════════════════════════════════════════════ */}
+      <section className="px-5 sm:px-6 pb-14 sm:pb-20 bg-white">
+        <div className="max-w-6xl mx-auto relative overflow-hidden rounded-[32px] bg-brand px-6 py-10 sm:px-12 sm:py-14">
+          <div
+            className="absolute -right-24 -top-24 w-80 h-80 rounded-full pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.28), transparent 65%)" }}
+          />
+          <div className="relative max-w-xl">
+            <p className="text-white/85 text-xs font-bold uppercase tracking-[0.12em]">Para dueños de complejos</p>
+            <h2 className="text-white text-[28px] sm:text-4xl font-black tracking-tight leading-[1.05] mt-2">
+              Dale a tus jugadores un motivo más para volver.
             </h2>
-            <div className="w-12 h-0.5 mt-3 mb-4 rounded-full" style={{ background: "linear-gradient(90deg, #29c4ad, transparent)" }} />
-            <p className="text-mist-500 text-sm max-w-md">
-              Lo que dicen quienes ya guardaron sus mejores jugadas.
+            <p className="text-white/90 text-base mt-3 leading-relaxed">
+              Instalamos las cámaras, todo funciona solo y tú ves la ocupación de tus canchas desde un panel.
             </p>
-          </Reveal>
-
-          {/* Testimonios */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {HOME_TESTIMONIALS.map((t, i) => (
-              <Reveal key={t.name} delay={i * 120} className="h-full">
-                <figure
-                  className="relative h-full rounded-2xl border border-mist-500/12 p-6 flex flex-col transition-transform duration-300 hover:-translate-y-1"
-                  style={{ background: "linear-gradient(160deg, rgba(10,42,61,0.55) 0%, rgba(9,21,32,0.8) 100%)" }}
-                >
-                  <svg className="w-7 h-7 text-crystal-400/30 mb-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M9.983 3v7.391c0 5.704-3.731 9.57-8.983 10.609l-.995-2.151c2.432-.917 3.995-3.638 3.995-5.849h-4v-10h9.983zm14.017 0v7.391c0 5.704-3.748 9.571-9 10.609l-.996-2.151c2.433-.917 3.996-3.638 3.996-5.849h-3.983v-10h9.983z" />
-                  </svg>
-                  <blockquote className="text-snow/90 text-sm leading-relaxed flex-1">
-                    {t.quote}
-                  </blockquote>
-                  <figcaption className="mt-5 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-crystal-400/12 border border-crystal-400/25 flex items-center justify-center text-crystal-300 text-sm font-bold">
-                      {t.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-snow text-sm font-semibold leading-tight">{t.name}</p>
-                      <p className="text-mist-700 text-xs mt-0.5">{t.role}</p>
-                    </div>
-                  </figcaption>
-                </figure>
-              </Reveal>
-            ))}
+            <Link
+              href="/complejos"
+              className="inline-flex items-center gap-2 whitespace-nowrap mt-6 bg-white text-ink-950 font-bold text-base px-6 py-3.5 rounded-2xl transition-transform duration-150 active:scale-[0.97]"
+            >
+              Ver Lacar para complejos
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
           </div>
         </div>
       </section>

@@ -21,35 +21,35 @@ export default function ElegirFormato({ formatoInicial = "reel", haySeguimiento 
       onClick={() => onElegir(formato, haySeguimiento && conSeguimiento)}
       className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-3.5 text-center transition-all active:scale-[0.98] ${
         formatoInicial === formato
-          ? "border-crystal-400/60 bg-crystal-400/10"
-          : "border-mist-500/15 hover:border-crystal-400/40 hover:bg-crystal-400/5"
+          ? "border-brand bg-brand-soft"
+          : "border-line bg-white hover:border-brand/50"
       }`}
     >
-      <div className="h-12 flex items-center justify-center text-crystal-400">{icono}</div>
+      <div className="h-12 flex items-center justify-center text-brand-ink">{icono}</div>
       <div>
-        <div className="text-sm font-semibold text-snow">{titulo}</div>
-        <div className="text-[11px] text-mist-500 leading-snug mt-0.5">{detalle}</div>
+        <div className="text-sm font-semibold text-ink-950">{titulo}</div>
+        <div className="text-[11px] text-ink-500 leading-snug mt-0.5">{detalle}</div>
       </div>
     </button>
   );
 
   return (
-    <div className="space-y-3 rounded-xl border border-crystal-400/15 bg-lake-950/40 p-3.5">
+    <div className="space-y-3 rounded-2xl border border-line bg-surface p-3.5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-mist-400">¿Cómo quieres tu clip?</p>
+        <p className="text-[13px] font-semibold text-ink-950">¿Cómo quieres tu clip?</p>
         {onCancelar && (
-          <button type="button" onClick={onCancelar} className="text-[11px] text-mist-600 hover:text-snow">Cancelar</button>
+          <button type="button" onClick={onCancelar} className="text-[13px] text-ink-500 hover:text-ink-950">Cancelar</button>
         )}
       </div>
 
       {haySeguimiento && (
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-black/30 p-1 text-xs">
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-white border border-line p-1 text-[13px]">
           {[true, false].map((v) => (
             <button
               key={String(v)}
               type="button"
               onClick={() => setConSeguimiento(v)}
-              className={`rounded-md py-1.5 transition-colors ${conSeguimiento === v ? "bg-crystal-400/20 text-crystal-300" : "text-mist-500"}`}
+              className={`rounded-md py-1.5 transition-colors ${conSeguimiento === v ? "bg-brand text-white font-semibold" : "text-ink-500"}`}
             >
               {v ? "Con mi seguimiento" : "Sin seguimiento"}
             </button>

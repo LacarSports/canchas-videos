@@ -162,7 +162,7 @@ export default function Navbar() {
   return (
     <header className="fixed top-4 left-0 right-0 z-50 px-4">
       <div className="max-w-5xl mx-auto">
-        <div className="bg-lake-900 border border-mist-500/10 rounded-full px-5 h-14 flex items-center justify-between shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="bg-white/90 backdrop-blur-xl border border-line rounded-full pl-4 pr-2 md:px-5 h-14 flex items-center justify-between shadow-[0_8px_24px_rgba(11,29,38,0.08)]">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <Image
@@ -170,17 +170,16 @@ export default function Navbar() {
               alt="Lacar Sports"
               width={32}
               height={32}
-              className="drop-shadow-[0_0_8px_rgba(41,196,173,0.5)]"
               priority
             />
-            <span className="text-[15px] font-bold tracking-tight text-snow">
-              Lacar <span className="text-crystal-400">Sports</span>
+            <span className="text-[15px] font-bold tracking-tight text-ink-950">
+              Lacar <span className="text-brand">Sports</span>
             </span>
           </Link>
 
           {/* Desktop links — los enlaces in-page (#) van en gris; los que
               saltan a la otra sección (Para Complejos / Para Jugadores) en
-              acento crystal con flecha. */}
+              acento turquesa con flecha. */}
           <nav className="hidden md:flex items-center gap-0.5">
             {links.map(({ href, label }) => {
               const isCross = !href.includes("#");
@@ -188,10 +187,10 @@ export default function Navbar() {
               const dir = hash ? spy.dirs[hash] : undefined;
               const isActive = hash != null && spy.active === hash;
               const className = isCross
-                ? "flex items-center gap-1 px-3.5 py-1.5 text-[13px] font-semibold text-crystal-300 hover:text-crystal-200 hover:bg-crystal-400/10 rounded-full border border-transparent transition-all duration-200"
+                ? "flex items-center gap-1 px-3.5 py-1.5 text-[13px] font-semibold text-brand-ink hover:bg-brand-soft rounded-full border border-transparent transition-all duration-200"
                 : isActive
-                ? "flex items-center gap-1 px-3.5 py-1.5 text-[13px] font-semibold text-crystal-300 bg-crystal-400/12 border border-crystal-400/20 rounded-full transition-all duration-200"
-                : "flex items-center gap-1 px-3.5 py-1.5 text-[13px] font-medium text-mist-500 hover:text-snow hover:bg-white/5 rounded-full border border-transparent transition-all duration-200";
+                ? "flex items-center gap-1 px-3.5 py-1.5 text-[13px] font-semibold text-brand-ink bg-brand-soft border border-transparent rounded-full transition-all duration-200"
+                : "flex items-center gap-1 px-3.5 py-1.5 text-[13px] font-medium text-ink-500 hover:text-ink-950 hover:bg-surface rounded-full border border-transparent transition-all duration-200";
               return (
                 <NavItem key={href} href={href} pathname={pathname} className={className}>
                   {label}
@@ -220,7 +219,7 @@ export default function Navbar() {
             <NavItem
               href={cta.href}
               pathname={pathname}
-              className="inline-flex items-center gap-1.5 bg-crystal-400 hover:bg-crystal-300 text-lake-950 font-semibold text-[13px] px-4 py-2 rounded-full transition-all duration-200 active:scale-[0.97] shadow-[0_0_16px_rgba(41,196,173,0.35)]"
+              className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white font-semibold text-[13px] px-4 py-2 rounded-full transition-[background-color,transform] duration-150 active:scale-[0.97]"
             >
               {cta.label}
             </NavItem>
@@ -230,7 +229,7 @@ export default function Navbar() {
                 type="button"
                 onClick={handleLogout}
                 title={userEmail}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[13px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-full transition-all duration-200"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[13px] font-semibold text-ink-700 hover:text-ink-950 border border-line hover:border-ink-300 rounded-full transition-all duration-200"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -240,17 +239,25 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center px-3.5 py-1.5 text-[13px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-full transition-all duration-200"
+                className="inline-flex items-center px-3.5 py-1.5 text-[13px] font-semibold text-ink-700 hover:text-ink-950 border border-line hover:border-ink-300 rounded-full transition-all duration-200"
               >
                 Iniciar sesión
               </Link>
             )}
           </div>
 
-          {/* Mobile hamburger */}
+          {/* Móvil: acción principal siempre a mano + menú */}
+          <div className="md:hidden flex items-center gap-1">
+          <NavItem
+            href={cta.href}
+            pathname={pathname}
+            className="inline-flex items-center bg-brand text-white font-semibold text-[13px] px-3.5 py-2 rounded-full active:scale-[0.97] transition-transform duration-150"
+          >
+            {isOwners ? "Mi panel" : "Buscar"}
+          </NavItem>
           <button
             type="button"
-            className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center text-mist-500 hover:text-snow transition-colors rounded-full"
+            className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-700 transition-colors rounded-full active:bg-surface"
             onPointerDown={() => setIsOpen((v) => !v)}
             aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={isOpen}
@@ -265,6 +272,7 @@ export default function Navbar() {
               </svg>
             )}
           </button>
+          </div>
         </div>
 
         {/* Mobile dropdown */}
@@ -273,17 +281,17 @@ export default function Navbar() {
             {/* Capa invisible: tocar fuera del menú lo cierra (onClick, no
                 pointerdown, para que el toque no "atraviese" hacia lo de abajo) */}
             <div className="fixed inset-0 md:hidden" onClick={() => setIsOpen(false)} />
-            <div className="relative mt-2 bg-lake-900 border border-mist-500/10 rounded-2xl p-2 shadow-[0_16px_48px_rgba(0,0,0,0.55)] animate-[menu-in_0.18s_ease-out]">
+            <div className="relative mt-2 bg-white border border-line rounded-2xl p-2 shadow-[0_16px_48px_rgba(11,29,38,0.16)] animate-[menu-in_0.18s_ease-out]">
             {links.map(({ href, label }) => {
               const isCross = !href.includes("#");
               const hash = href.includes("#") ? href.split("#")[1] : null;
               const dir = hash ? spy.dirs[hash] : undefined;
               const isActive = hash != null && spy.active === hash;
               const className = isCross
-                ? "flex items-center gap-1.5 px-4 py-3.5 text-[14px] font-semibold text-crystal-300 hover:text-crystal-200 hover:bg-crystal-400/10 rounded-xl transition-all duration-200"
+                ? "flex items-center gap-1.5 px-4 py-3.5 text-[14px] font-semibold text-brand-ink hover:bg-brand-soft rounded-xl transition-all duration-200"
                 : isActive
-                ? "flex items-center gap-1.5 px-4 py-3.5 text-[14px] font-semibold text-crystal-300 bg-crystal-400/12 border border-crystal-400/20 rounded-xl transition-all duration-200"
-                : "flex items-center gap-1.5 px-4 py-3.5 text-[14px] font-medium text-mist-400 hover:text-snow hover:bg-white/5 rounded-xl transition-all duration-200";
+                ? "flex items-center gap-1.5 px-4 py-3.5 text-[14px] font-semibold text-brand-ink bg-brand-soft border border-transparent rounded-xl transition-all duration-200"
+                : "flex items-center gap-1.5 px-4 py-3.5 text-[14px] font-medium text-ink-700 hover:text-ink-950 hover:bg-surface rounded-xl transition-all duration-200";
               return (
                 <NavItem
                   key={href}
@@ -311,24 +319,24 @@ export default function Navbar() {
                 </NavItem>
               );
             })}
-            <div className="mt-1 pt-2 border-t border-mist-500/10 px-1">
+            <div className="mt-1 pt-2 border-t border-line px-1">
               <NavItem
                 href={cta.href}
                 pathname={pathname}
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center gap-2 bg-crystal-400 hover:bg-crystal-300 text-lake-950 font-semibold text-[13px] px-4 py-3 rounded-xl transition-all duration-200 active:scale-[0.97]"
+                className="flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-semibold text-[15px] px-4 py-3.5 rounded-xl transition-[background-color,transform] duration-150 active:scale-[0.97]"
               >
                 {cta.label}
               </NavItem>
             </div>
 
             {/* Sesión (móvil) */}
-            <div className="mt-2 pt-2 border-t border-mist-500/10 px-1">
+            <div className="mt-2 pt-2 border-t border-line px-1">
               {session ? (
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-xl transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-semibold text-ink-700 hover:text-ink-950 border border-line hover:border-ink-300 rounded-xl transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -339,7 +347,7 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-semibold text-mist-400 hover:text-snow border border-mist-500/20 hover:border-mist-500/40 rounded-xl transition-all"
+                  className="flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-semibold text-ink-700 hover:text-ink-950 border border-line hover:border-ink-300 rounded-xl transition-all"
                 >
                   Iniciar sesión
                 </Link>

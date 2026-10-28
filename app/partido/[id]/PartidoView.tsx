@@ -7,19 +7,19 @@ import ElegirFormato from "./ElegirFormato";
 import { supabase } from "@/lib/supabase";
 import { getSessionId } from "@/lib/session";
 import { registrarDescarga } from "@/lib/descargas";
-import { cargarJugadas, insertarJugada, type Edicion } from "@/lib/jugadas";
+import { cargarJugadas, insertarJugada, borrarJugada, jugadasOcultas, marcarComoMia, type Edicion } from "@/lib/jugadas";
 import { guardarVideo, nombreVideo } from "@/lib/guardarVideo";
 import InlineClipPlayer from "@/app/components/InlineClipPlayer";
 
 /* ── tag styles ── */
 
 const TAG_STYLES: Record<string, string> = {
-  Gol:           "bg-crystal-400/15 text-crystal-300 border-crystal-400/25",
-  Atajada:       "bg-glacial-400/15 text-glacial-300 border-glacial-400/25",
-  Caño:          "bg-pine-400/15 text-pine-400 border-pine-400/25",
-  "Buena jugada":"bg-mist-500/12 text-mist-400 border-mist-500/22",
-  Blooper:       "bg-amber-500/15 text-amber-300 border-amber-500/25",
-  Otro:          "bg-lake-600/30 text-mist-600 border-mist-700/25",
+  Gol:           "bg-brand text-white border-brand",
+  Atajada:       "bg-brand-soft text-brand-ink border-brand/30",
+  Caño:          "bg-brand-soft text-brand-ink border-brand/30",
+  "Buena jugada":"bg-brand-soft text-brand-ink border-brand/30",
+  Blooper:       "bg-surface text-ink-700 border-line",
+  Otro:          "bg-surface text-ink-700 border-line",
 };
 
 function tagStyle(etiqueta: string) {
@@ -82,6 +82,13 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   // Aviso flotante: progreso de la jugada en preparación o "lista"
   const [aviso, setAviso] = useState<{ key: string; tipo: "preparando" | "lista" | "error" } | null>(null);
   const [destacadaKey, setDestacadaKey] = useState<string | null>(null);
+  // Basurero: primer toque pide confirmar, el segundo borra.
+  const [confirmarBorrarKey, setConfirmarBorrarKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!confirmarBorrarKey) return;
+    const t = setTimeout(() => setConfirmarBorrarKey(null), 3500);
+    return () => clearTimeout(t);
+  }, [confirmarBorrarKey]);
 
   // Registro de visita: una sola vez por sesión de visualización (no en pausa/replay)
   const visitaRegistrada = useRef(false);
@@ -112,16 +119,16 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   }, [partidoId, complejo]);
 
   // Share copy feedback per clip
-  const [copiadoKey, setCopiadoKey] = useState<string | null>(null);
   const [copiedLinkKey, setCopiedLinkKey] = useState<string | null>(null);
 
   /* ── jugadas guardadas del partido ── */
   useEffect(() => {
     cargarJugadas(partidoId).then((data) => {
+      const ocultas = jugadasOcultas(partidoId);
       setClips((prev) => [
         // Las creadas en esta visita (aún sin guardar) se mantienen arriba
         ...prev.filter((c) => !c.id),
-        ...data.map((j) => ({
+        ...data.filter((j) => !ocultas.includes(j.id)).map((j) => ({
           key: j.id,
           id: j.id,
           etiqueta: j.etiqueta,
@@ -215,7 +222,10 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
         duracion: j.duracion,
         edicion: j.edicion,
       });
-      if (id) actualizar(key, { id });
+      if (id) {
+        actualizar(key, { id });
+        marcarComoMia(id);
+      }
     } catch {
       // Sin conexión con la base: la jugada queda solo en esta visita
     }
@@ -248,6 +258,18 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
     });
   }
 
+  function handleBorrar(c: JugadaUI) {
+    if (confirmarBorrarKey !== c.key) { setConfirmarBorrarKey(c.key); return; }
+    setConfirmarBorrarKey(null);
+    colaRef.current = colaRef.current.filter((k) => k !== c.key);
+    if (c.blobUrl) URL.revokeObjectURL(c.blobUrl);
+    clipsRef.current = clipsRef.current.filter((x) => x.key !== c.key);
+    setClips((prev) => prev.filter((x) => x.key !== c.key));
+    if (playingKey === c.key) setPlayingKey(null);
+    if (aviso?.key === c.key) setAviso(null);
+    if (c.id) borrarJugada(partidoId, c.id);
+  }
+
   /* ── aviso flotante ── */
   const avisoClip = aviso ? clips.find((c) => c.key === aviso.key) : undefined;
   useEffect(() => {
@@ -278,15 +300,16 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
   async function handleSidebarShare(c: JugadaUI) {
     if (!c.id) return;
     const url = `${window.location.origin}/jugada/${c.id}`;
+    const texto = `Mirá esta jugada (${c.etiqueta})`;
+    // Menú nativo de compartir (celular, Safari, Edge). Si la persona lo cierra, no pasa nada.
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await navigator.share({ title: `Jugada: ${c.etiqueta}`, text: `Mirá esta jugada (${c.etiqueta})`, url });
-        return;
-      } catch { /* cancelled */ }
+        await navigator.share({ title: `Jugada: ${c.etiqueta}`, text: texto, url });
+      } catch { /* cancelado */ }
+      return;
     }
-    navigator.clipboard.writeText(url).catch(() => {});
-    setCopiadoKey(c.key);
-    setTimeout(() => setCopiadoKey(null), 2000);
+    // Sin menú nativo (algunos navegadores de computador): se comparte por WhatsApp.
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${texto} ${url}`)}`, "_blank", "noopener");
   }
 
   const iconoDescarga = (
@@ -319,14 +342,14 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
         {/* Sidebar */}
         <aside className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-mist-400 flex items-center gap-2">
-              <svg className="w-4 h-4 text-crystal-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h3 className="text-base font-bold text-ink-950 flex items-center gap-2">
+              <svg className="w-4 h-4 text-brand-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4" />
               </svg>
               Jugadas destacadas del partido
             </h3>
             {clips.length > 0 && (
-              <span className="text-xs text-crystal-400 bg-crystal-400/10 px-2 py-0.5 rounded-full border border-crystal-400/15">
+              <span className="text-xs font-bold text-white bg-brand px-2 py-0.5 rounded-full tabular-nums">
                 {clips.length}
               </span>
             )}
@@ -334,13 +357,13 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
 
           {/* Empty state */}
           {clips.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-lake-800/40 rounded-xl border border-dashed border-crystal-400/10">
-              <div className="w-10 h-10 rounded-full bg-crystal-400/5 border border-crystal-400/10 flex items-center justify-center mb-3">
-                <svg className="w-5 h-5 text-crystal-400/30" fill="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-white rounded-2xl border border-dashed border-ink-300/60">
+              <div className="w-11 h-11 rounded-2xl bg-brand-soft flex items-center justify-center mb-3">
+                <svg className="w-5 h-5 text-brand-ink" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
-              <p className="text-xs text-mist-700 leading-relaxed max-w-[200px]">
+              <p className="text-sm text-ink-500 leading-relaxed max-w-[220px]">
                 Marca el inicio y el fin de una jugada en el video y aparecerá aquí
               </p>
             </div>
@@ -350,7 +373,6 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
           {clips.length > 0 && (
             <div className="space-y-2 max-h-[720px] overflow-y-auto pr-0.5">
               {clips.map((clip, idx) => {
-                const isCopied = copiadoKey === clip.key;
                 const isCopiedLink = copiedLinkKey === clip.key;
                 const isExpanded = playingKey === clip.key;
                 const esReel = clip.edicion?.formato === "reel";
@@ -359,28 +381,28 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                   <div
                     key={clip.key}
                     id={`jugada-${clip.key}`}
-                    className={`bg-lake-800/60 border rounded-xl overflow-hidden transition-colors ${destacadaKey === clip.key ? "border-crystal-400/60" : "border-crystal-400/8 hover:border-crystal-400/15"}`}
+                    className={`bg-white border rounded-2xl overflow-hidden transition-colors ${destacadaKey === clip.key ? "border-brand" : "border-line hover:border-ink-300"}`}
                   >
                     {/* Header — click to toggle player */}
                     <button
                       onClick={() => setPlayingKey(isExpanded ? null : clip.key)}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/[0.03] transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-3 transition-colors"
                     >
-                      <span className="text-mist-700 text-[10px] font-mono shrink-0">#{clips.length - idx}</span>
+                      <span className="text-ink-300 text-[11px] font-mono shrink-0">#{clips.length - idx}</span>
                       <span className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded-full border ${tagStyle(clip.etiqueta)}`}>
                         {clip.etiqueta}
                       </span>
                       {clip.edicion && (
-                        <span className="shrink-0 text-[10px] text-mist-600 border border-mist-500/15 rounded px-1">
+                        <span className="shrink-0 text-[11px] text-ink-500 border border-line rounded px-1">
                           {esReel ? "9:16" : "16:9"}
                         </span>
                       )}
-                      <span className="text-xs font-mono text-mist-600 flex-1 min-w-0 truncate text-left">
+                      <span className="text-[13px] font-mono text-ink-700 flex-1 min-w-0 truncate text-left">
                         {horaDeJugada(hora, clip.inicioSeg) ?? fmt(clip.inicioSeg)}
                       </span>
-                      <span className="text-xs font-mono text-mist-700 shrink-0">{fmt(clip.duracion)}</span>
+                      <span className="text-[13px] font-mono text-ink-500 shrink-0">{fmt(clip.duracion)}</span>
                       <svg
-                        className={`w-3 h-3 text-mist-700 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                        className={`w-3 h-3 text-ink-300 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -405,40 +427,54 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                       )}
                     </div>
 
-                    {/* Actions — always visible */}
-                    <div className="px-3 pb-2.5 pt-1.5 space-y-1.5">
-                      {(clip.proceso === "cola" || clip.proceso === "procesando") ? (
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] text-mist-500">
-                            <span>{clip.proceso === "cola" ? "En espera…" : "Preparando video…"}</span>
-                            <span className="font-mono">{clip.progreso ?? 0}%</span>
-                          </div>
-                          <div className="w-full bg-white/5 rounded-full h-1 overflow-hidden">
-                            <div className="bg-crystal-400 h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(4, clip.progreso ?? 0)}%` }} />
-                          </div>
-                        </div>
-                      ) : clip.proceso === "listo" ? (
+                    {/* Acciones: vista previa y descarga lado a lado; abajo, compartir y borrar */}
+                    <div className="px-3 pb-3 pt-1.5 space-y-2">
+                      {clip.proceso === "error" && (
+                        <p className="text-xs text-red-600">{clip.error}</p>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
                         <button
-                          onClick={() => handleDescargar(clip)}
-                          className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold bg-crystal-400 text-lake-950 hover:bg-crystal-300 rounded-lg py-2 transition-colors"
+                          onClick={() => setPlayingKey(isExpanded ? null : clip.key)}
+                          aria-expanded={isExpanded}
+                          className={`flex items-center justify-center gap-1.5 text-sm font-bold rounded-xl py-2.5 border transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] ${
+                            isExpanded ? "bg-brand-soft border-brand/40 text-brand-ink" : "bg-white border-brand text-brand-ink hover:bg-brand-soft"
+                          }`}
                         >
-                          {iconoDescarga}
-                          Descargar
-                        </button>
-                      ) : (
-                        <>
-                          {clip.proceso === "error" && (
-                            <p className="text-[11px] text-red-400">{clip.error}</p>
+                          {isExpanded ? (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                           )}
+                          {isExpanded ? "Cerrar" : "Vista previa"}
+                        </button>
+
+                        {(clip.proceso === "cola" || clip.proceso === "procesando") ? (
+                          <div className="relative flex items-center justify-center rounded-xl bg-surface overflow-hidden text-[13px] font-semibold text-ink-700">
+                            <div className="absolute inset-y-0 left-0 bg-brand/15 transition-[width] duration-300" style={{ width: `${Math.max(4, clip.progreso ?? 0)}%` }} />
+                            <span className="relative flex items-center gap-1.5">
+                              <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                              {clip.proceso === "cola" ? "En espera" : <>Preparando <span className="font-mono tabular-nums">{clip.progreso ?? 0}%</span></>}
+                            </span>
+                          </div>
+                        ) : clip.proceso === "listo" ? (
                           <button
-                            onClick={() => handlePreparar(clip)}
-                            className="w-full flex items-center justify-center gap-1.5 text-xs text-mist-500 border border-mist-500/15 hover:border-crystal-400/30 hover:text-crystal-300 rounded-lg py-2 sm:py-1.5 transition-all"
+                            onClick={() => handleDescargar(clip)}
+                            className="flex items-center justify-center gap-1.5 text-sm font-bold bg-brand text-white hover:bg-brand-hover rounded-xl py-2.5 transition-[background-color,transform] duration-150 active:scale-[0.97]"
                           >
                             {iconoDescarga}
-                            {clip.proceso === "error" ? "Reintentar" : "Preparar descarga"}
+                            Descargar
                           </button>
-                        </>
-                      )}
+                        ) : (
+                          <button
+                            onClick={() => handlePreparar(clip)}
+                            className="flex items-center justify-center gap-1.5 text-sm font-bold bg-brand text-white hover:bg-brand-hover rounded-xl py-2.5 transition-[background-color,transform] duration-150 active:scale-[0.97]"
+                          >
+                            {iconoDescarga}
+                            {clip.proceso === "error" ? "Reintentar" : "Descargar"}
+                          </button>
+                        )}
+                      </div>
+
                       {eligiendoKey === clip.key && (
                         <ElegirFormato
                           onElegir={(f) => handlePreparar(clip, f)}
@@ -446,30 +482,40 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
                         />
                       )}
 
-                      {clip.id && (
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <button
-                            onClick={() => handleSidebarShare(clip)}
-                            className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
-                              isCopied
-                                ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
-                                : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
-                            }`}
-                          >
-                            {isCopied ? "Copiado" : "Compartir link"}
-                          </button>
-                          <button
-                            onClick={() => handleSidebarCopyLink(clip)}
-                            className={`flex items-center justify-center gap-1.5 text-xs border transition-all py-2 sm:py-1.5 rounded-lg ${
-                              isCopiedLink
-                                ? "border-crystal-400/40 text-crystal-400 bg-crystal-400/5"
-                                : "border-mist-500/10 text-mist-600 hover:text-mist-400 hover:border-mist-500/25"
-                            }`}
-                          >
-                            {isCopiedLink ? "Copiado" : "Copiar link"}
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex gap-2">
+                        {clip.id && (
+                          <>
+                            <button
+                              onClick={() => handleSidebarShare(clip)}
+                              className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium border border-line text-ink-700 hover:border-ink-300 transition-[border-color,transform] duration-150 active:scale-[0.97] py-2 rounded-xl"
+                            >
+                              Compartir link
+                            </button>
+                            <button
+                              onClick={() => handleSidebarCopyLink(clip)}
+                              className={`flex-1 flex items-center justify-center gap-1.5 text-[13px] font-medium border transition-[border-color,transform] duration-150 active:scale-[0.97] py-2 rounded-xl ${
+                                isCopiedLink ? "border-brand/50 text-brand-ink bg-brand-soft" : "border-line text-ink-700 hover:border-ink-300"
+                              }`}
+                            >
+                              {isCopiedLink ? "Copiado" : "Copiar link"}
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleBorrar(clip)}
+                          aria-label={confirmarBorrarKey === clip.key ? "Confirmar borrar jugada" : "Borrar jugada"}
+                          className={`shrink-0 flex items-center justify-center gap-1.5 border rounded-xl py-2 transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97] ${
+                            confirmarBorrarKey === clip.key
+                              ? `${clip.id ? "px-3" : "flex-1"} bg-red-50 border-red-200 text-red-600 text-[13px] font-semibold`
+                              : `${clip.id ? "w-10" : "flex-1"} border-line text-ink-500 hover:text-red-600 hover:border-red-200`
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                          </svg>
+                          {confirmarBorrarKey === clip.key && "¿Borrar?"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -479,41 +525,56 @@ export default function PartidoView({ videoUrl, title, partidoId, deporte, compl
         </aside>
       </div>
 
-      {/* Aviso flotante (también visible en pantalla completa): progreso y "lista" */}
+      {/* Aviso flotante (también visible en pantalla completa): progreso y "lista".
+          Va bajo la barra de navegación (72px) para no taparla. */}
       {aviso && avisoClip && (
         <div
-          className={`fixed left-1/2 -translate-x-1/2 z-[10001] ${aviso.tipo === "preparando" ? "w-[min(70vw,260px)]" : "w-[min(92vw,380px)]"}`}
-          // Debajo de la fila de botones superior del reproductor (Marcar inicio / ajustes)
-          style={{ top: "calc(env(safe-area-inset-top) + 4.25rem)" }}
+          className="fixed left-1/2 -translate-x-1/2 z-[10001] w-[min(92vw,380px)]"
+          style={{ top: "calc(env(safe-area-inset-top) + 5.5rem)" }}
+          role="status"
         >
-          <div className="flex items-center gap-3 bg-lake-800/95 backdrop-blur-sm border border-crystal-400/30 rounded-2xl pl-4 pr-2 py-2.5 shadow-2xl">
+          <div key={aviso.tipo} className="aviso-entrada flex items-center gap-3 bg-white border border-line rounded-2xl pl-3.5 pr-2 py-2.5 shadow-[0_14px_40px_-10px_rgba(11,29,38,0.3)]">
             {aviso.tipo === "preparando" ? (
               <>
-                <div className="w-4 h-4 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span className="w-8 h-8 rounded-full bg-brand-soft flex items-center justify-center shrink-0">
+                  <span className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-snow truncate">Preparando «{avisoClip.etiqueta}»…</p>
-                  <div className="mt-1 w-full bg-white/10 rounded-full h-1 overflow-hidden">
-                    <div className="bg-crystal-400 h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(4, avisoClip.progreso ?? 0)}%` }} />
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-[13px] font-semibold text-ink-950 truncate">Preparando «{avisoClip.etiqueta}»</p>
+                    <span className="text-[11px] font-mono tabular-nums text-ink-500 shrink-0">{avisoClip.progreso ?? 0}%</span>
+                  </div>
+                  <div className="mt-1.5 w-full bg-surface rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-brand h-full rounded-full transition-[width] duration-300" style={{ width: `${Math.max(4, avisoClip.progreso ?? 0)}%` }} />
                   </div>
                 </div>
-                <button onClick={() => setAviso(null)} className="text-[11px] text-mist-500 px-2 py-1">Ocultar</button>
+                <button onClick={() => setAviso(null)} className="text-xs font-semibold text-ink-500 hover:text-ink-950 px-2.5 py-2 rounded-lg active:scale-[0.97] transition-transform">Ocultar</button>
               </>
             ) : aviso.tipo === "lista" ? (
               <>
-                <svg className="w-5 h-5 text-crystal-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                <p className="text-xs text-snow flex-1 min-w-0 truncate">«{avisoClip.etiqueta}» está lista</p>
-                <button onClick={() => verEnLista(aviso.key)} className="text-xs text-mist-400 px-2 py-1.5">Ver</button>
+                <span className="w-8 h-8 rounded-full bg-brand flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </span>
+                <p className="text-[13px] font-semibold text-ink-950 flex-1 min-w-0 truncate">«{avisoClip.etiqueta}» está lista</p>
+                <button onClick={() => verEnLista(aviso.key)} className="text-xs font-semibold text-brand-ink px-2 py-2 rounded-lg active:scale-[0.97] transition-transform">Ver</button>
                 <button
                   onClick={() => { handleDescargar(avisoClip); setAviso(null); }}
-                  className="text-xs font-semibold bg-crystal-400 text-lake-950 rounded-lg px-3 py-1.5"
+                  className="text-xs font-bold bg-brand text-white rounded-xl px-3.5 py-2 active:scale-[0.97] transition-transform"
                 >Descargar</button>
-                <button onClick={() => setAviso(null)} aria-label="Cerrar" className="text-mist-500 px-1.5 py-1">✕</button>
+                <button onClick={() => setAviso(null)} aria-label="Cerrar" className="text-ink-300 hover:text-ink-700 w-8 h-8 flex items-center justify-center rounded-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
               </>
             ) : (
               <>
-                <p className="text-xs text-red-300 flex-1 min-w-0">No se pudo preparar «{avisoClip.etiqueta}»</p>
-                <button onClick={() => verEnLista(aviso.key)} className="text-xs text-mist-400 px-2 py-1.5">Ver</button>
-                <button onClick={() => setAviso(null)} aria-label="Cerrar" className="text-mist-500 px-2 py-1">✕</button>
+                <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" d="M12 8v5m0 3.5h.01" /></svg>
+                </span>
+                <p className="text-[13px] font-semibold text-ink-950 flex-1 min-w-0">No se pudo preparar «{avisoClip.etiqueta}»</p>
+                <button onClick={() => verEnLista(aviso.key)} className="text-xs font-semibold text-brand-ink px-2 py-2">Ver</button>
+                <button onClick={() => setAviso(null)} aria-label="Cerrar" className="text-ink-300 hover:text-ink-700 w-8 h-8 flex items-center justify-center rounded-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
               </>
             )}
           </div>

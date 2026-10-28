@@ -78,9 +78,14 @@ interface ComboFieldProps {
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  /** Faltó completarla al tocar "Ver partido": se tiñe de rojo suave. */
+  error?: boolean;
 }
 
-function ComboField({ id, label, placeholder, value, onChange, options, onSelect, isOpen, onOpen, onClose }: ComboFieldProps) {
+/* Casilla que faltó completar: rojo suave, sin gritar. */
+const ERROR_CASILLA = "bg-red-50 border-red-300 ring-2 ring-red-200/70";
+
+function ComboField({ id, label, placeholder, value, onChange, options, onSelect, isOpen, onOpen, onClose, error }: ComboFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [filterQuery, setFilterQuery] = useState("");
 
@@ -96,7 +101,7 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
 
   return (
     <div ref={containerRef} className="relative">
-      <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-widest mb-2 text-mist-600">
+      <label htmlFor={id} className={`block text-[13px] font-semibold mb-1.5 transition-colors ${error ? "text-red-500" : "text-ink-700"}`}>
         {label}
       </label>
       <div className="relative">
@@ -111,16 +116,16 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
           onClick={onOpen}
           autoComplete="off"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="w-full bg-lake-950/60 border border-lake-700 text-snow rounded-xl px-3.5 pr-9 py-2.5 text-base sm:text-sm placeholder-lake-600 focus:outline-none focus:ring-1 focus:ring-crystal-400/60 focus:border-crystal-400/50 hover:border-mist-700/50 transition-all duration-200"
+          className={`w-full border text-ink-950 rounded-xl px-3.5 pr-9 py-2.5 text-base sm:text-sm placeholder-ink-300 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition-[background-color,border-color,box-shadow] duration-200 ${error ? ERROR_CASILLA : "bg-white border-line hover:border-ink-300"}`}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg className={`w-3.5 h-3.5 text-mist-700 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-3.5 h-3.5 text-ink-300 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </div>
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 z-[200] mt-1.5 bg-lake-800 border border-lake-700 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.5)] overflow-hidden">
+        <div className="absolute top-full left-0 right-0 z-[200] mt-1.5 bg-white border border-line rounded-xl shadow-[0_16px_40px_rgba(11,29,38,0.14)] overflow-hidden">
           {filtered.length > 0 ? (
             <div className="max-h-52 overflow-y-auto">
               {filtered.map((opt) => (
@@ -131,7 +136,7 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
                   // apoyar, el mismo toque caería en lo que hay debajo (p. ej. "Ver partido").
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={() => { onSelect(opt); onClose(); if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); } /* Ocultar teclado en móvil */ }}
-                  className="w-full text-left px-4 py-3 text-sm text-mist-400 hover:bg-crystal-400/8 hover:text-snow transition-colors"
+                  className="w-full text-left px-4 py-3 text-[15px] text-ink-700 hover:bg-brand-soft hover:text-ink-950 transition-colors"
                   style={{ touchAction: "manipulation" }}
                 >
                   {opt}
@@ -139,7 +144,7 @@ function ComboField({ id, label, placeholder, value, onChange, options, onSelect
               ))}
             </div>
           ) : (
-            <div className="px-4 py-3.5 text-sm text-mist-700 text-center">
+            <div className="px-4 py-3.5 text-sm text-ink-500 text-center">
               {options.length === 0 ? "Cargando..." : "Sin resultados"}
             </div>
           )}
@@ -166,9 +171,10 @@ interface SelectFieldProps {
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  error?: boolean;
 }
 
-function SelectField({ id, label, placeholder, value, displayValue, options, displayOptions, onSelect, disabled: disabledProp, loading, isOpen, onOpen, onClose }: SelectFieldProps) {
+function SelectField({ id, label, placeholder, value, displayValue, options, displayOptions, onSelect, disabled: disabledProp, loading, isOpen, onOpen, onClose, error }: SelectFieldProps) {
   const disabled = disabledProp || loading;
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -178,7 +184,7 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
 
   return (
     <div ref={containerRef} className="relative">
-      <label htmlFor={id} className={`block text-xs font-semibold uppercase tracking-widest mb-2 transition-colors ${disabled ? "text-lake-600" : "text-mist-600"}`}>
+      <label htmlFor={id} className={`block text-[13px] font-semibold mb-1.5 transition-colors ${error ? "text-red-500" : disabled ? "text-ink-300" : "text-ink-700"}`}>
         {label}
       </label>
       <button
@@ -187,27 +193,29 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
         onPointerDown={disabled ? undefined : (e) => { e.preventDefault(); if (isOpen) onClose(); else onOpen(); }}
         disabled={disabled}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        className={`relative w-full bg-lake-950/60 border rounded-xl px-3.5 pr-9 py-2.5 text-base sm:text-sm text-left transition-all duration-200 focus:outline-none ${
-          disabled
-            ? "border-lake-700/50 text-lake-600 cursor-not-allowed"
+        className={`relative w-full border rounded-xl px-3.5 pr-9 py-2.5 text-base sm:text-sm text-left transition-all duration-200 focus:outline-none ${
+          error
+            ? `${ERROR_CASILLA} ${disabled ? "text-red-300 cursor-not-allowed" : "cursor-pointer"}`
+            : disabled
+            ? "bg-surface border-line text-ink-300 cursor-not-allowed"
             : isOpen
-            ? "border-crystal-400/50 ring-1 ring-crystal-400/60 text-snow"
-            : "border-lake-700 hover:border-mist-700/50 cursor-pointer"
-        } ${!disabled && shown ? "text-snow" : !disabled ? "text-lake-600" : ""}`}
+            ? "bg-white border-brand ring-2 ring-brand/30 text-ink-950"
+            : "bg-white border-line hover:border-ink-300 cursor-pointer"
+        } ${!disabled && shown ? "text-ink-950" : !disabled ? (error ? "text-red-500" : "text-ink-500") : ""}`}
       >
-        {loading ? <span className="text-mist-500">Cargando…</span> : shown || placeholder}
+        {loading ? <span className="text-ink-500">Cargando…</span> : shown || placeholder}
         <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           {loading ? (
-            <span className="inline-block w-3.5 h-3.5 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin align-[-2px]" />
+            <span className="inline-block w-3.5 h-3.5 border-2 border-brand border-t-transparent rounded-full animate-spin align-[-2px]" />
           ) : (
-            <svg className={`w-3.5 h-3.5 text-mist-700 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-3.5 h-3.5 text-ink-300 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           )}
         </span>
       </button>
       {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 z-[200] mt-1.5 bg-lake-800 border border-lake-700 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.5)] overflow-hidden">
+        <div className="absolute top-full left-0 right-0 z-[200] mt-1.5 bg-white border border-line rounded-xl shadow-[0_16px_40px_rgba(11,29,38,0.14)] overflow-hidden">
           {options.length > 0 ? (
             <div className="max-h-52 overflow-y-auto">
               {options.map((opt, i) => (
@@ -217,7 +225,7 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
                   // Se elige en el "click": así el toque no atraviesa al botón de buscar de abajo
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={() => { onSelect(opt); onClose(); }}
-                  className={`w-full text-left px-4 py-3 text-sm hover:bg-crystal-400/8 hover:text-snow transition-colors ${opt === value ? "text-crystal-400 bg-crystal-400/5" : "text-mist-400"}`}
+                  className={`w-full text-left px-4 py-3 text-[15px] hover:bg-brand-soft hover:text-ink-950 transition-colors ${opt === value ? "text-brand-ink font-semibold bg-brand-soft" : "text-ink-700"}`}
                   style={{ touchAction: "manipulation" }}
                 >
                   {displayOptions ? displayOptions[i] : opt}
@@ -225,7 +233,7 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
               ))}
             </div>
           ) : (
-            <div className="px-4 py-3.5 text-sm text-mist-700 text-center">No hay opciones disponibles</div>
+            <div className="px-4 py-3.5 text-sm text-ink-500 text-center">No hay opciones disponibles</div>
           )}
         </div>
       )}
@@ -234,6 +242,8 @@ function SelectField({ id, label, placeholder, value, displayValue, options, dis
 }
 
 /* ── Filters ────────────────────────────────────────────── */
+
+type Casilla = "complejo" | "cancha" | "fecha" | "hora";
 
 function Filters() {
   const router = useRouter();
@@ -435,11 +445,23 @@ function Filters() {
   /* ── submit ── */
 
   const canBuscar = !!complejoSel && !!canchaSel && !!fechaRaw && !!hora;
+
+  // Casillas que faltaban al tocar "Ver partido". Cada una deja de marcarse
+  // apenas la persona elige algo en ella.
+  const valores: Record<Casilla, string> = { complejo: complejoSel, cancha: canchaSel, fecha: fechaRaw, hora };
+  const [faltan, setFaltan] = useState<Casilla[]>([]);
+  const faltanVivas = faltan.filter((c) => !valores[c]);
+  if (faltanVivas.length !== faltan.length) setFaltan(faltanVivas);
+  const marcada = (c: Casilla) => faltan.includes(c) && !valores[c];
   const hayFiltros = !!(complejo || deporteSel || canchaSel || fechaRaw || hora);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canBuscar || abriendo) return;
+    if (abriendo) return;
+    if (!canBuscar) {
+      setFaltan((Object.keys(valores) as Casilla[]).filter((c) => !valores[c]));
+      return;
+    }
     const params = new URLSearchParams();
     params.set("complejo", complejoSel);
     if (deporteSel) params.set("deporte", deporteSel);
@@ -500,8 +522,8 @@ function Filters() {
       GPU con el tamaño exacto del elemento, recortando los dropdowns position:absolute
       que desbordan hacia abajo. Al quitarlo, los dropdowns son visibles en móvil.
     */
-    <form onSubmit={handleSubmit} className="bg-lake-800/50 border border-lake-700/60 rounded-2xl p-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <form onSubmit={handleSubmit} className="bg-white border border-line rounded-3xl p-4 sm:p-5 shadow-[0_12px_32px_rgba(11,29,38,0.06)]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
 
         {/* Complejo — texto libre */}
         <ComboField
@@ -512,6 +534,7 @@ function Filters() {
           onChange={handleComplejoChange}
           options={complejoOpts}
           onSelect={handleSelectComplejo}
+          error={marcada("complejo")}
           isOpen={openField === "complejo"}
           onOpen={() => setOpenField("complejo")}
           onClose={() => setOpenField(null)}
@@ -542,6 +565,7 @@ function Filters() {
           onSelect={handleSelectCancha}
           disabled={!complejoSel}
           loading={!!complejoSel && cargando.cancha}
+          error={marcada("cancha")}
           isOpen={openField === "cancha"}
           onOpen={() => setOpenField("cancha")}
           onClose={() => setOpenField(null)}
@@ -559,6 +583,7 @@ function Filters() {
           onSelect={handleSelectFecha}
           disabled={!complejoSel}
           loading={!!complejoSel && cargando.fecha}
+          error={marcada("fecha")}
           isOpen={openField === "fecha"}
           onOpen={() => setOpenField("fecha")}
           onClose={() => setOpenField(null)}
@@ -574,6 +599,7 @@ function Filters() {
           onSelect={setHora}
           disabled={!complejoSel || !fechaRaw}
           loading={!!complejoSel && !!fechaRaw && cargando.hora}
+          error={marcada("hora")}
           isOpen={openField === "hora"}
           onOpen={() => setOpenField("hora")}
           onClose={() => setOpenField(null)}
@@ -583,17 +609,17 @@ function Filters() {
       <div className="flex items-center gap-3 mt-5 flex-wrap">
         <button
           type="submit"
-          disabled={!canBuscar || buscando || abriendo}
-          className={`inline-flex items-center gap-2 font-semibold px-6 py-2.5 rounded-xl text-sm transition-all duration-200 ${
+          disabled={buscando || abriendo}
+          className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 font-bold px-6 py-3.5 sm:py-3 rounded-xl text-base sm:text-sm transition-[background-color,transform] duration-150 ${
             buscando || abriendo
-              ? "bg-crystal-400/80 text-lake-950 cursor-wait"
+              ? "bg-brand/80 text-white cursor-wait"
               : canBuscar
-              ? "bg-crystal-400 hover:bg-crystal-300 text-lake-950 active:scale-[0.98] shadow-[0_0_20px_rgba(41,196,173,0.28)]"
-              : "bg-lake-700/60 text-mist-600 cursor-not-allowed"
+              ? "bg-brand hover:bg-brand-hover text-white active:scale-[0.97] shadow-[0_8px_20px_rgba(45,201,183,0.3)]"
+              : "bg-brand/45 text-white active:scale-[0.97]"
           }`}
         >
           {buscando || abriendo ? (
-            <span className="w-3.5 h-3.5 border-2 border-lake-950 border-t-transparent rounded-full animate-spin" />
+            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5.14v13.72a1 1 0 001.5.86l11-6.86a1 1 0 000-1.72l-11-6.86A1 1 0 008 5.14z" />
@@ -603,20 +629,20 @@ function Filters() {
         </button>
 
         {!buscando && !abriendo && cargandoAlgo && (
-          <span className="text-xs text-mist-500 flex items-center gap-1.5">
-            <span className="w-3 h-3 border-2 border-crystal-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-ink-500 flex items-center gap-1.5">
+            <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin" />
             Cargando opciones…
           </span>
         )}
         {!buscando && !abriendo && !cargandoAlgo && missingHint && (
-          <span className="text-xs text-mist-700">{missingHint}</span>
+          <span className="text-xs text-ink-500">{missingHint}</span>
         )}
 
         {hayFiltros && (
           <button
             type="button"
             onClick={handleLimpiar}
-            className="ml-auto text-mist-600 hover:text-snow text-sm font-medium px-3 py-2 rounded-xl hover:bg-white/5 transition-colors"
+            className="ml-auto text-ink-500 hover:text-ink-950 text-sm font-medium px-3 py-2 rounded-xl hover:bg-surface transition-colors"
           >
             Limpiar filtros
           </button>
@@ -630,7 +656,7 @@ function Filters() {
 
 export default function SearchFilters() {
   return (
-    <Suspense fallback={<div className="h-36 bg-lake-800/50 rounded-2xl border border-lake-700/60 animate-pulse" />}>
+    <Suspense fallback={<div className="h-36 bg-surface rounded-3xl border border-line animate-pulse" />}>
       <Filters />
     </Suspense>
   );

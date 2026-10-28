@@ -55,56 +55,51 @@ export default async function PartidoPage({
   const title = `${partido.complejo} — Cancha ${partido.numero_cancha}`;
 
   return (
-    <main className="min-h-screen bg-lake-950">
-      {/* Header con gradiente */}
-      <div className="relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0d2240 60%, #091520 100%)" }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 60% 100% at 0% 50%, rgba(41,196,173,0.08), transparent)" }} />
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(41,196,173,0.3), transparent)" }} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-10 relative">
+    <main className="min-h-[100dvh] -mt-[72px] pt-[72px] bg-surface">
+      {/* Encabezado del partido */}
+      <div className="bg-white border-b border-line">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-6 sm:pt-8 sm:pb-8">
           <Link
             href="/#buscador"
-            className="inline-flex items-center gap-1.5 text-mist-500 hover:text-crystal-400 text-sm transition-colors mb-6"
+            className="inline-flex items-center gap-1 text-ink-500 hover:text-ink-950 text-sm font-semibold -ml-1 px-1 py-1 rounded-lg transition-colors mb-3 sm:mb-5"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
             Volver a partidos
           </Link>
 
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-crystal-400 mb-1">Partido</p>
-              <h1 className="text-2xl sm:text-3xl font-bold text-snow">{partido.complejo}</h1>
-              <p className="text-mist-500 mt-1 text-sm">
-                Cancha {partido.numero_cancha}{partido.deporte ? ` · ${partido.deporte}` : ""}{partido.ciudad ? ` · ${partido.ciudad}` : ""}
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div className="min-w-0">
+              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-brand-ink mb-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand" aria-hidden="true" />
+                Cancha {partido.numero_cancha}{partido.deporte ? ` · ${partido.deporte}` : ""}
               </p>
+              <h1 className="text-[28px] sm:text-4xl font-black tracking-tight leading-[1.05] text-ink-950">{partido.complejo}</h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-ink-500">
+                <span className="inline-flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="inline-block first-letter:uppercase">{formatFechaLarga(partido.fecha)}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 tabular-nums">
+                  <svg className="w-4 h-4 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {partido.hora} · {partido.duracion_minutos} min
+                </span>
+                {partido.ciudad && <span>{partido.ciudad}</span>}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="flex items-center gap-1.5 bg-crystal-400/10 border border-crystal-400/20 text-crystal-300 rounded-xl px-3 py-1.5 text-xs font-medium">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {formatFechaLarga(partido.fecha)}
-              </span>
-              <span className="flex items-center gap-1.5 bg-glacial-400/10 border border-glacial-400/20 text-glacial-300 rounded-xl px-3 py-1.5 text-xs font-medium">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {partido.hora}
-              </span>
-              <span className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 text-amber-300 rounded-xl px-3 py-1.5 text-xs font-medium">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {partido.duracion_minutos} min
-              </span>
+            <div className="shrink-0">
               <ShareMatchButton partidoId={partido.id} />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
 
         {/* Video + sidebar (client) — ver un partido requiere sesión iniciada */}
         <AuthGate>

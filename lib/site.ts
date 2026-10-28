@@ -23,32 +23,22 @@ export function whatsappUrl(message?: string) {
 /** Enlace genérico (botón flotante "Escríbenos"). */
 export const WHATSAPP_URL = whatsappUrl();
 
-// ── Social proof de la home (jugadores) ──
-// Números placeholder editables. Cuando haya datos reales se pueden
-// conectar a Supabase. Ver [[project_lacar_sports]].
-export const HOME_STATS = [
-  { value: 1240, suffix: "+", label: "Partidos grabados" },
-  { value: 8500, suffix: "+", label: "Jugadas compartidas" },
-  { value: 12, suffix: "", label: "Complejos activos" },
+// ── Complejos donde ya está Lacar (sección "Dónde grabamos" del inicio) ──
+export const COMPLEJOS_ACTIVOS = [
+  {
+    nombre: "Appadel",
+    deporte: "Pádel",
+    logo: "/complejos/appadel.png",
+    reservaUrl: "https://www.easycancha.com/es-CL/chile/club/appadel",
+    instagram: "appadel.cl",
+  },
 ] as const;
 
-export const HOME_TESTIMONIALS = [
-  {
-    quote:
-      "Marqué mi gol y apenas terminamos de jugar lo subí al grupo del equipo en un minuto. Una locura.",
-    name: "Matías R.",
-    role: "Jugador · Santiago",
-  },
-  {
-    quote:
-      "Antes la jugada quedaba solo en la memoria. Ahora la reviso, la recorto y me la guardo cuando quiero.",
-    name: "Cris P.",
-    role: "Jugador · Maipú",
-  },
-  {
-    quote:
-      "Encontrar el partido es súper fácil, lo busco por cancha y fecha y aparece al toque desde el celular.",
-    name: "Dani F.",
-    role: "Jugadora · Ñuñoa",
-  },
+// ── Cifras de Lacar (franja sobre "Complejos con Lacar") ──
+// ⚠️ NÚMEROS FICTICIOS de prueba, pedidos para ver el diseño. Reemplazar por
+// datos reales antes de publicar en lacarsports.cl.
+export const HOME_STATS = [
+  { value: 23, label: "complejos" },
+  { value: 584, label: "jugadas grabadas" },
+  { value: 593038, label: "impresiones en redes" },
 ] as const;
