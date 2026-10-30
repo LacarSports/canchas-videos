@@ -15,6 +15,7 @@
     "@supabase/supabase-js": "^2.100.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/video.js": "^7.3.58",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "hls.js": "^1.6.16",
     "mediabunny": "1.59.1",

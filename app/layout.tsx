@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import Navbar from "./components/Navbar";
 import "./globals.css";
 
@@ -44,6 +45,9 @@ export default function RootLayout({
         <Navbar />
 
         <div className="flex-1 pt-[72px]">{children}</div>
+
+        {/* Visitas de la web (Vercel → proyecto → Analytics). Sin cookies. */}
+        <Analytics />
 
       </body>
     </html>
