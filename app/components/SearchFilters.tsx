@@ -480,8 +480,10 @@ function Filters() {
     if (deporteSel) q = q.eq("deporte", deporteSel);
     const { data } = await q;
     if (data?.length === 1) {
-      // La página del partido muestra "Abriendo partido…" mientras carga
-      router.push(`/partido/${data[0].id}`);
+      const destino = `/partido/${data[0].id}`;
+      // Sin sesión: directo a crear la cuenta; al terminar vuelve a este partido.
+      const { data: sesion } = await supabase.auth.getSession();
+      router.push(sesion.session ? destino : `/login?modo=registro&next=${encodeURIComponent(destino)}`);
       return;
     }
     // Ninguno o varios (o falló la consulta): mostrar la lista de resultados como antes

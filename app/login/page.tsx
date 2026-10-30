@@ -148,7 +148,7 @@ function LoginInner() {
             </h1>
             <p className="text-sm text-ink-500">
               {modo === "login" && "Entra para ver tus partidos y descargar tus jugadas"}
-              {modo === "registro" && "Solo te tomará un momento, y no tendrás que volver a hacerlo"}
+              {modo === "registro" && "No tendrás que volver a hacerlo y podrás ver los partidos."}
               {modo === "recuperar" && "Te enviaremos un enlace a tu correo"}
             </p>
           </div>
